@@ -1,7 +1,7 @@
-CREATE TABLE roles (
-    id SERIAL PRIMARY KEY,
-    rollenname VARCHAR(50) NOT NULL UNIQUE,
-    beschreibung TEXT
+Create Table roles(
+	id serial Primary key,
+	rollenname Varchar(50) not null unique,
+	beschreibung text
 );
 
 CREATE TABLE users (
@@ -19,12 +19,6 @@ CREATE TABLE users (
     erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-INSERT INTO roles (rollenname, beschreibung)
-VALUES
-('Studierende', 'Normale Studierende des SOP-Systems'),
-('Lehrende', 'Betreuende Lehrpersonen'),
-('Administrator', 'Systemadministration');
 
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
@@ -92,41 +86,3 @@ CREATE TABLE project_tags (
     tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
     erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-
-INSERT INTO tags (name, beschreibung)
-VALUES
-('React', 'Frontend-Technologie'),
-('Spring Boot', 'Backend-Framework'),
-('PostgreSQL', 'Relationale Datenbank'),
-('KI', 'Künstliche Intelligenz'),
-('SOP', 'Softwareprojekt');
-
-INSERT INTO projects (
-    titel,
-    kurzbeschreibung,
-    beschreibung,
-    status,
-    semester,
-    betreuer_id,
-    erstellt_von,
-    github_link
-)
-VALUES (
-    'SOPhub',
-    'Zentrale Plattform für SOP-Projekte',
-    'SOPhub unterstützt Studierende und Lehrende bei Themenfindung, Teambildung, Projektverwaltung, Dokumentation und KI-gestützter Projektsuche.',
-    'laufend',
-    'SoSe 2026',
-    NULL,
-    1,
-    'https://github.com/Beispiel/SOPhub'
-);
-
-INSERT INTO project_tags (projekt_id, tag_id)
-VALUES
-(1, 1),
-(1, 2),
-(1, 3),
-(1, 4),
-(1, 5)
