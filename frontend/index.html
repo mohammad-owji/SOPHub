@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOPHub Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-box">
+        <h1>SOPHub</h1>
+
+        <div id="message" class="message hidden"></div>
+
+        <input id="kennung" type="text" placeholder="Benutzername" autocomplete="username">
+        <input id="email" type="email" placeholder="E-Mail" autocomplete="email" style="display:none">
+        <input id="passwort" type="password" placeholder="Passwort" autocomplete="current-password">
+
+        <button id="main-btn">Anmelden</button>
+        <a href="#" id="switch-link">Noch kein Konto? Registrieren</a>
+    </div>
+
+    <script>
+        let mode = 'login';
+
+        const btnEl    = document.getElementById('main-btn');
+        const linkEl   = document.getElementById('switch-link');
+        const emailEl  = document.getElementById('email');
+        const msgEl    = document.getElementById('message');
+
+        btnEl.addEventListener('click', handleSubmit);
+        linkEl.addEventListener('click', function(e) {
+            e.preventDefault();
+            switchTo(mode === 'login' ? 'register' : 'login');
+        });
+
+        function switchTo(newMode) {
+            mode = newMode;
+            msgEl.className = 'message hidden';
+            document.getElementById('kennung').value = '';
+            document.getElementById('passwort').value = '';
+            emailEl.value = '';
+
+            if (mode === 'register') {
+                emailEl.style.display = '';
+                btnEl.textContent = 'Registrieren';
+                linkEl.textContent = 'Bereits registriert? Anmelden';
+            } else {
+                emailEl.style.display = 'none';
+                btnEl.textContent = 'Anmelden';
+                linkEl.textContent = 'Noch kein Konto? Registrieren';
+            }
+        }
+
+        async function handleSubmit() {
+            const kennung  = document.getElementById('kennung').value.trim();
+            const password = document.getElementById('passwort').value;
+            const email    = emailEl.value.trim();
+
+            if (!kennung || !password) {
+                showMessage('Bitte Benutzername und Passwort eingeben.', 'error');
+                return;
+            }
+
+            btnEl.disabled = true;
+
+            try {
+                const endpoint = mode === 'login' ? 'login' : 'register';
+                const body = mode === 'login' ? { kennung, password } : { kennung, password, email };
+
+                const res  = await fetch(`http://localhost:8080/api/auth/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                    mode: 'cors'
+                });
+                const text = await res.text();
+
+                if (res.ok && mode === 'register') {
+                    showMessage(text, 'success');
+                    setTimeout(() => switchTo('login'), 2000);
+                } else {
+                    showMessage(text, res.ok ? 'success' : 'error');
+                }
+            } catch (e) {
+                showMessage('Server nicht erreichbar.', 'error');
+            } finally {
+                btnEl.disabled = false;
+            }
+        }
+
+        function showMessage(text, type) {
+            msgEl.textContent = text;
+            msgEl.className = 'message ' + type;
+        }
+    </script>
+</body>
+</html>
