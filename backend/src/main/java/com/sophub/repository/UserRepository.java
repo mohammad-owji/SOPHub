@@ -7,6 +7,5 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    // Suchfunktion, um zu prüfen, ob die Hochschul-Kennung schon existiert
-    Optional<User> findByKennung(String kennung);
+    Optional<User> findByBenutzername(String benutzername);
 }

@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/sop/api/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -19,7 +19,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            return ResponseEntity.ok(authService.login(request.getKennung(), request.getPassword()));
+            return ResponseEntity.ok(authService.login(request.getBenutzername(), request.getPassword()));
         } catch (Exception e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
@@ -28,7 +28,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
-            return ResponseEntity.ok(authService.register(request.getKennung(), request.getPassword(), request.getEmail()));
+            return ResponseEntity.ok(authService.register(request.getBenutzername(), request.getPassword(), request.getEmail()));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }

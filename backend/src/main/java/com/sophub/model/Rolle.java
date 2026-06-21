@@ -3,7 +3,7 @@ package com.sophub.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "rollen") // Erstellt die Tabelle "rollen" in PostgreSQL
+@Table(name = "rollen")
 public class Rolle {
 
     @Id
@@ -11,14 +11,13 @@ public class Rolle {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String name; // Z.B. "STUDENT", "BETREUER", "ADMIN"
+    private String name;
 
-    // ==========================================
-    // GETTER UND SETTER
-    // ==========================================
+    // getter
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
     public String getName() { return name; }
+
+    // setter
+    public void setId(Long id) { this.id = id; }
     public void setName(String name) { this.name = name; }
 }

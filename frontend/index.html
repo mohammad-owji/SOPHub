@@ -172,7 +172,7 @@
 
         <div class="input-group">
             <span class="icon">👤</span>
-            <input id="kennung" type="text" placeholder="Benutzername" autocomplete="username">
+            <input id="benutzername" type="text" placeholder="Benutzername" autocomplete="username">
         </div>
 
         <div id="email-group" class="input-group hidden-field">
@@ -211,7 +211,7 @@
             mode = newMode;
             msgEl.className = 'message hidden';
 
-            document.getElementById('kennung').value = '';
+            document.getElementById('benutzername').value = '';
             document.getElementById('passwort').value = '';
             emailEl.value = '';
             roleEl.value = '';
@@ -232,12 +232,12 @@
         }
 
         async function handleSubmit() {
-            const kennung = document.getElementById('kennung').value.trim();
+            const benutzername = document.getElementById('benutzername').value.trim();
             const password = document.getElementById('passwort').value;
             const email = emailEl.value.trim();
             const role = roleEl.value;
 
-            if (!kennung || !password) {
+            if (!benutzername || !password) {
                 showMessage('Bitte Benutzername und Passwort eingeben.', 'error');
                 return;
             }
@@ -253,10 +253,10 @@
                 const endpoint = mode === 'login' ? 'login' : 'register';
 
                 const body = mode === 'login'
-                    ? { kennung, password }
-                    : { kennung, password, email, role };
+                    ? { benutzername, password }
+                    : { benutzername, password, email, role };
 
-                const res = await fetch(`http://localhost:8080/api/auth/${endpoint}`, {
+                const res = await fetch(`http://localhost:8080/sop/api/auth/${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body),

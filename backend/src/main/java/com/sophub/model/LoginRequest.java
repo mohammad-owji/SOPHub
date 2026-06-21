@@ -1,13 +1,14 @@
 package com.sophub.model;
 
 public class LoginRequest {
-    private String kennung;
+    private String benutzername;
     private String password;
 
-    // Getter und Setter
-    public String getKennung(){ return this.kennung; }
+    // Getter
+    public String getBenutzername(){ return this.benutzername; }
     public String getPassword(){ return this.password; }
 
-    public void setKennung(String kennung) { this.kennung = kennung; }
+    // setter
+    public void setBenutzername(String benutzername) { this.benutzername = benutzername; }
     public void setPassword(String password){ this.password = password; }
 }
