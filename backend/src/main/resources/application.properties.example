@@ -1,0 +1,5 @@
+spring.datasource.url=jdbc:postgresql://localhost:5432/sophub
+spring.datasource.username=postgres
+spring.datasource.password=DEIN_PASSWORT
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true

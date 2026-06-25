@@ -1,0 +1,31 @@
+dn: dc=sophub,dc=local
+objectClass: top
+objectClass: domain
+dc: sophub
+
+dn: ou=people,dc=sophub,dc=local
+objectClass: top
+objectClass: organizationalUnit
+ou: people
+
+dn: uid=s123456,ou=people,dc=sophub,dc=local
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: s123456
+cn: Test Student
+sn: Student
+userPassword: test123
+mail: s123456@stud.hs-bochum.de
+
+dn: uid=p987654,ou=people,dc=sophub,dc=local
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: p987654
+cn: Test Professor
+sn: Professor
+userPassword: prof456
+mail: p987654@hs-bochum.de
