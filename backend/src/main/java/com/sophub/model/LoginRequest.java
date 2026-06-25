@@ -2,13 +2,13 @@ package com.sophub.model;
 
 public class LoginRequest {
     private String benutzername;
-    private String password;
+    private String passwort;
 
-    // Getter
-    public String getBenutzername(){ return this.benutzername; }
-    public String getPassword(){ return this.password; }
+    // getter
+    public String getBenutzername() { return benutzername; }
+    public String getPasswort() { return passwort; }
 
     // setter
     public void setBenutzername(String benutzername) { this.benutzername = benutzername; }
-    public void setPassword(String password){ this.password = password; }
+    public void setPasswort(String passwort) { this.passwort = passwort; }
 }
