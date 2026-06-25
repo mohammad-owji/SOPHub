@@ -52,19 +52,6 @@ public class Projekt {
     @Column(name = "geaendert_am")
     private LocalDateTime geaendertAm;
 
-    @Column(columnDefinition = "TEXT")
-    private String lastenheftText;
-
-    @Column(columnDefinition = "TEXT")
-    private String pflichtenheftText;
-
-    @Column(columnDefinition = "TEXT")
-    private String dokumentationText;
-
-    private String lastenheftPdfPfad;
-    private String pflichtenheftPdfPfad;
-    private String dokumentationPdfPfad;
-
     @ManyToOne
     @JoinColumn(name = "student_id")
     private User student;
@@ -102,12 +89,6 @@ public class Projekt {
     public Boolean getKiGeneriert() { return kiGeneriert; }
     public LocalDateTime getErstelltAm() { return erstelltAm; }
     public LocalDateTime getGeaendertAm() { return geaendertAm; }
-    public String getLastenheftText() { return lastenheftText; }
-    public String getPflichtenheftText() { return pflichtenheftText; }
-    public String getDokumentationText() { return dokumentationText; }
-    public String getLastenheftPdfPfad() { return lastenheftPdfPfad; }
-    public String getPflichtenheftPdfPfad() { return pflichtenheftPdfPfad; }
-    public String getDokumentationPdfPfad() { return dokumentationPdfPfad; }
     public User getStudent() { return student; }
     public User getBetreuer() { return betreuer; }
 
@@ -129,12 +110,6 @@ public class Projekt {
     public void setKiGeneriert(Boolean kiGeneriert) { this.kiGeneriert = kiGeneriert; }
     public void setErstelltAm(LocalDateTime erstelltAm) { this.erstelltAm = erstelltAm; }
     public void setGeaendertAm(LocalDateTime geaendertAm) { this.geaendertAm = geaendertAm; }
-    public void setLastenheftText(String lastenheftText) { this.lastenheftText = lastenheftText; }
-    public void setPflichtenheftText(String pflichtenheftText) { this.pflichtenheftText = pflichtenheftText; }
-    public void setDokumentationText(String dokumentationText) { this.dokumentationText = dokumentationText; }
-    public void setLastenheftPdfPfad(String lastenheftPdfPfad) { this.lastenheftPdfPfad = lastenheftPdfPfad; }
-    public void setPflichtenheftPdfPfad(String pflichtenheftPdfPfad) { this.pflichtenheftPdfPfad = pflichtenheftPdfPfad; }
-    public void setDokumentationPdfPfad(String dokumentationPdfPfad) { this.dokumentationPdfPfad = dokumentationPdfPfad; }
     public void setStudent(User student) { this.student = student; }
     public void setBetreuer(User betreuer) { this.betreuer = betreuer; }
 }

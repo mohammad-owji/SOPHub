@@ -4,23 +4,13 @@ import com.sophub.model.Projekt;
 import com.sophub.model.User;
 import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class ProjektService {
-
-    private static final String UPLOAD_DIR = "uploads/projekte/";
 
     private final ProjektRepository projektRepository;
     private final UserRepository userRepository;
@@ -31,6 +21,15 @@ public class ProjektService {
     }
 
     public List<Projekt> alleProjeKte() {
+        return projektRepository.findAll();
+    }
+
+    public List<Projekt> nachRolle(String benutzername, String rolle) {
+        if ("STUDENT".equals(rolle)) {
+            User student = userRepository.findByBenutzername(benutzername)
+                    .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+            return projektRepository.findByStudentId(student.getId());
+        }
         return projektRepository.findAll();
     }
 
@@ -77,44 +76,5 @@ public class ProjektService {
             throw new RuntimeException("Projekt nicht gefunden.");
         }
         projektRepository.deleteById(id);
-    }
-
-    public Projekt pdfHochladen(Long projektId, MultipartFile datei, String dokumentTyp) throws IOException {
-        Projekt projekt = projektRepository.findById(projektId)
-                .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
-
-        Path uploadPfad = Paths.get(UPLOAD_DIR + projektId + "/");
-        Files.createDirectories(uploadPfad);
-
-        String dateiName = dokumentTyp + "_" + datei.getOriginalFilename();
-        Path zielPfad = uploadPfad.resolve(dateiName);
-        Files.copy(datei.getInputStream(), zielPfad);
-
-        String extrahierterText = textAusPdfExtrahieren(datei);
-
-        switch (dokumentTyp) {
-            case "lastenheft" -> {
-                projekt.setLastenheftPdfPfad(zielPfad.toString());
-                projekt.setLastenheftText(extrahierterText);
-            }
-            case "pflichtenheft" -> {
-                projekt.setPflichtenheftPdfPfad(zielPfad.toString());
-                projekt.setPflichtenheftText(extrahierterText);
-            }
-            case "dokumentation" -> {
-                projekt.setDokumentationPdfPfad(zielPfad.toString());
-                projekt.setDokumentationText(extrahierterText);
-            }
-            default -> throw new RuntimeException("Unbekannter Dokumenttyp: " + dokumentTyp);
-        }
-
-        return projektRepository.save(projekt);
-    }
-
-    private String textAusPdfExtrahieren(MultipartFile datei) throws IOException {
-        try (PDDocument document = Loader.loadPDF(datei.getBytes())) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            return stripper.getText(document);
-        }
     }
 }

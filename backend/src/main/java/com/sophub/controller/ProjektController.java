@@ -3,8 +3,8 @@ package com.sophub.controller;
 import com.sophub.model.Projekt;
 import com.sophub.service.ProjektService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,8 +19,13 @@ public class ProjektController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Projekt>> alleProjeKte() {
-        return ResponseEntity.ok(projektService.alleProjeKte());
+    public ResponseEntity<List<Projekt>> alleProjeKte(Authentication authentication) {
+        String benutzername = authentication.getName();
+        String rolle = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority() != null ? a.getAuthority().replace("ROLE_", "") : "STUDENT")
+                .orElse("STUDENT");
+        return ResponseEntity.ok(projektService.nachRolle(benutzername, rolle));
     }
 
     @GetMapping("/{id}")
@@ -60,18 +65,6 @@ public class ProjektController {
             return ResponseEntity.ok("Projekt gelöscht.");
         } catch (Exception e) {
             return ResponseEntity.status(404).body(e.getMessage());
-        }
-    }
-
-    @PostMapping("/{id}/upload/{dokumentTyp}")
-    public ResponseEntity<?> pdfHochladen(
-            @PathVariable Long id,
-            @PathVariable String dokumentTyp,
-            @RequestParam("datei") MultipartFile datei) {
-        try {
-            return ResponseEntity.ok(projektService.pdfHochladen(id, datei, dokumentTyp));
-        } catch (Exception e) {
-            return ResponseEntity.status(400).body(e.getMessage());
         }
     }
 }
