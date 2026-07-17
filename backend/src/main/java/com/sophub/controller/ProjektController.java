@@ -46,9 +46,11 @@ public class ProjektController {
     }
 
     @PostMapping("/student/{studentId}")
-    public ResponseEntity<?> erstellen(@PathVariable Long studentId, @RequestBody Projekt projekt) {
+    public ResponseEntity<?> erstellen(@PathVariable Long studentId,
+                                        @RequestParam(required = false) Long betreuerId,
+                                        @RequestBody Projekt projekt) {
         try {
-            return ResponseEntity.ok(projektService.erstellen(projekt, studentId));
+            return ResponseEntity.ok(projektService.erstellen(projekt, studentId, betreuerId));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }

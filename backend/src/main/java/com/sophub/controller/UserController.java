@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/sop/api/benutzer")
 public class UserController {
@@ -22,6 +24,20 @@ public class UserController {
         return userRepository.findByBenutzername(benutzername)
                 .map(user -> ResponseEntity.ok(new ProfilResponse(user)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/professoren")
+    public ResponseEntity<List<BenutzerKurzInfo>> professoren() {
+        List<BenutzerKurzInfo> ergebnis = userRepository.findByRolle_Name("PROFESSOR").stream()
+                .map(BenutzerKurzInfo::new)
+                .toList();
+        return ResponseEntity.ok(ergebnis);
+    }
+
+    record BenutzerKurzInfo(Long id, String vorname, String name) {
+        BenutzerKurzInfo(User user) {
+            this(user.getId(), user.getVorname(), user.getName());
+        }
     }
 
     record ProfilResponse(

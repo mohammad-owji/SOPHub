@@ -14,10 +14,13 @@ public class ProjektService {
 
     private final ProjektRepository projektRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
-    public ProjektService(ProjektRepository projektRepository, UserRepository userRepository) {
+    public ProjektService(ProjektRepository projektRepository, UserRepository userRepository,
+                          EmailService emailService) {
         this.projektRepository = projektRepository;
         this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     public List<Projekt> alleProjeKte() {
@@ -41,14 +44,29 @@ public class ProjektService {
         return projektRepository.findByStudentId(studentId);
     }
 
-    public Projekt erstellen(Projekt projekt, Long studentId) {
+    public Projekt erstellen(Projekt projekt, Long studentId, Long betreuerId) {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student nicht gefunden."));
         projekt.setStudent(student);
+
+        User betreuer = null;
+        if (betreuerId != null) {
+            betreuer = userRepository.findById(betreuerId)
+                    .orElseThrow(() -> new RuntimeException("Betreuer nicht gefunden."));
+            projekt.setBetreuer(betreuer);
+        }
+
         if (projekt.getStatus() == null) {
             projekt.setStatus("ENTWURF");
         }
-        return projektRepository.save(projekt);
+
+        Projekt gespeichert = projektRepository.save(projekt);
+
+        if (betreuer != null) {
+            emailService.sendeBetreuerZuweisungsEmail(betreuer, student, gespeichert);
+        }
+
+        return gespeichert;
     }
 
     public Projekt aktualisieren(Long id, Projekt aktuell) {

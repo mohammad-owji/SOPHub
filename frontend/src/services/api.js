@@ -32,11 +32,19 @@ export async function getMeineProjekte(studentId) {
     return parseOrThrow(response);
 }
 
-export async function createProjekt(studentId, daten) {
-    const response = await fetch(`${API_BASE_URL}/projekte/student/${studentId}`, {
+export async function createProjekt(studentId, daten, betreuerId) {
+    const query = betreuerId ? `?betreuerId=${betreuerId}` : "";
+    const response = await fetch(`${API_BASE_URL}/projekte/student/${studentId}${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(daten),
+    });
+    return parseOrThrow(response);
+}
+
+export async function getProfessoren() {
+    const response = await fetch(`${API_BASE_URL}/benutzer/professoren`, {
+        headers: authHeaders(),
     });
     return parseOrThrow(response);
 }

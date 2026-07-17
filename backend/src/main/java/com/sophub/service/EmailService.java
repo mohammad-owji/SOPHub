@@ -2,6 +2,7 @@ package com.sophub.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sophub.model.EmailTemplate;
+import com.sophub.model.Projekt;
 import com.sophub.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,12 +14,16 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
     private static final String REGISTRIERUNGS_TEMPLATE = "email-templates/registrierung.json";
+    private static final String BETREUER_ZUWEISUNGS_TEMPLATE = "email-templates/betreuer-zuweisung.json";
+    private static final DateTimeFormatter DATUM_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final JavaMailSender mailSender;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -31,21 +36,42 @@ public class EmailService {
     }
 
     public void sendeRegistrierungsEmail(User user) {
-        try {
-            EmailTemplate template = ladeTemplate(REGISTRIERUNGS_TEMPLATE);
+        Map<String, String> werte = Map.of(
+                "benutzername", user.getBenutzername(),
+                "email", user.getEmail(),
+                "name", user.getName(),
+                "vorname", user.getVorname()
+        );
+        sende(REGISTRIERUNGS_TEMPLATE, user.getEmail(), werte);
+    }
 
-            String betreff = fuelleTemplate(template.getSubject(), user);
-            String text = fuelleTemplate(template.getBody(), user);
+    public void sendeBetreuerZuweisungsEmail(User betreuer, User student, Projekt projekt) {
+        Map<String, String> werte = Map.of(
+                "betreuerVorname", betreuer.getVorname(),
+                "betreuerName", betreuer.getName(),
+                "studentVorname", student.getVorname(),
+                "studentName", student.getName(),
+                "projektTitel", projekt.getTitel(),
+                "datum", projekt.getErstelltAm() != null
+                        ? projekt.getErstelltAm().format(DATUM_FORMAT)
+                        : java.time.LocalDate.now().format(DATUM_FORMAT)
+        );
+        sende(BETREUER_ZUWEISUNGS_TEMPLATE, betreuer.getEmail(), werte);
+    }
+
+    private void sende(String templatePfad, String empfaenger, Map<String, String> werte) {
+        try {
+            EmailTemplate template = ladeTemplate(templatePfad);
 
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(absenderAdresse);
-            message.setTo(user.getEmail());
-            message.setSubject(betreff);
-            message.setText(text);
+            message.setTo(empfaenger);
+            message.setSubject(fuelleTemplate(template.getSubject(), werte));
+            message.setText(fuelleTemplate(template.getBody(), werte));
 
             mailSender.send(message);
         } catch (Exception e) {
-            log.warn("Registrierungs-E-Mail konnte nicht an {} gesendet werden: {}", user.getEmail(), e.getMessage());
+            log.warn("E-Mail ({}) konnte nicht an {} gesendet werden: {}", templatePfad, empfaenger, e.getMessage());
         }
     }
 
@@ -55,11 +81,11 @@ public class EmailService {
         }
     }
 
-    private String fuelleTemplate(String vorlage, User user) {
-        return vorlage
-                .replace("${benutzername}", user.getBenutzername())
-                .replace("${email}", user.getEmail())
-                .replace("${name}", user.getName())
-                .replace("${vorname}", user.getVorname());
+    private String fuelleTemplate(String vorlage, Map<String, String> werte) {
+        String ergebnis = vorlage;
+        for (Map.Entry<String, String> eintrag : werte.entrySet()) {
+            ergebnis = ergebnis.replace("${" + eintrag.getKey() + "}", eintrag.getValue());
+        }
+        return ergebnis;
     }
 }

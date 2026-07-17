@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { getAuth, createProjekt, uploadDokument } from "../services/api";
+import { getAuth, createProjekt, uploadDokument, getProfessoren } from "../services/api";
 
 const DOKUMENT_TYPEN = [
     { value: "PFLICHTENHEFT", label: "Pflichtenheft" },
@@ -21,12 +21,20 @@ function CreateProject() {
     const [sprache, setSprache] = useState("Deutsch");
     const [schlagwoerter, setSchlagwoerter] = useState("");
     const [gruppenanzahl, setGruppenanzahl] = useState("3");
+    const [betreuerId, setBetreuerId] = useState("");
+    const [professoren, setProfessoren] = useState([]);
     const [dokumente, setDokumente] = useState([
         { typ: DOKUMENT_TYPEN[0].value, datei: null },
     ]);
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState("");
     const [wirdGespeichert, setWirdGespeichert] = useState(false);
+
+    useEffect(() => {
+        getProfessoren()
+            .then((data) => setProfessoren(data || []))
+            .catch(() => setProfessoren([]));
+    }, []);
 
     const resetForm = () => {
         setTitel("");
@@ -37,6 +45,7 @@ function CreateProject() {
         setSprache("Deutsch");
         setSchlagwoerter("");
         setGruppenanzahl("3");
+        setBetreuerId("");
         setDokumente([{ typ: DOKUMENT_TYPEN[0].value, datei: null }]);
     };
 
@@ -76,16 +85,20 @@ function CreateProject() {
         setMessage("");
 
         try {
-            const projekt = await createProjekt(auth.id, {
-                titel,
-                beschreibung,
-                semester,
-                fachbereich,
-                projektart,
-                sprache,
-                schlagwoerter,
-                gruppenanzahl: gruppenanzahl ? Number(gruppenanzahl) : null,
-            });
+            const projekt = await createProjekt(
+                auth.id,
+                {
+                    titel,
+                    beschreibung,
+                    semester,
+                    fachbereich,
+                    projektart,
+                    sprache,
+                    schlagwoerter,
+                    gruppenanzahl: gruppenanzahl ? Number(gruppenanzahl) : null,
+                },
+                betreuerId || null
+            );
 
             const hochzuladen = dokumente.filter((eintrag) => eintrag.datei);
             for (const eintrag of hochzuladen) {
@@ -226,6 +239,24 @@ function CreateProject() {
                                         <option value="3">3 Personen</option>
                                         <option value="4">4 Personen</option>
                                         <option value="5">5 Personen</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="row">
+                                <div className="col-md-4 mb-3">
+                                    <label className="form-label">Betreuer:in</label>
+                                    <select
+                                        className="form-select"
+                                        value={betreuerId}
+                                        onChange={(e) => setBetreuerId(e.target.value)}
+                                    >
+                                        <option value="">Noch nicht zuweisen</option>
+                                        {professoren.map((prof) => (
+                                            <option key={prof.id} value={prof.id}>
+                                                {prof.vorname} {prof.name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
