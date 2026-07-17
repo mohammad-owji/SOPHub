@@ -14,20 +14,22 @@ import java.time.LocalDateTime;
 @Service
 public class AuthService {
 
-    private static final String DOMAIN_STUDENT = "@stud.hs-bochum.de";
     private static final String DOMAIN_PROFESSOR = "@hs-bochum.de";
 
     private final UserRepository userRepository;
     private final RolleRepository rolleRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
     public AuthService(UserRepository userRepository, RolleRepository rolleRepository,
-                       BCryptPasswordEncoder passwordEncoder, JwtService jwtService) {
+                       BCryptPasswordEncoder passwordEncoder, JwtService jwtService,
+                       EmailService emailService) {
         this.userRepository = userRepository;
         this.rolleRepository = rolleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.emailService = emailService;
     }
 
     public String register(String benutzername, String passwort, String email, String name, String vorname) {
@@ -62,6 +64,8 @@ public class AuthService {
         user.setRolle(rolle);
         userRepository.save(user);
 
+        emailService.sendeRegistrierungsEmail(user);
+
         return "Registrierung erfolgreich! Du kannst dich jetzt anmelden.";
     }
 
@@ -85,16 +89,10 @@ public class AuthService {
     }
 
     private String bestimmeRolle(String email) {
-        if (email.endsWith(DOMAIN_STUDENT)) {
-            return "STUDENT";
-        } else if (email.endsWith(DOMAIN_PROFESSOR)) {
+        if (email.endsWith(DOMAIN_PROFESSOR)) {
             return "PROFESSOR";
-        } else {
-            throw new RuntimeException(
-                "Ungültige E-Mail-Adresse. Nur Hochschul-Adressen erlaubt " +
-                "(@stud.hs-bochum.de oder @hs-bochum.de)."
-            );
         }
+        return "STUDENT";
     }
 
     private Rolle findOrCreateRolle(String name) {
