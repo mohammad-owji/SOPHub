@@ -28,6 +28,11 @@ public class ProjektController {
         return ResponseEntity.ok(projektService.nachRolle(benutzername, rolle));
     }
 
+    @GetMapping("/alle")
+    public ResponseEntity<List<Projekt>> alle() {
+        return ResponseEntity.ok(projektService.alleProjeKte());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> projektById(@PathVariable Long id) {
         return projektService.projektById(id)

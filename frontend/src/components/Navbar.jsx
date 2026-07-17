@@ -1,9 +1,12 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { getAuth } from "../services/api";
 
 function Navbar() {
     const navigate = useNavigate();
+    const auth = getAuth();
 
     const handleLogout = () => {
+        localStorage.removeItem("sophub_auth");
         navigate("/");
     };
 
@@ -57,12 +60,12 @@ function Navbar() {
                             className="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center fw-bold"
                             style={{ width: "38px", height: "38px" }}
                         >
-                            S
+                            {auth?.vorname ? auth.vorname.charAt(0).toUpperCase() : "?"}
                         </div>
 
                         <div className="text-start d-none d-md-block">
-                            <div className="fw-semibold">Salma</div>
-                            <small className="text-white-50">Studentin</small>
+                            <div className="fw-semibold">{auth?.vorname || "Gast"}</div>
+                            <small className="text-white-50">{auth?.rolle || ""}</small>
                         </div>
                     </button>
 

@@ -1,84 +1,67 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { getProjects } from "../services/api";
+import { getAlleProjekte, getMeineProjekte, getAuth } from "../services/api";
 
-function Projects() {
+function Projects({ scope = "alle" }) {
     const navigate = useNavigate();
 
     const [projects, setProjects] = useState([]);
     const [error, setError] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("alle");
-    const [technologyFilter, setTechnologyFilter] = useState("alle");
+    const [schlagwortFilter, setSchlagwortFilter] = useState("alle");
+
+    const istMeine = scope === "meine";
+
+    const mitSchlagwoerterArray = (project) => ({
+        ...project,
+        schlagwoerterListe: project.schlagwoerter
+            ? project.schlagwoerter.split(",").map((s) => s.trim()).filter(Boolean)
+            : [],
+    });
 
     useEffect(() => {
-        getProjects()
+        setError("");
+
+        const auth = getAuth();
+        if (istMeine && !auth?.id) {
+            setError("Bitte zuerst einloggen, um deine Projekte zu sehen.");
+            setProjects([]);
+            return;
+        }
+
+        const ladeProjekte = istMeine ? getMeineProjekte(auth.id) : getAlleProjekte();
+
+        ladeProjekte
             .then((data) => {
-                setProjects(data);
+                setProjects((data || []).map(mitSchlagwoerterArray));
             })
-            .catch(() => {
-                setError("Backend ist noch nicht erreichbar. Es werden Testdaten angezeigt.");
-
-                setProjects([
-                    {
-                        id: 1,
-                        titel: "SOPhub",
-                        status: "laufend",
-                        semester: "SoSe 2026",
-                        kurzbeschreibung:
-                            "Zentrale Plattform für SOP-Projekte, Teamorganisation und KI-gestützte Suche.",
-                        technologies: ["React", "Spring Boot", "PostgreSQL", "KI"],
-                    },
-                    {
-                        id: 2,
-                        titel: "Campus Connect",
-                        status: "abgeschlossen",
-                        semester: "WiSe 2025",
-                        kurzbeschreibung:
-                            "Plattform zur Vernetzung von Studierenden auf dem Campus.",
-                        technologies: ["React", "Node.js"],
-                    },
-                    {
-                        id: 3,
-                        titel: "Study Planner",
-                        status: "offen",
-                        semester: "SoSe 2026",
-                        kurzbeschreibung:
-                            "App zur Planung von Lernzeiten, Aufgaben und Prüfungen.",
-                        technologies: ["Vue", "Spring Boot", "PostgreSQL"],
-                    },
-                    {
-                        id: 4,
-                        titel: "KI Lernassistent",
-                        status: "laufend",
-                        semester: "WiSe 2025",
-                        kurzbeschreibung:
-                            "KI-gestützte Lernhilfe für Programmiermodule.",
-                        technologies: ["React", "KI", "Python"],
-                    },
-                ]);
+            .catch((err) => {
+                setError(err.message || "Backend ist nicht erreichbar.");
+                setProjects([]);
             });
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scope]);
 
-    const allTechnologies = [
+    const alleSchlagwoerter = [
         "alle",
-        ...new Set(projects.flatMap((project) => project.technologies || [])),
+        ...new Set(projects.flatMap((project) => project.schlagwoerterListe || [])),
     ];
 
     const filteredProjects = projects.filter((project) => {
         const matchesSearch =
             project.titel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            project.kurzbeschreibung?.toLowerCase().includes(searchTerm.toLowerCase());
+            project.beschreibung?.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStatus =
             statusFilter === "alle" || project.status === statusFilter;
 
-        const matchesTechnology =
-            technologyFilter === "alle" ||
-            project.technologies?.includes(technologyFilter);
+        const matchesSchlagwort =
+            schlagwortFilter === "alle" ||
+            project.schlagwoerterListe?.includes(schlagwortFilter);
 
-        return matchesSearch && matchesStatus && matchesTechnology;
+        return matchesSearch && matchesStatus && matchesSchlagwort;
     });
 
     return (
@@ -88,9 +71,13 @@ function Projects() {
             <div className="container mt-4">
                 <div className="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h2 className="fw-bold text-dark">Alle Projekte</h2>
+                        <h2 className="fw-bold text-dark">
+                            {istMeine ? "Meine Projekte" : "Alle Projekte"}
+                        </h2>
                         <p className="text-muted mb-0">
-                            Suche nach laufenden, offenen und abgeschlossenen SOP-Projekten.
+                            {istMeine
+                                ? "Deine eigenen SOP-Projekte."
+                                : "Suche nach laufenden, offenen und abgeschlossenen SOP-Projekten."}
                         </p>
                     </div>
 
@@ -126,6 +113,7 @@ function Projects() {
                                     onChange={(e) => setStatusFilter(e.target.value)}
                                 >
                                     <option value="alle">Alle</option>
+                                    <option value="ENTWURF">Entwurf</option>
                                     <option value="offen">Offen</option>
                                     <option value="laufend">Laufend</option>
                                     <option value="abgeschlossen">Abgeschlossen</option>
@@ -133,15 +121,15 @@ function Projects() {
                             </div>
 
                             <div className="col-md-3">
-                                <label className="form-label">Technologie</label>
+                                <label className="form-label">Schlagwort</label>
                                 <select
                                     className="form-select"
-                                    value={technologyFilter}
-                                    onChange={(e) => setTechnologyFilter(e.target.value)}
+                                    value={schlagwortFilter}
+                                    onChange={(e) => setSchlagwortFilter(e.target.value)}
                                 >
-                                    {allTechnologies.map((tech) => (
-                                        <option value={tech} key={tech}>
-                                            {tech === "alle" ? "Alle" : tech}
+                                    {alleSchlagwoerter.map((wort) => (
+                                        <option value={wort} key={wort}>
+                                            {wort === "alle" ? "Alle" : wort}
                                         </option>
                                     ))}
                                 </select>
@@ -175,7 +163,7 @@ function Projects() {
                                     </div>
 
                                     <p className="text-muted">
-                                        {project.kurzbeschreibung}
+                                        {project.beschreibung}
                                     </p>
 
                                     <p className="mb-2">
@@ -183,19 +171,19 @@ function Projects() {
                                     </p>
 
                                     <div className="mb-3">
-                                        {project.technologies?.map((tech) => (
+                                        {project.schlagwoerterListe?.map((wort) => (
                                             <span
                                                 className="badge bg-primary me-1 mb-1"
-                                                key={tech}
+                                                key={wort}
                                             >
-                                                {tech}
+                                                {wort}
                                             </span>
                                         ))}
                                     </div>
 
                                     <button
                                         className="btn btn-outline-primary"
-                                        onClick={() => navigate("/projectdetails")}
+                                        onClick={() => navigate(`/projectdetails/${project.id}`)}
                                     >
                                         Details ansehen
                                     </button>
@@ -205,7 +193,7 @@ function Projects() {
                     ))}
                 </div>
 
-                {filteredProjects.length === 0 && (
+                {filteredProjects.length === 0 && !error && (
                     <div className="alert alert-info">
                         Keine Projekte gefunden. Bitte ändere deine Such- oder Filterkriterien.
                     </div>

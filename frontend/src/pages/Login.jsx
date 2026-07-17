@@ -84,6 +84,18 @@ function Login() {
                         switchMode();
                     }, 1500);
                 } else {
+                    const daten = JSON.parse(text);
+                    localStorage.setItem(
+                        "sophub_auth",
+                        JSON.stringify({
+                            token: daten.token,
+                            id: daten.id,
+                            benutzername: daten.benutzername,
+                            vorname: daten.vorname,
+                            name: daten.name,
+                            rolle: daten.rolle,
+                        })
+                    );
                     navigate("/dashboard");
                 }
             } else {

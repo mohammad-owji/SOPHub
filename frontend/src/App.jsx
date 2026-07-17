@@ -14,8 +14,10 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects" element={<Projects scope="alle" />} />
+        <Route path="/my-projects" element={<Projects scope="meine" />} />
         <Route path="/projectdetails" element={<ProjectDetails />} />
+        <Route path="/projectdetails/:id" element={<ProjectDetails />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/create-project" element={<CreateProject />} />
       </Routes>

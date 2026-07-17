@@ -85,7 +85,7 @@ public class AuthService {
         userRepository.save(user);
 
         String token = jwtService.generateToken(user.getBenutzername(), user.getRolle().getName());
-        return new LoginResponse(token, user.getBenutzername(), user.getVorname(), user.getName(), user.getRolle().getName());
+        return new LoginResponse(token, user.getId(), user.getBenutzername(), user.getVorname(), user.getName(), user.getRolle().getName());
     }
 
     private String bestimmeRolle(String email) {
