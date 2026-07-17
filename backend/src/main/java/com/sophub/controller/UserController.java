@@ -34,6 +34,14 @@ public class UserController {
         return ResponseEntity.ok(ergebnis);
     }
 
+    @GetMapping("/studenten")
+    public ResponseEntity<List<BenutzerKurzInfo>> studenten() {
+        List<BenutzerKurzInfo> ergebnis = userRepository.findByRolle_Name("STUDENT").stream()
+                .map(BenutzerKurzInfo::new)
+                .toList();
+        return ResponseEntity.ok(ergebnis);
+    }
+
     record BenutzerKurzInfo(Long id, String vorname, String name) {
         BenutzerKurzInfo(User user) {
             this(user.getId(), user.getVorname(), user.getName());

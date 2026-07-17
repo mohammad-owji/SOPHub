@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { getAuth, createProjekt, uploadDokument, getProfessoren } from "../services/api";
+import {
+    getAuth,
+    createProjekt,
+    uploadDokument,
+    getProfessoren,
+    getStudenten,
+    mitgliedHinzufuegen,
+} from "../services/api";
 
 const DOKUMENT_TYPEN = [
     { value: "PFLICHTENHEFT", label: "Pflichtenheft" },
@@ -12,6 +19,7 @@ const DOKUMENT_TYPEN = [
 
 function CreateProject() {
     const navigate = useNavigate();
+    const auth = getAuth();
 
     const [titel, setTitel] = useState("");
     const [beschreibung, setBeschreibung] = useState("");
@@ -23,6 +31,9 @@ function CreateProject() {
     const [gruppenanzahl, setGruppenanzahl] = useState("3");
     const [betreuerId, setBetreuerId] = useState("");
     const [professoren, setProfessoren] = useState([]);
+    const [alleStudenten, setAlleStudenten] = useState([]);
+    const [teamSuche, setTeamSuche] = useState("");
+    const [ausgewaehlteMitglieder, setAusgewaehlteMitglieder] = useState([]);
     const [dokumente, setDokumente] = useState([
         { typ: DOKUMENT_TYPEN[0].value, datei: null },
     ]);
@@ -34,7 +45,36 @@ function CreateProject() {
         getProfessoren()
             .then((data) => setProfessoren(data || []))
             .catch(() => setProfessoren([]));
+
+        getStudenten()
+            .then((data) => setAlleStudenten(data || []))
+            .catch(() => setAlleStudenten([]));
     }, []);
+
+    const maxGroesse = gruppenanzahl ? Number(gruppenanzahl) : null;
+    const aktuelleGroesse = 1 + ausgewaehlteMitglieder.length;
+    const maxErreicht = maxGroesse != null && aktuelleGroesse >= maxGroesse;
+
+    const gefilterteStudenten = teamSuche.trim()
+        ? alleStudenten.filter((s) => {
+            const vollerName = `${s.vorname} ${s.name}`.toLowerCase();
+            return (
+                vollerName.includes(teamSuche.toLowerCase()) &&
+                s.id !== auth?.id &&
+                !ausgewaehlteMitglieder.some((m) => m.id === s.id)
+            );
+        })
+        : [];
+
+    const mitgliedAuswaehlen = (student) => {
+        if (maxErreicht) return;
+        setAusgewaehlteMitglieder([...ausgewaehlteMitglieder, student]);
+        setTeamSuche("");
+    };
+
+    const mitgliedAbwaehlen = (studentId) => {
+        setAusgewaehlteMitglieder(ausgewaehlteMitglieder.filter((m) => m.id !== studentId));
+    };
 
     const resetForm = () => {
         setTitel("");
@@ -46,6 +86,8 @@ function CreateProject() {
         setSchlagwoerter("");
         setGruppenanzahl("3");
         setBetreuerId("");
+        setTeamSuche("");
+        setAusgewaehlteMitglieder([]);
         setDokumente([{ typ: DOKUMENT_TYPEN[0].value, datei: null }]);
     };
 
@@ -74,7 +116,6 @@ function CreateProject() {
             return;
         }
 
-        const auth = getAuth();
         if (!auth?.id) {
             setMessage("Bitte zuerst einloggen.");
             setMessageType("error");
@@ -108,6 +149,10 @@ function CreateProject() {
                 formData.append("projektId", projekt.id);
                 formData.append("typ", eintrag.typ);
                 await uploadDokument(formData);
+            }
+
+            for (const mitglied of ausgewaehlteMitglieder) {
+                await mitgliedHinzufuegen(projekt.id, mitglied.id);
             }
 
             setMessage("Projekt wurde erfolgreich erstellt.");
@@ -260,6 +305,72 @@ function CreateProject() {
                                     </select>
                                 </div>
                             </div>
+
+                            <hr className="my-4" />
+
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                <h5 className="mb-0">Teammitglieder (optional)</h5>
+                                <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
+                                    {aktuelleGroesse} / {maxGroesse ?? "-"}
+                                </span>
+                            </div>
+
+                            {ausgewaehlteMitglieder.length > 0 && (
+                                <ul className="list-group mb-2">
+                                    {ausgewaehlteMitglieder.map((m) => (
+                                        <li
+                                            className="list-group-item d-flex justify-content-between align-items-center"
+                                            key={m.id}
+                                        >
+                                            {m.vorname} {m.name}
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-danger"
+                                                onClick={() => mitgliedAbwaehlen(m.id)}
+                                                title="Entfernen"
+                                            >
+                                                ✕
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            {maxErreicht ? (
+                                <p className="text-muted mb-4">
+                                    Maximale Gruppengröße erreicht ({aktuelleGroesse}/{maxGroesse}).
+                                </p>
+                            ) : (
+                                <div className="mb-4">
+                                    <input
+                                        type="text"
+                                        className="form-control mb-2"
+                                        placeholder="Studierende suchen..."
+                                        value={teamSuche}
+                                        onChange={(e) => setTeamSuche(e.target.value)}
+                                    />
+
+                                    {gefilterteStudenten.length > 0 && (
+                                        <ul className="list-group">
+                                            {gefilterteStudenten.map((s) => (
+                                                <li
+                                                    className="list-group-item d-flex justify-content-between align-items-center"
+                                                    key={s.id}
+                                                >
+                                                    {s.vorname} {s.name}
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-primary"
+                                                        onClick={() => mitgliedAuswaehlen(s)}
+                                                    >
+                                                        + Hinzufügen
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
 
                             <hr className="my-4" />
 

@@ -72,6 +72,36 @@ export async function getDokumenteFuerProjekt(projektId) {
     return parseOrThrow(response);
 }
 
+export async function getStudenten() {
+    const response = await fetch(`${API_BASE_URL}/benutzer/studenten`, {
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
+export async function getProjektMitglieder(projektId) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${projektId}/mitglieder`, {
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
+export async function mitgliedHinzufuegen(projektId, studentId) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${projektId}/mitglieder/${studentId}`, {
+        method: "POST",
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
+export async function mitgliedEntfernen(projektId, studentId) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${projektId}/mitglieder/${studentId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
 export async function downloadDokument(dokumentId, dateiName) {
     const response = await fetch(`${API_BASE_URL}/dokumente/${dokumentId}/download`, {
         headers: authHeaders(),

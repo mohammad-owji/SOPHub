@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { getProjektById, getDokumenteFuerProjekt, downloadDokument } from "../services/api";
+import {
+    getAuth,
+    getProjektById,
+    getDokumenteFuerProjekt,
+    downloadDokument,
+    getStudenten,
+    getProjektMitglieder,
+    mitgliedHinzufuegen,
+    mitgliedEntfernen,
+} from "../services/api";
 
 const DOKUMENT_TYP_LABEL = {
     PFLICHTENHEFT: "Pflichtenheft",
@@ -13,9 +22,21 @@ const DOKUMENT_TYP_LABEL = {
 function ProjectDetails() {
     const { id } = useParams();
 
+    const auth = getAuth();
+
     const [projekt, setProjekt] = useState(null);
     const [dokumente, setDokumente] = useState([]);
     const [fehler, setFehler] = useState("");
+    const [mitglieder, setMitglieder] = useState([]);
+    const [alleStudenten, setAlleStudenten] = useState([]);
+    const [suche, setSuche] = useState("");
+    const [mitgliedFehler, setMitgliedFehler] = useState("");
+
+    const ladeMitglieder = () => {
+        getProjektMitglieder(id)
+            .then((data) => setMitglieder(data || []))
+            .catch(() => setMitglieder([]));
+    };
 
     useEffect(() => {
         if (!id) return;
@@ -28,7 +49,49 @@ function ProjectDetails() {
         getDokumenteFuerProjekt(id)
             .then((data) => setDokumente(data || []))
             .catch(() => setDokumente([]));
+
+        ladeMitglieder();
+
+        getStudenten()
+            .then((data) => setAlleStudenten(data || []))
+            .catch(() => setAlleStudenten([]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+    const istErsteller = auth?.id && projekt?.student?.id === auth.id;
+    const aktuelleGroesse = 1 + mitglieder.length;
+    const maxErreicht = projekt?.gruppenanzahl != null && aktuelleGroesse >= projekt.gruppenanzahl;
+
+    const gefilterteStudenten = suche.trim()
+        ? alleStudenten.filter((s) => {
+            const vollerName = `${s.vorname} ${s.name}`.toLowerCase();
+            return (
+                vollerName.includes(suche.toLowerCase()) &&
+                s.id !== projekt?.student?.id &&
+                !mitglieder.some((m) => m.studentId === s.id)
+            );
+        })
+        : [];
+
+    const handleHinzufuegen = async (studentId) => {
+        setMitgliedFehler("");
+        try {
+            await mitgliedHinzufuegen(id, studentId);
+            setSuche("");
+            ladeMitglieder();
+        } catch (error) {
+            setMitgliedFehler(error.message || "Teammitglied konnte nicht hinzugefügt werden.");
+        }
+    };
+
+    const handleEntfernen = async (studentId) => {
+        try {
+            await mitgliedEntfernen(id, studentId);
+            ladeMitglieder();
+        } catch {
+            setMitgliedFehler("Teammitglied konnte nicht entfernt werden.");
+        }
+    };
 
     const schlagwoerterListe = projekt?.schlagwoerter
         ? projekt.schlagwoerter.split(",").map((s) => s.trim()).filter(Boolean)
@@ -193,9 +256,17 @@ function ProjectDetails() {
                         <div className="card shadow-sm border-0 mb-4">
                             <div className="card-body">
 
-                                <h5>Team</h5>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 className="mb-0">Team</h5>
 
-                                <ul className="list-group">
+                                    {projekt.gruppenanzahl != null && (
+                                        <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
+                                            {aktuelleGroesse} / {projekt.gruppenanzahl}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <ul className="list-group mb-3">
                                     <li className="list-group-item">
                                         <strong>Student:in:</strong>{" "}
                                         {projekt.student
@@ -209,17 +280,77 @@ function ProjectDetails() {
                                             ? `${projekt.betreuer.vorname} ${projekt.betreuer.name}`
                                             : "Noch nicht zugewiesen"}
                                     </li>
+
+                                    {mitglieder.map((m) => (
+                                        <li
+                                            className="list-group-item d-flex justify-content-between align-items-center"
+                                            key={m.studentId}
+                                        >
+                                            {m.vorname} {m.name}
+
+                                            {istErsteller && (
+                                                <button
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    onClick={() => handleEntfernen(m.studentId)}
+                                                    title="Entfernen"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </li>
+                                    ))}
+
+                                    {mitglieder.length === 0 && (
+                                        <li className="list-group-item text-muted">
+                                            Noch keine weiteren Teammitglieder.
+                                        </li>
+                                    )}
                                 </ul>
 
-                            </div>
-                        </div>
+                                {istErsteller && (
+                                    <>
+                                        {mitgliedFehler && (
+                                            <div className="alert alert-danger py-2">{mitgliedFehler}</div>
+                                        )}
 
-                        <div className="card shadow-sm border-0">
-                            <div className="card-body text-center">
+                                        {maxErreicht ? (
+                                            <p className="text-muted mb-0">
+                                                Maximale Gruppengröße erreicht ({aktuelleGroesse}/{projekt.gruppenanzahl}).
+                                            </p>
+                                        ) : (
+                                            <>
+                                                <label className="form-label">Studierende hinzufügen</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control mb-2"
+                                                    placeholder="Name suchen..."
+                                                    value={suche}
+                                                    onChange={(e) => setSuche(e.target.value)}
+                                                />
 
-                                <button className="btn btn-success w-100">
-                                    Team beitreten
-                                </button>
+                                                {gefilterteStudenten.length > 0 && (
+                                                    <ul className="list-group">
+                                                        {gefilterteStudenten.map((s) => (
+                                                            <li
+                                                                className="list-group-item d-flex justify-content-between align-items-center"
+                                                                key={s.id}
+                                                            >
+                                                                {s.vorname} {s.name}
+
+                                                                <button
+                                                                    className="btn btn-sm btn-outline-primary"
+                                                                    onClick={() => handleHinzufuegen(s.id)}
+                                                                >
+                                                                    + Hinzufügen
+                                                                </button>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </>
+                                        )}
+                                    </>
+                                )}
 
                             </div>
                         </div>

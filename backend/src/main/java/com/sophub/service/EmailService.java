@@ -23,6 +23,7 @@ public class EmailService {
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
     private static final String REGISTRIERUNGS_TEMPLATE = "email-templates/registrierung.json";
     private static final String BETREUER_ZUWEISUNGS_TEMPLATE = "email-templates/betreuer-zuweisung.json";
+    private static final String TEAM_HINZUGEFUEGT_TEMPLATE = "email-templates/team-hinzugefuegt.json";
     private static final DateTimeFormatter DATUM_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final JavaMailSender mailSender;
@@ -57,6 +58,18 @@ public class EmailService {
                         : java.time.LocalDate.now().format(DATUM_FORMAT)
         );
         sende(BETREUER_ZUWEISUNGS_TEMPLATE, betreuer.getEmail(), werte);
+    }
+
+    public void sendeTeamMitgliedEmail(User mitglied, User ersteller, Projekt projekt) {
+        Map<String, String> werte = Map.of(
+                "mitgliedVorname", mitglied.getVorname(),
+                "mitgliedName", mitglied.getName(),
+                "erstellerVorname", ersteller.getVorname(),
+                "erstellerName", ersteller.getName(),
+                "projektTitel", projekt.getTitel(),
+                "datum", java.time.LocalDate.now().format(DATUM_FORMAT)
+        );
+        sende(TEAM_HINZUGEFUEGT_TEMPLATE, mitglied.getEmail(), werte);
     }
 
     private void sende(String templatePfad, String empfaenger, Map<String, String> werte) {
