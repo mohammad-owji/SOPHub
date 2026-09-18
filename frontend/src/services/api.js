@@ -42,6 +42,13 @@ export async function createProjekt(studentId, daten, betreuerId) {
     return parseOrThrow(response);
 }
 
+export async function getProfil() {
+    const response = await fetch(`${API_BASE_URL}/benutzer/profil`, {
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
 export async function getProfessoren() {
     const response = await fetch(`${API_BASE_URL}/benutzer/professoren`, {
         headers: authHeaders(),

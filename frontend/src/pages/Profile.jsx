@@ -1,8 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
+import { getAuth, getProfil } from "../services/api";
 
 function Profile() {
     const [message, setMessage] = useState("");
+    const [profil, setProfil] = useState(null);
+
+    useEffect(() => {
+        getProfil()
+            .then(setProfil)
+            .catch(() => setProfil(null));
+    }, []);
+
+    const auth = getAuth();
+    const vorname = profil?.vorname || auth?.vorname || "";
+    const name = profil?.name || auth?.name || "";
+    const email = profil?.email || "";
+    const rolle = profil?.rolle || auth?.rolle || "";
 
     const handleSave = (e) => {
         e.preventDefault();
@@ -50,13 +64,13 @@ function Profile() {
                                         fontSize: "36px",
                                     }}
                                 >
-                                    S
+                                    {vorname ? vorname.charAt(0).toUpperCase() : "?"}
                                 </div>
 
-                                <h4>Salma</h4>
+                                <h4>{vorname} {name}</h4>
 
                                 <p className="text-muted">
-                                    Studentin
+                                    {rolle}
                                 </p>
 
                                 <hr />
@@ -91,7 +105,7 @@ function Profile() {
                         <div className="card shadow-sm border-0">
                             <div className="card-body">
 
-                                <form onSubmit={handleSave}>
+                                <form onSubmit={handleSave} key={profil ? "loaded" : "loading"}>
 
                                     <h4 className="mb-4">
                                         Persönliche Daten
@@ -107,7 +121,7 @@ function Profile() {
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                defaultValue="Salma"
+                                                defaultValue={vorname}
                                             />
                                         </div>
 
@@ -119,7 +133,7 @@ function Profile() {
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                defaultValue="Matlob"
+                                                defaultValue={name}
                                             />
                                         </div>
 
@@ -133,7 +147,7 @@ function Profile() {
                                         <input
                                             type="email"
                                             className="form-control"
-                                            defaultValue="salma@hs-bochum.de"
+                                            defaultValue={email}
                                         />
                                     </div>
 
@@ -144,10 +158,10 @@ function Profile() {
 
                                         <select
                                             className="form-select"
-                                            defaultValue="student"
+                                            defaultValue={rolle === "PROFESSOR" ? "lehrender" : "student"}
                                         >
                                             <option value="student">
-                                                Studentin
+                                                Student:in
                                             </option>
 
                                             <option value="lehrender">
