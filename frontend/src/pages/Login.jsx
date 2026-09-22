@@ -8,9 +8,10 @@ function Login() {
     const [mode, setMode] = useState("login");
     const [benutzername, setBenutzername] = useState("");
     const [email, setEmail] = useState("");
+    const [name, setName] = useState("");
+    const [vorname, setVorname] = useState("");
     const [passwort, setPasswort] = useState("");
     const [passwortBestaetigen, setPasswortBestaetigen] = useState("");
-    const [rolle, setRolle] = useState("");
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState("");
 
@@ -18,9 +19,10 @@ function Login() {
         setMode(mode === "login" ? "register" : "login");
         setBenutzername("");
         setEmail("");
+        setName("");
+        setVorname("");
         setPasswort("");
         setPasswortBestaetigen("");
-        setRolle("");
         setMessage("");
         setMessageType("");
     };
@@ -35,7 +37,7 @@ function Login() {
         }
 
         if (mode === "register") {
-            if (!email || !rolle || !passwortBestaetigen) {
+            if (!email || !name || !vorname || !passwortBestaetigen) {
                 setMessage("Bitte alle Felder ausfüllen.");
                 setMessageType("error");
                 return;
@@ -53,12 +55,13 @@ function Login() {
 
             const body =
                 mode === "login"
-                    ? { benutzername, password: passwort }
+                    ? { benutzername, passwort }
                     : {
                         benutzername,
                         email,
-                        password: passwort,
-                        role: rolle,
+                        name,
+                        vorname,
+                        passwort,
                     };
 
             const response = await fetch(
@@ -81,6 +84,18 @@ function Login() {
                         switchMode();
                     }, 1500);
                 } else {
+                    const daten = JSON.parse(text);
+                    localStorage.setItem(
+                        "sophub_auth",
+                        JSON.stringify({
+                            token: daten.token,
+                            id: daten.id,
+                            benutzername: daten.benutzername,
+                            vorname: daten.vorname,
+                            name: daten.name,
+                            rolle: daten.rolle,
+                        })
+                    );
                     navigate("/dashboard");
                 }
             } else {
@@ -110,17 +125,6 @@ function Login() {
                 {message && <div className={`message ${messageType}`}>{message}</div>}
 
                 <form onSubmit={handleSubmit}>
-                    {mode === "register" && (
-                        <div className="role-wrapper">
-                            <select value={rolle} onChange={(e) => setRolle(e.target.value)}>
-                                <option value="">Rolle auswählen</option>
-                                <option value="student">Student:in</option>
-                                <option value="lehrender">Lehrende:r</option>
-                            </select>
-                            <span className="role-arrow">▼</span>
-                        </div>
-                    )}
-
                     <div className="input-group-auth">
                         <span className="icon">👤</span>
                         <input
@@ -132,15 +136,37 @@ function Login() {
                     </div>
 
                     {mode === "register" && (
-                        <div className="input-group-auth">
-                            <span className="icon">✉</span>
-                            <input
-                                type="email"
-                                placeholder="E-Mail"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
+                        <>
+                            <div className="input-group-auth">
+                                <span className="icon">✉</span>
+                                <input
+                                    type="email"
+                                    placeholder="E-Mail (@stud.hs-bochum.de oder @hs-bochum.de)"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="input-group-auth">
+                                <span className="icon">👤</span>
+                                <input
+                                    type="text"
+                                    placeholder="Vorname"
+                                    value={vorname}
+                                    onChange={(e) => setVorname(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="input-group-auth">
+                                <span className="icon">👤</span>
+                                <input
+                                    type="text"
+                                    placeholder="Name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                />
+                            </div>
+                        </>
                     )}
 
                     <div className="input-group-auth">

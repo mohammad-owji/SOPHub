@@ -1,10 +1,11 @@
 package com.sophub.controller;
 
+import com.sophub.model.AIResponse;
 import com.sophub.model.Projekt;
 import com.sophub.service.ProjektService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -18,12 +19,20 @@ public class ProjektController {
         this.projektService = projektService;
     }
 
-
     @GetMapping
-    public ResponseEntity<List<Projekt>> alleProjekte() {
-        return ResponseEntity.ok(projektService.alleProjeKte());
+    public ResponseEntity<List<Projekt>> alleProjeKte(Authentication authentication) {
+        String benutzername = authentication.getName();
+        String rolle = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority() != null ? a.getAuthority().replace("ROLE_", "") : "STUDENT")
+                .orElse("STUDENT");
+        return ResponseEntity.ok(projektService.nachRolle(benutzername, rolle));
     }
 
+    @GetMapping("/alle")
+    public ResponseEntity<List<Projekt>> alle() {
+        return ResponseEntity.ok(projektService.alleProjeKte());
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> projektById(@PathVariable Long id) {
@@ -32,129 +41,68 @@ public class ProjektController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<Projekt>> projektByStudent(
-            @PathVariable Long studentId) {
-
-        return ResponseEntity.ok(
-                projektService.projektByStudent(studentId)
-        );
+    public ResponseEntity<List<Projekt>> projektByStudent(@PathVariable Long studentId) {
+        return ResponseEntity.ok(projektService.projektByStudent(studentId));
     }
-
 
     @PostMapping("/student/{studentId}")
-    public ResponseEntity<?> erstellen(
-            @PathVariable Long studentId,
-            @RequestBody Projekt projekt) {
-
+    public ResponseEntity<?> erstellen(@PathVariable Long studentId,
+                                        @RequestParam(required = false) Long betreuerId,
+                                        @RequestBody Projekt projekt) {
         try {
-            return ResponseEntity.ok(
-                    projektService.erstellen(projekt, studentId)
-            );
-
+            return ResponseEntity.ok(projektService.erstellen(projekt, studentId, betreuerId));
         } catch (Exception e) {
-            return ResponseEntity.status(400)
-                    .body(e.getMessage());
+            return ResponseEntity.status(400).body(e.getMessage());
         }
     }
-
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> aktualisieren(
-            @PathVariable Long id,
-            @RequestBody Projekt projekt) {
-
+    public ResponseEntity<?> aktualisieren(@PathVariable Long id, @RequestBody Projekt projekt) {
         try {
-            return ResponseEntity.ok(
-                    projektService.aktualisieren(id, projekt)
-            );
-
+            return ResponseEntity.ok(projektService.aktualisieren(id, projekt));
         } catch (Exception e) {
-            return ResponseEntity.status(400)
-                    .body(e.getMessage());
+            return ResponseEntity.status(400).body(e.getMessage());
         }
     }
-
-
 
     // Projekt annehmen
     @PutMapping("/{projektId}/annehmen/{betreuerId}")
-    public ResponseEntity<?> annehmen(
-            @PathVariable Long projektId,
-            @PathVariable Long betreuerId) {
-
+    public ResponseEntity<?> annehmen(@PathVariable Long projektId, @PathVariable Long betreuerId) {
         try {
-            return ResponseEntity.ok(
-                    projektService.annehmen(projektId, betreuerId)
-            );
-
+            return ResponseEntity.ok(projektService.annehmen(projektId, betreuerId));
         } catch (Exception e) {
-            return ResponseEntity.status(400)
-                    .body(e.getMessage());
+            return ResponseEntity.status(400).body(e.getMessage());
         }
     }
-
-
 
     // Projekt ablehnen
     @PutMapping("/{projektId}/ablehnen/{betreuerId}")
-    public ResponseEntity<?> ablehnen(
-            @PathVariable Long projektId,
-            @PathVariable Long betreuerId) {
-
+    public ResponseEntity<?> ablehnen(@PathVariable Long projektId, @PathVariable Long betreuerId) {
         try {
-            return ResponseEntity.ok(
-                    projektService.ablehnen(projektId, betreuerId)
-            );
-
+            return ResponseEntity.ok(projektService.ablehnen(projektId, betreuerId));
         } catch (Exception e) {
-            return ResponseEntity.status(400)
-                    .body(e.getMessage());
+            return ResponseEntity.status(400).body(e.getMessage());
         }
     }
-
-
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> loeschen(
-            @PathVariable Long id) {
-
+    public ResponseEntity<?> loeschen(@PathVariable Long id) {
         try {
             projektService.loeschen(id);
-
-            return ResponseEntity.ok(
-                    "Projekt gelöscht."
-            );
-
+            return ResponseEntity.ok("Projekt gelöscht.");
         } catch (Exception e) {
-
-            return ResponseEntity.status(404)
-                    .body(e.getMessage());
+            return ResponseEntity.status(404).body(e.getMessage());
         }
     }
 
-
-
-    @PostMapping("/{id}/upload/{dokumentTyp}")
-    public ResponseEntity<?> pdfHochladen(
-            @PathVariable Long id,
-            @PathVariable String dokumentTyp,
-            @RequestParam("datei") MultipartFile datei) {
-
+    @PostMapping("/{id}/zusammenfassung")
+    public ResponseEntity<?> zusammenfassungErzeugen(@PathVariable Long id) {
         try {
-            return ResponseEntity.ok(
-                    projektService.pdfHochladen(
-                            id,
-                            datei,
-                            dokumentTyp
-                    )
-            );
-
+            String zusammenfassung = projektService.zusammenfassungErzeugen(id);
+            return ResponseEntity.ok(new AIResponse(zusammenfassung));
         } catch (Exception e) {
-
-            return ResponseEntity.status(400)
-                    .body(e.getMessage());
+            return ResponseEntity.status(503).body(e.getMessage());
         }
     }
 }

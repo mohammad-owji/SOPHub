@@ -1,0 +1,4 @@
+{
+  "subject": "Sie wurden zu einem SOPHub-Projekt hinzugefügt",
+  "body": "Hallo ${mitgliedVorname} ${mitgliedName},\n\nmit dem ${datum} wurden Sie zum Projekt \"${projektTitel}\" durch ${erstellerVorname} ${erstellerName} als Teammitglied hinzugefügt.\n\nWir wünschen Ihnen eine erfolgreiche und angenehme Zusammenarbeit!\n\nIhr SOPHub-Team"
+}

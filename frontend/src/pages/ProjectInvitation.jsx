@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import {
     acceptProject,
     declineProject,
-    getProjectById
+    getProjektById
 } from "../services/api";
 
 
@@ -27,7 +27,7 @@ function ProjectInvitation() {
 
             try {
 
-                const data = await getProjectById(projektId);
+                const data = await getProjektById(projektId);
                 setProjekt(data);
 
             } catch (err) {

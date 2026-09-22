@@ -1,0 +1,4 @@
+{
+  "subject": "Sie wurden als Betreuer:in für ein SOPHub-Projekt hinzugefügt",
+  "body": "Hallo ${betreuerVorname} ${betreuerName},\n\nmit dem ${datum} wurden Sie zum Projekt \"${projektTitel}\" durch ${studentVorname} ${studentName} als Betreuer:in hinzugefügt.\n\nWir wünschen Ihnen eine erfolgreiche und angenehme Zusammenarbeit!\n\nIhr SOPHub-Team"
+}

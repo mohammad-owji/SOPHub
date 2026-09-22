@@ -3,3 +3,17 @@ spring.datasource.username=postgres
 spring.datasource.password=DEIN_PASSWORT
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
+
+# Gmail SMTP: https://myaccount.google.com/apppasswords (App-Passwort, nicht das normale Google-Passwort)
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=DEINE_GMAIL_ADRESSE
+spring.mail.password=DEIN_APP_PASSWORT
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+app.mail.from=DEINE_GMAIL_ADRESSE
+
+# Gemini API-Key: https://aistudio.google.com/apikey (kostenlos)
+# Wird NICHT hier eingetragen, sondern als Umgebungsvariable gesetzt: GEMINI_API_KEY
+gemini.api.key=${GEMINI_API_KEY:}
+gemini.model=${GEMINI_MODEL:gemini-3.6-flash}

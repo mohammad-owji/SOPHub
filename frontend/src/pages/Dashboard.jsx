@@ -1,6 +1,9 @@
 import Navbar from "../components/Navbar";
+import { getAuth } from "../services/api";
 
 function Dashboard() {
+    const auth = getAuth();
+
     return (
         <div>
             <Navbar />
@@ -10,7 +13,7 @@ function Dashboard() {
                 {/* Begrüßung */}
                 <div className="p-5 bg-light rounded shadow-sm mb-4 text-center">
                     <h1 className="fw-bold text-dark">
-                        Willkommen zurück, Salma 👋
+                        Willkommen zurück, {auth?.vorname || "Gast"} 👋
                     </h1>
 
                     <p className="text-muted">
