@@ -18,10 +18,12 @@ public class ProjektController {
         this.projektService = projektService;
     }
 
+
     @GetMapping
-    public ResponseEntity<List<Projekt>> alleProjeKte() {
+    public ResponseEntity<List<Projekt>> alleProjekte() {
         return ResponseEntity.ok(projektService.alleProjeKte());
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<?> projektById(@PathVariable Long id) {
@@ -30,48 +32,129 @@ public class ProjektController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<Projekt>> projektByStudent(@PathVariable Long studentId) {
-        return ResponseEntity.ok(projektService.projektByStudent(studentId));
+    public ResponseEntity<List<Projekt>> projektByStudent(
+            @PathVariable Long studentId) {
+
+        return ResponseEntity.ok(
+                projektService.projektByStudent(studentId)
+        );
     }
+
 
     @PostMapping("/student/{studentId}")
-    public ResponseEntity<?> erstellen(@PathVariable Long studentId, @RequestBody Projekt projekt) {
+    public ResponseEntity<?> erstellen(
+            @PathVariable Long studentId,
+            @RequestBody Projekt projekt) {
+
         try {
-            return ResponseEntity.ok(projektService.erstellen(projekt, studentId));
+            return ResponseEntity.ok(
+                    projektService.erstellen(projekt, studentId)
+            );
+
         } catch (Exception e) {
-            return ResponseEntity.status(400).body(e.getMessage());
+            return ResponseEntity.status(400)
+                    .body(e.getMessage());
         }
     }
+
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> aktualisieren(@PathVariable Long id, @RequestBody Projekt projekt) {
+    public ResponseEntity<?> aktualisieren(
+            @PathVariable Long id,
+            @RequestBody Projekt projekt) {
+
         try {
-            return ResponseEntity.ok(projektService.aktualisieren(id, projekt));
+            return ResponseEntity.ok(
+                    projektService.aktualisieren(id, projekt)
+            );
+
         } catch (Exception e) {
-            return ResponseEntity.status(400).body(e.getMessage());
+            return ResponseEntity.status(400)
+                    .body(e.getMessage());
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> loeschen(@PathVariable Long id) {
+
+
+    // Projekt annehmen
+    @PutMapping("/{projektId}/annehmen/{betreuerId}")
+    public ResponseEntity<?> annehmen(
+            @PathVariable Long projektId,
+            @PathVariable Long betreuerId) {
+
         try {
-            projektService.loeschen(id);
-            return ResponseEntity.ok("Projekt gelöscht.");
+            return ResponseEntity.ok(
+                    projektService.annehmen(projektId, betreuerId)
+            );
+
         } catch (Exception e) {
-            return ResponseEntity.status(404).body(e.getMessage());
+            return ResponseEntity.status(400)
+                    .body(e.getMessage());
         }
     }
+
+
+
+    // Projekt ablehnen
+    @PutMapping("/{projektId}/ablehnen/{betreuerId}")
+    public ResponseEntity<?> ablehnen(
+            @PathVariable Long projektId,
+            @PathVariable Long betreuerId) {
+
+        try {
+            return ResponseEntity.ok(
+                    projektService.ablehnen(projektId, betreuerId)
+            );
+
+        } catch (Exception e) {
+            return ResponseEntity.status(400)
+                    .body(e.getMessage());
+        }
+    }
+
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> loeschen(
+            @PathVariable Long id) {
+
+        try {
+            projektService.loeschen(id);
+
+            return ResponseEntity.ok(
+                    "Projekt gelöscht."
+            );
+
+        } catch (Exception e) {
+
+            return ResponseEntity.status(404)
+                    .body(e.getMessage());
+        }
+    }
+
+
 
     @PostMapping("/{id}/upload/{dokumentTyp}")
     public ResponseEntity<?> pdfHochladen(
             @PathVariable Long id,
             @PathVariable String dokumentTyp,
             @RequestParam("datei") MultipartFile datei) {
+
         try {
-            return ResponseEntity.ok(projektService.pdfHochladen(id, datei, dokumentTyp));
+            return ResponseEntity.ok(
+                    projektService.pdfHochladen(
+                            id,
+                            datei,
+                            dokumentTyp
+                    )
+            );
+
         } catch (Exception e) {
-            return ResponseEntity.status(400).body(e.getMessage());
+
+            return ResponseEntity.status(400)
+                    .body(e.getMessage());
         }
     }
 }
