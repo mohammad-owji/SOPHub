@@ -179,6 +179,14 @@ function Projects({ scope = "alle" }) {
                                                 {wort}
                                             </span>
                                         ))}
+                                        {project.tags?.map((tag) => (
+                                            <span
+                                                className="badge bg-info text-dark me-1 mb-1"
+                                                key={tag.id}
+                                            >
+                                                {tag.name}
+                                            </span>
+                                        ))}
                                     </div>
 
                                     <button

@@ -5,12 +5,12 @@ export function getAuth() {
     return raw ? JSON.parse(raw) : null;
 }
 
-function authHeaders() {
+export function authHeaders() {
     const auth = getAuth();
     return auth?.token ? { Authorization: `Bearer ${auth.token}` } : {};
 }
 
-async function parseOrThrow(response) {
+export async function parseOrThrow(response) {
     const text = await response.text();
     if (!response.ok) {
         throw new Error(text || "Anfrage fehlgeschlagen");

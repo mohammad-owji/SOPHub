@@ -11,6 +11,7 @@ import {
     mitgliedHinzufuegen,
     mitgliedEntfernen,
 } from "../services/api";
+import { generiereProjektZusammenfassung } from "../services/aiService";
 
 const DOKUMENT_TYP_LABEL = {
     PFLICHTENHEFT: "Pflichtenheft",
@@ -31,6 +32,8 @@ function ProjectDetails() {
     const [alleStudenten, setAlleStudenten] = useState([]);
     const [suche, setSuche] = useState("");
     const [mitgliedFehler, setMitgliedFehler] = useState("");
+    const [kiLaedt, setKiLaedt] = useState(false);
+    const [kiFehler, setKiFehler] = useState("");
 
     const ladeMitglieder = () => {
         getProjektMitglieder(id)
@@ -90,6 +93,19 @@ function ProjectDetails() {
             ladeMitglieder();
         } catch {
             setMitgliedFehler("Teammitglied konnte nicht entfernt werden.");
+        }
+    };
+
+    const handleZusammenfassungErzeugen = async () => {
+        setKiLaedt(true);
+        setKiFehler("");
+        try {
+            const antwort = await generiereProjektZusammenfassung(id);
+            setProjekt((prev) => ({ ...prev, kiZusammenfassung: antwort.antwort }));
+        } catch (error) {
+            setKiFehler(error.message || "Zusammenfassung konnte nicht erzeugt werden.");
+        } finally {
+            setKiLaedt(false);
         }
     };
 
@@ -171,6 +187,34 @@ function ProjectDetails() {
                         <div className="card shadow-sm border-0 mb-4">
                             <div className="card-body">
 
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <h4 className="mb-0">KI-Zusammenfassung</h4>
+
+                                    <button
+                                        className="btn btn-sm btn-outline-primary"
+                                        onClick={handleZusammenfassungErzeugen}
+                                        disabled={kiLaedt}
+                                    >
+                                        {kiLaedt ? "Wird verarbeitet..." : "Zusammenfassung erzeugen"}
+                                    </button>
+                                </div>
+
+                                {kiFehler && <div className="alert alert-warning py-2 mb-2">{kiFehler}</div>}
+
+                                {kiLaedt ? (
+                                    <p className="text-muted mb-0">Wird verarbeitet...</p>
+                                ) : projekt.kiZusammenfassung ? (
+                                    <p className="mb-0">{projekt.kiZusammenfassung}</p>
+                                ) : (
+                                    <p className="text-muted mb-0">Noch keine Zusammenfassung erzeugt.</p>
+                                )}
+
+                            </div>
+                        </div>
+
+                        <div className="card shadow-sm border-0 mb-4">
+                            <div className="card-body">
+
                                 <h4>Schlagwörter</h4>
 
                                 {schlagwoerterListe.length > 0 ? (
@@ -181,6 +225,24 @@ function ProjectDetails() {
                                     ))
                                 ) : (
                                     <p className="text-muted mb-0">Keine Schlagwörter hinterlegt.</p>
+                                )}
+
+                            </div>
+                        </div>
+
+                        <div className="card shadow-sm border-0 mb-4">
+                            <div className="card-body">
+
+                                <h4>Tags</h4>
+
+                                {projekt.tags?.length > 0 ? (
+                                    projekt.tags.map((tag) => (
+                                        <span className="badge bg-info text-dark me-2" key={tag.id}>
+                                            {tag.name}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <p className="text-muted mb-0">Noch keine Tags vergeben.</p>
                                 )}
 
                             </div>
