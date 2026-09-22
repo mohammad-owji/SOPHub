@@ -12,3 +12,8 @@ spring.mail.password=DEIN_APP_PASSWORT
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 app.mail.from=DEINE_GMAIL_ADRESSE
+
+# Gemini API-Key: https://aistudio.google.com/apikey (kostenlos)
+# Wird NICHT hier eingetragen, sondern als Umgebungsvariable gesetzt: GEMINI_API_KEY
+gemini.api.key=${GEMINI_API_KEY:}
+gemini.model=${GEMINI_MODEL:gemini-3.6-flash}
