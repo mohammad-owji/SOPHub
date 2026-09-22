@@ -68,4 +68,14 @@ public class DokumentController {
             return ResponseEntity.status(404).body(e.getMessage());
         }
     }
+
+    @PostMapping("/{id}/zusammenfassung")
+    public ResponseEntity<?> zusammenfassungErzeugen(@PathVariable Long id) {
+        try {
+            Dokument gespeichert = dokumentService.zusammenfassungErzeugen(id);
+            return ResponseEntity.ok(gespeichert);
+        } catch (Exception e) {
+            return ResponseEntity.status(503).body(e.getMessage());
+        }
+    }
 }

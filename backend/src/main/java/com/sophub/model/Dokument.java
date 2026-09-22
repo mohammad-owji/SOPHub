@@ -27,6 +27,9 @@ public class Dokument {
     @Column(name = "extrahierter_text", columnDefinition = "TEXT")
     private String extrahierterText;
 
+    @Column(name = "ki_zusammenfassung", columnDefinition = "TEXT")
+    private String kiZusammenfassung;
+
     @ManyToOne
     @JoinColumn(name = "benutzer_id", nullable = false)
     private User hochgeladenVon;
@@ -46,6 +49,7 @@ public class Dokument {
     public String getDateiPfad() { return dateiPfad; }
     public String getTyp() { return typ; }
     public String getExtrahierterText() { return extrahierterText; }
+    public String getKiZusammenfassung() { return kiZusammenfassung; }
     public LocalDateTime getHochgeladenAm() { return hochgeladenAm; }
     public User getHochgeladenVon() { return hochgeladenVon; }
     public Projekt getProjekt() { return projekt; }
@@ -56,6 +60,7 @@ public class Dokument {
     public void setDateiPfad(String dateiPfad) { this.dateiPfad = dateiPfad; }
     public void setTyp(String typ) { this.typ = typ; }
     public void setExtrahierterText(String extrahierterText) { this.extrahierterText = extrahierterText; }
+    public void setKiZusammenfassung(String kiZusammenfassung) { this.kiZusammenfassung = kiZusammenfassung; }
     public void setHochgeladenAm(LocalDateTime hochgeladenAm) { this.hochgeladenAm = hochgeladenAm; }
     public void setHochgeladenVon(User hochgeladenVon) { this.hochgeladenVon = hochgeladenVon; }
     public void setProjekt(Projekt projekt) { this.projekt = projekt; }
