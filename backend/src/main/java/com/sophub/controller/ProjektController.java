@@ -1,5 +1,6 @@
 package com.sophub.controller;
 
+import com.sophub.model.AIResponse;
 import com.sophub.model.Projekt;
 import com.sophub.service.ProjektService;
 import org.springframework.http.ResponseEntity;
@@ -72,6 +73,16 @@ public class ProjektController {
             return ResponseEntity.ok("Projekt gelöscht.");
         } catch (Exception e) {
             return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/zusammenfassung")
+    public ResponseEntity<?> zusammenfassungErzeugen(@PathVariable Long id) {
+        try {
+            String zusammenfassung = projektService.zusammenfassungErzeugen(id);
+            return ResponseEntity.ok(new AIResponse(zusammenfassung));
+        } catch (Exception e) {
+            return ResponseEntity.status(503).body(e.getMessage());
         }
     }
 }

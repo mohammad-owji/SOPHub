@@ -4,6 +4,8 @@ import com.sophub.model.Projekt;
 import com.sophub.model.User;
 import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,15 +14,23 @@ import java.util.Optional;
 @Service
 public class ProjektService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProjektService.class);
+    private static final String STATUS_ABGESCHLOSSEN = "abgeschlossen";
+
     private final ProjektRepository projektRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final AIService aiService;
+    private final AnonymizerService anonymizerService;
 
     public ProjektService(ProjektRepository projektRepository, UserRepository userRepository,
-                          EmailService emailService) {
+                          EmailService emailService, AIService aiService,
+                          AnonymizerService anonymizerService) {
         this.projektRepository = projektRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.aiService = aiService;
+        this.anonymizerService = anonymizerService;
     }
 
     public List<Projekt> alleProjeKte() {
@@ -62,6 +72,8 @@ public class ProjektService {
 
         Projekt gespeichert = projektRepository.save(projekt);
 
+        zusammenfassungGenerierenFallsNoetig(gespeichert);
+
         if (betreuer != null) {
             emailService.sendeBetreuerZuweisungsEmail(betreuer, student, gespeichert);
         }
@@ -72,6 +84,8 @@ public class ProjektService {
     public Projekt aktualisieren(Long id, Projekt aktuell) {
         Projekt vorhandenes = projektRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+
+        String statusVorher = vorhandenes.getStatus();
 
         if (aktuell.getTitel() != null) vorhandenes.setTitel(aktuell.getTitel());
         if (aktuell.getBeschreibung() != null) vorhandenes.setBeschreibung(aktuell.getBeschreibung());
@@ -86,7 +100,15 @@ public class ProjektService {
         if (aktuell.getRate() != null) vorhandenes.setRate(aktuell.getRate());
         if (aktuell.getKiGeneriert() != null) vorhandenes.setKiGeneriert(aktuell.getKiGeneriert());
 
-        return projektRepository.save(vorhandenes);
+        Projekt gespeichert = projektRepository.save(vorhandenes);
+
+        boolean wurdeArchiviert = STATUS_ABGESCHLOSSEN.equalsIgnoreCase(gespeichert.getStatus())
+                && !STATUS_ABGESCHLOSSEN.equalsIgnoreCase(statusVorher);
+        if (wurdeArchiviert) {
+            zusammenfassungGenerierenFallsNoetig(gespeichert);
+        }
+
+        return gespeichert;
     }
 
     public void loeschen(Long id) {
@@ -94,5 +116,38 @@ public class ProjektService {
             throw new RuntimeException("Projekt nicht gefunden.");
         }
         projektRepository.deleteById(id);
+    }
+
+    /**
+     * Erzeugt (bei Bedarf) eine KI-Zusammenfassung für ein Projekt und gibt sie zurück.
+     * Existiert bereits eine Zusammenfassung, wird sie unverändert zurückgegeben (kein erneuter KI-Aufruf).
+     * Der Text wird vor dem KI-Aufruf immer über den AnonymizerService anonymisiert.
+     */
+    public String zusammenfassungErzeugen(Long projektId) {
+        Projekt projekt = projektRepository.findById(projektId)
+                .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+
+        if (projekt.getKiZusammenfassung() != null && !projekt.getKiZusammenfassung().isBlank()) {
+            return projekt.getKiZusammenfassung();
+        }
+
+        String prompt = PromptTemplates.projektZusammenfassung(
+                projekt.getTitel(), projekt.getBeschreibung(), projekt.getSchlagwoerter());
+        String anonymisiert = anonymizerService.anonymisiere(prompt, projekt.getId());
+        String zusammenfassung = aiService.generiereAntwort(anonymisiert);
+
+        projekt.setKiZusammenfassung(zusammenfassung);
+        projektRepository.save(projekt);
+
+        return zusammenfassung;
+    }
+
+    private void zusammenfassungGenerierenFallsNoetig(Projekt projekt) {
+        try {
+            zusammenfassungErzeugen(projekt.getId());
+        } catch (Exception e) {
+            log.warn("KI-Zusammenfassung konnte für Projekt {} nicht automatisch erzeugt werden: {}",
+                    projekt.getId(), e.getMessage());
+        }
     }
 }
