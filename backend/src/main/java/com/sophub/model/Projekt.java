@@ -2,6 +2,8 @@ package com.sophub.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "projekte")
@@ -46,6 +48,17 @@ public class Projekt {
     @Column(name = "ki_generiert")
     private Boolean kiGeneriert = false;
 
+    @Column(name = "ki_zusammenfassung", columnDefinition = "TEXT")
+    private String kiZusammenfassung;
+
+    @ManyToMany
+    @JoinTable(
+            name = "projekt_tags",
+            joinColumns = @JoinColumn(name = "projekt_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<Tag> tags = new LinkedHashSet<>();
+
     @Column(name = "erstellt_am")
     private LocalDateTime erstelltAm;
 
@@ -87,6 +100,8 @@ public class Projekt {
     public Integer getRate() { return rate; }
     public Integer getBenutzerAnzahl() { return benutzerAnzahl; }
     public Boolean getKiGeneriert() { return kiGeneriert; }
+    public String getKiZusammenfassung() { return kiZusammenfassung; }
+    public Set<Tag> getTags() { return tags; }
     public LocalDateTime getErstelltAm() { return erstelltAm; }
     public LocalDateTime getGeaendertAm() { return geaendertAm; }
     public User getStudent() { return student; }
@@ -108,6 +123,8 @@ public class Projekt {
     public void setRate(Integer rate) { this.rate = rate; }
     public void setBenutzerAnzahl(Integer benutzerAnzahl) { this.benutzerAnzahl = benutzerAnzahl; }
     public void setKiGeneriert(Boolean kiGeneriert) { this.kiGeneriert = kiGeneriert; }
+    public void setKiZusammenfassung(String kiZusammenfassung) { this.kiZusammenfassung = kiZusammenfassung; }
+    public void setTags(Set<Tag> tags) { this.tags = tags; }
     public void setErstelltAm(LocalDateTime erstelltAm) { this.erstelltAm = erstelltAm; }
     public void setGeaendertAm(LocalDateTime geaendertAm) { this.geaendertAm = geaendertAm; }
     public void setStudent(User student) { this.student = student; }
