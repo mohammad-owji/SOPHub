@@ -6,6 +6,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,6 +36,38 @@ public class DokumentController {
         }
     }
 
+    /**
+     * Nimmt eine PDF entgegen und liefert eine KI-Zusammenfassung (max. halbe Seite) zurück.
+     * Es wird nichts gespeichert.
+     */
+    @PostMapping(value = "/pdf-zusammenfassung", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> pdfZusammenfassen(@RequestParam("datei") MultipartFile datei) {
+        try {
+            return ResponseEntity.ok(new PdfZusammenfassung(datei.getOriginalFilename(),
+                    dokumentService.pdfZusammenfassen(datei)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(503).body("Zusammenfassung fehlgeschlagen: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Nimmt ein Dokument (PDF, DOCX, TXT) entgegen und liefert die wichtigsten Stichwörter als Array.
+     * Es wird nichts gespeichert.
+     */
+    @PostMapping(value = "/stichwoerter", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> stichwoerterExtrahieren(@RequestParam("datei") MultipartFile datei) {
+        try {
+            return ResponseEntity.ok(new Stichwoerter(datei.getOriginalFilename(),
+                    dokumentService.stichwoerterExtrahieren(datei)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(503).body("Stichwort-Extraktion fehlgeschlagen: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/benutzer/{benutzerId}")
     public ResponseEntity<List<Dokument>> nachBenutzer(@PathVariable Long benutzerId) {
         return ResponseEntity.ok(dokumentService.nachBenutzer(benutzerId));
@@ -45,9 +78,38 @@ public class DokumentController {
         return ResponseEntity.ok(dokumentService.nachProjekt(projektId));
     }
 
-    @GetMapping("/{id}/download")
-    public ResponseEntity<Resource> herunterladen(@PathVariable Long id) {
+    /**
+     * Liefert Dokument-Details abhängig von der Berechtigung (F27):
+     * Berechtigte (Teammitglied, zugewiesener Betreuer, Admin) sehen alle Details.
+     * Nicht berechtigte Nutzer sehen ausschließlich die KI-Zusammenfassung, keinen Originaltext.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> ansehen(@PathVariable Long id, Authentication authentication) {
         try {
+            Dokument dokument = dokumentService.einzelnesDokument(id);
+            boolean berechtigt = dokumentService.hatZugriffAufOriginal(id, authentication.getName());
+
+            return ResponseEntity.ok(new DokumentAnsicht(
+                    dokument.getId(),
+                    dokument.getDateiName(),
+                    dokument.getTyp(),
+                    dokument.getKiZusammenfassung(),
+                    berechtigt,
+                    berechtigt ? dokument.getExtrahierterText() : null
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<?> herunterladen(@PathVariable Long id, Authentication authentication) {
+        try {
+            if (!dokumentService.hatZugriffAufOriginal(id, authentication.getName())) {
+                return ResponseEntity.status(403).body(
+                        "Kein Zugriff auf die Originaldatei. Nur die KI-Zusammenfassung ist verfügbar (GET /sop/api/dokumente/" + id + ").");
+            }
+
             Resource resource = dokumentService.herunterladen(id);
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -78,4 +140,17 @@ public class DokumentController {
             return ResponseEntity.status(503).body(e.getMessage());
         }
     }
+
+    record Stichwoerter(String dateiName, List<String> stichwoerter) {}
+
+    record PdfZusammenfassung(String dateiName, String zusammenfassung) {}
+
+    record DokumentAnsicht(
+            Long id,
+            String dateiName,
+            String typ,
+            String kiZusammenfassung,
+            boolean zugriffAufOriginal,
+            String extrahierterText
+    ) {}
 }
