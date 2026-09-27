@@ -36,6 +36,22 @@ public class DokumentController {
         }
     }
 
+    /**
+     * Nimmt eine PDF entgegen und liefert eine KI-Zusammenfassung (max. halbe Seite) zurück.
+     * Es wird nichts gespeichert.
+     */
+    @PostMapping(value = "/pdf-zusammenfassung", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> pdfZusammenfassen(@RequestParam("datei") MultipartFile datei) {
+        try {
+            return ResponseEntity.ok(new PdfZusammenfassung(datei.getOriginalFilename(),
+                    dokumentService.pdfZusammenfassen(datei)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(503).body("Zusammenfassung fehlgeschlagen: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/benutzer/{benutzerId}")
     public ResponseEntity<List<Dokument>> nachBenutzer(@PathVariable Long benutzerId) {
         return ResponseEntity.ok(dokumentService.nachBenutzer(benutzerId));
@@ -108,6 +124,8 @@ public class DokumentController {
             return ResponseEntity.status(503).body(e.getMessage());
         }
     }
+
+    record PdfZusammenfassung(String dateiName, String zusammenfassung) {}
 
     record DokumentAnsicht(
             Long id,

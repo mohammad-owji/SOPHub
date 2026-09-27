@@ -143,6 +143,27 @@ public class DokumentService {
         return projektMitgliedRepository.existsByProjektIdAndStudentId(projekt.getId(), benutzer.getId());
     }
 
+    /**
+     * Erzeugt eine KI-Zusammenfassung (max. halbe Seite) für eine hochgeladene PDF,
+     * ohne die Datei oder das Ergebnis zu speichern.
+     */
+    public String pdfZusammenfassen(MultipartFile datei) throws IOException {
+        if (datei == null || datei.isEmpty()) {
+            throw new IllegalArgumentException("Keine Datei hochgeladen.");
+        }
+        String name = datei.getOriginalFilename();
+        if (name == null || !name.toLowerCase().endsWith(".pdf")) {
+            throw new IllegalArgumentException("Nur PDF-Dateien sind erlaubt.");
+        }
+
+        String text = textAusPdfExtrahieren(datei);
+        if (text == null || text.isBlank()) {
+            throw new IllegalArgumentException("Aus der PDF konnte kein Text extrahiert werden.");
+        }
+
+        return aiService.generiereAntwort(PromptTemplates.pdfZusammenfassung(text));
+    }
+
     public Dokument einzelnesDokument(Long dokumentId) {
         return dokumentRepository.findById(dokumentId)
                 .orElseThrow(() -> new RuntimeException("Dokument nicht gefunden."));

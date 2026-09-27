@@ -34,6 +34,19 @@ public class PromptTemplates {
                 """.formatted(wertOderPlatzhalter(dokumentText));
     }
 
+    public static String pdfZusammenfassung(String pdfText) {
+        return """
+                Fasse den folgenden Text aus einem PDF-Dokument sachlich auf Deutsch zusammen.
+                Die Zusammenfassung darf höchstens eine halbe DIN-A4-Seite lang sein (maximal 200 Wörter).
+                Nutze ausschließlich die gegebenen Informationen, erfinde nichts hinzu.
+                Gib ausschließlich den Fließtext der Zusammenfassung zurück - ohne Überschriften,
+                ohne Emojis und ohne Rückfragen oder weitere Kommentare.
+
+                Text:
+                %s
+                """.formatted(wertOderPlatzhalter(pdfText));
+    }
+
     public static String autoTagging(String text) {
         String tagListe = String.join(", ", ErlaubteTags.ALLE);
         return """
