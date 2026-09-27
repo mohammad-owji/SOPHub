@@ -47,6 +47,20 @@ public class PromptTemplates {
                 """.formatted(wertOderPlatzhalter(pdfText));
     }
 
+    public static String stichwoerter(String dokumentText) {
+        return """
+                Lies den folgenden Dokumenttext und extrahiere die wichtigsten Stichwörter.
+                Dazu gehören z. B. Technologien, Programmiersprachen, Frameworks, Tools und Fachbegriffe
+                (Beispiel: HTML, CSS, JavaScript, TypeScript, Vue, KI, Frontend).
+                Nutze ausschließlich Begriffe, die im Text wirklich vorkommen, erfinde nichts hinzu.
+                Gib NUR eine einfache, kommagetrennte Liste zurück - ohne Nummerierung, ohne Erklärungen,
+                ohne Anführungszeichen. Maximal 30 Stichwörter.
+
+                Text:
+                %s
+                """.formatted(wertOderPlatzhalter(dokumentText));
+    }
+
     public static String autoTagging(String text) {
         String tagListe = String.join(", ", ErlaubteTags.ALLE);
         return """

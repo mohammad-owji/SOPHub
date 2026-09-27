@@ -25,7 +25,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class DokumentService {
@@ -162,6 +165,45 @@ public class DokumentService {
         }
 
         return aiService.generiereAntwort(PromptTemplates.pdfZusammenfassung(text));
+    }
+
+    /**
+     * Liest ein hochgeladenes Dokument (PDF, DOCX, TXT) und lässt die KI die wichtigsten
+     * Stichwörter extrahieren. Es wird nichts gespeichert.
+     */
+    public List<String> stichwoerterExtrahieren(MultipartFile datei) throws IOException {
+        if (datei == null || datei.isEmpty()) {
+            throw new IllegalArgumentException("Keine Datei hochgeladen.");
+        }
+        String name = datei.getOriginalFilename() == null ? "" : datei.getOriginalFilename().toLowerCase();
+
+        String text;
+        if (name.endsWith(".pdf")) {
+            text = textAusPdfExtrahieren(datei);
+        } else if (name.endsWith(".docx")) {
+            text = textAusDocxExtrahieren(datei);
+        } else if (name.endsWith(".txt")) {
+            text = textAusTxtExtrahieren(datei);
+        } else {
+            throw new IllegalArgumentException("Nur PDF-, DOCX- und TXT-Dateien sind erlaubt.");
+        }
+        if (text == null || text.isBlank()) {
+            throw new IllegalArgumentException("Aus dem Dokument konnte kein Text extrahiert werden.");
+        }
+
+        String antwort = aiService.generiereAntwort(PromptTemplates.stichwoerter(text));
+        if (antwort == null) {
+            return List.of();
+        }
+
+        Set<String> stichwoerter = new LinkedHashSet<>();
+        for (String teil : antwort.replace("`", "").split("[,\\n]")) {
+            String wort = teil.replaceAll("^[\\s\\-*•\"']+|[\\s\"'.]+$", "");
+            if (!wort.isEmpty()) {
+                stichwoerter.add(wort);
+            }
+        }
+        return new ArrayList<>(stichwoerter);
     }
 
     public Dokument einzelnesDokument(Long dokumentId) {

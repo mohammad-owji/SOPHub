@@ -52,6 +52,22 @@ public class DokumentController {
         }
     }
 
+    /**
+     * Nimmt ein Dokument (PDF, DOCX, TXT) entgegen und liefert die wichtigsten Stichwörter als Array.
+     * Es wird nichts gespeichert.
+     */
+    @PostMapping(value = "/stichwoerter", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> stichwoerterExtrahieren(@RequestParam("datei") MultipartFile datei) {
+        try {
+            return ResponseEntity.ok(new Stichwoerter(datei.getOriginalFilename(),
+                    dokumentService.stichwoerterExtrahieren(datei)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(503).body("Stichwort-Extraktion fehlgeschlagen: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/benutzer/{benutzerId}")
     public ResponseEntity<List<Dokument>> nachBenutzer(@PathVariable Long benutzerId) {
         return ResponseEntity.ok(dokumentService.nachBenutzer(benutzerId));
@@ -124,6 +140,8 @@ public class DokumentController {
             return ResponseEntity.status(503).body(e.getMessage());
         }
     }
+
+    record Stichwoerter(String dateiName, List<String> stichwoerter) {}
 
     record PdfZusammenfassung(String dateiName, String zusammenfassung) {}
 
