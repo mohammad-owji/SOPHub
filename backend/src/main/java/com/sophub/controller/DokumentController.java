@@ -6,6 +6,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,9 +46,38 @@ public class DokumentController {
         return ResponseEntity.ok(dokumentService.nachProjekt(projektId));
     }
 
-    @GetMapping("/{id}/download")
-    public ResponseEntity<Resource> herunterladen(@PathVariable Long id) {
+    /**
+     * Liefert Dokument-Details abhängig von der Berechtigung (F27):
+     * Berechtigte (Teammitglied, zugewiesener Betreuer, Admin) sehen alle Details.
+     * Nicht berechtigte Nutzer sehen ausschließlich die KI-Zusammenfassung, keinen Originaltext.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> ansehen(@PathVariable Long id, Authentication authentication) {
         try {
+            Dokument dokument = dokumentService.einzelnesDokument(id);
+            boolean berechtigt = dokumentService.hatZugriffAufOriginal(id, authentication.getName());
+
+            return ResponseEntity.ok(new DokumentAnsicht(
+                    dokument.getId(),
+                    dokument.getDateiName(),
+                    dokument.getTyp(),
+                    dokument.getKiZusammenfassung(),
+                    berechtigt,
+                    berechtigt ? dokument.getExtrahierterText() : null
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<?> herunterladen(@PathVariable Long id, Authentication authentication) {
+        try {
+            if (!dokumentService.hatZugriffAufOriginal(id, authentication.getName())) {
+                return ResponseEntity.status(403).body(
+                        "Kein Zugriff auf die Originaldatei. Nur die KI-Zusammenfassung ist verfügbar (GET /sop/api/dokumente/" + id + ").");
+            }
+
             Resource resource = dokumentService.herunterladen(id);
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -78,4 +108,13 @@ public class DokumentController {
             return ResponseEntity.status(503).body(e.getMessage());
         }
     }
+
+    record DokumentAnsicht(
+            Long id,
+            String dateiName,
+            String typ,
+            String kiZusammenfassung,
+            boolean zugriffAufOriginal,
+            String extrahierterText
+    ) {}
 }

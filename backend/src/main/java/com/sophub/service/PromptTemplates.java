@@ -24,8 +24,10 @@ public class PromptTemplates {
 
     public static String dokumentZusammenfassung(String dokumentText) {
         return """
-                Fasse den folgenden Dokumenttext in 2 bis 3 sachlichen Sätzen auf Deutsch zusammen.
+                Fasse den folgenden Dokumenttext in 2 bis 4 sachlichen Sätzen auf Deutsch zusammen.
                 Nutze ausschließlich die gegebenen Informationen, erfinde nichts hinzu.
+                Gib ausschließlich den Fließtext der Zusammenfassung zurück - ohne Überschriften,
+                ohne Aufzählungen, ohne Emojis und ohne Rückfragen oder weitere Kommentare.
 
                 Text:
                 %s
