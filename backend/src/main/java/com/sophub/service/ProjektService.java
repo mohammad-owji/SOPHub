@@ -16,6 +16,10 @@ public class ProjektService {
 
     private static final Logger log = LoggerFactory.getLogger(ProjektService.class);
     private static final String STATUS_ABGESCHLOSSEN = "abgeschlossen";
+    private static final String STATUS_ENTWURF = "ENTWURF";
+    private static final String STATUS_OFFEN = "OFFEN";
+    private static final String STATUS_ANGENOMMEN = "ANGENOMMEN";
+    private static final String STATUS_ABGELEHNT = "ABGELEHNT";
 
     private final ProjektRepository projektRepository;
     private final UserRepository userRepository;
@@ -66,16 +70,20 @@ public class ProjektService {
             projekt.setBetreuer(betreuer);
         }
 
+        // Status beim Erstellen:
+        // - Betreuer ausgewaehlt  -> OFFEN   (Anfrage wartet auf Antwort des Betreuers)
+        // - kein Betreuer         -> ENTWURF
         if (projekt.getStatus() == null) {
-            projekt.setStatus("ENTWURF");
+            projekt.setStatus(betreuer != null ? STATUS_OFFEN : STATUS_ENTWURF);
         }
 
         Projekt gespeichert = projektRepository.save(projekt);
 
         zusammenfassungGenerierenFallsNoetig(gespeichert);
 
+        // Eingeladener Betreuer bekommt eine Projektanfrage mit Link zur Einladungsseite
         if (betreuer != null) {
-            emailService.sendeBetreuerZuweisungsEmail(betreuer, student, gespeichert);
+            emailService.sendeProjektAnfrageEmail(betreuer, student, gespeichert);
         }
 
         return gespeichert;
@@ -112,6 +120,8 @@ public class ProjektService {
     }
 
     // Projekt annehmen
+    // Nur moeglich, wenn das Projekt OFFEN ist.
+    // Wurde ein Betreuer eingeladen, darf nur genau dieser Betreuer annehmen.
     public Projekt annehmen(Long projektId, Long betreuerId) {
         Projekt projekt = projektRepository.findById(projektId)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
@@ -119,17 +129,18 @@ public class ProjektService {
         User betreuer = userRepository.findById(betreuerId)
                 .orElseThrow(() -> new RuntimeException("Betreuer nicht gefunden."));
 
-        if (projekt.getBetreuer() != null) {
-            throw new RuntimeException("Das Projekt wurde bereits angenommen.");
-        }
+        pruefeAnfrageOffen(projekt, betreuerId);
 
         projekt.setBetreuer(betreuer);
-        projekt.setStatus("ANGENOMMEN");
+        projekt.setStatus(STATUS_ANGENOMMEN);
 
         return projektRepository.save(projekt);
     }
 
     // Projekt ablehnen
+    // Nur moeglich, wenn das Projekt OFFEN ist.
+    // Wurde ein Betreuer eingeladen, darf nur genau dieser Betreuer ablehnen.
+    // Der Betreuer bleibt im Projekt gespeichert, damit nachvollziehbar ist, wer abgelehnt hat.
     public Projekt ablehnen(Long projektId, Long betreuerId) {
         Projekt projekt = projektRepository.findById(projektId)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
@@ -137,13 +148,23 @@ public class ProjektService {
         userRepository.findById(betreuerId)
                 .orElseThrow(() -> new RuntimeException("Betreuer nicht gefunden."));
 
-        if (!"OFFEN".equals(projekt.getStatus())) {
+        pruefeAnfrageOffen(projekt, betreuerId);
+
+        projekt.setStatus(STATUS_ABGELEHNT);
+
+        return projektRepository.save(projekt);
+    }
+
+    // Gemeinsame Pruefung fuer annehmen() und ablehnen()
+    private void pruefeAnfrageOffen(Projekt projekt, Long betreuerId) {
+        if (!STATUS_OFFEN.equals(projekt.getStatus())) {
             throw new RuntimeException("Das Projekt wurde bereits bearbeitet.");
         }
 
-        projekt.setStatus("ABGELEHNT");
-
-        return projektRepository.save(projekt);
+        User eingeladenerBetreuer = projekt.getBetreuer();
+        if (eingeladenerBetreuer != null && !eingeladenerBetreuer.getId().equals(betreuerId)) {
+            throw new RuntimeException("Sie sind nicht der eingeladene Betreuer dieses Projekts.");
+        }
     }
 
     public void loeschen(Long id) {

@@ -24,6 +24,7 @@ public class EmailService {
     private static final String REGISTRIERUNGS_TEMPLATE = "email-templates/registrierung.json";
     private static final String BETREUER_ZUWEISUNGS_TEMPLATE = "email-templates/betreuer-zuweisung.json";
     private static final String TEAM_HINZUGEFUEGT_TEMPLATE = "email-templates/team-hinzugefuegt.json";
+    private static final String PROJEKT_ANFRAGE_TEMPLATE = "email-templates/projekt-anfrage.json";
     private static final DateTimeFormatter DATUM_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final JavaMailSender mailSender;
@@ -31,6 +32,11 @@ public class EmailService {
 
     @Value("${app.mail.from}")
     private String absenderAdresse;
+
+    // Adresse des React-Frontends. Daraus wird der Link in der Projektanfrage-Mail gebaut.
+    // Steht nichts in application.properties, wird http://localhost:5173 verwendet.
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
@@ -70,6 +76,32 @@ public class EmailService {
                 "datum", java.time.LocalDate.now().format(DATUM_FORMAT)
         );
         sende(TEAM_HINZUGEFUEGT_TEMPLATE, mitglied.getEmail(), werte);
+    }
+
+    /**
+     * Schickt dem eingeladenen Betreuer eine Projektanfrage mit Link zur Einladungsseite.
+     * Der Link fuehrt direkt auf die React-Route /project-invitation/{projektId}.
+     */
+    public void sendeProjektAnfrageEmail(User betreuer, User student, Projekt projekt) {
+        String link = frontendUrl + "/project-invitation/" + projekt.getId();
+
+        Map<String, String> werte = Map.of(
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "studentVorname", textOderStrich(student.getVorname()),
+                "studentName", textOderStrich(student.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "fachbereich", textOderStrich(projekt.getFachbereich()),
+                "projektart", textOderStrich(projekt.getProjektart()),
+                "semester", textOderStrich(projekt.getSemester()),
+                "link", link
+        );
+        sende(PROJEKT_ANFRAGE_TEMPLATE, betreuer.getEmail(), werte);
+    }
+
+    // Map.of(...) erlaubt keine null-Werte. Leere Felder werden deshalb als "-" angezeigt.
+    private String textOderStrich(String text) {
+        return (text == null || text.isBlank()) ? "-" : text;
     }
 
     private void sende(String templatePfad, String empfaenger, Map<String, String> werte) {
