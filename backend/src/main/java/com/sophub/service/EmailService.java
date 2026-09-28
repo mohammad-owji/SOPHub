@@ -38,6 +38,12 @@ public class EmailService {
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
+    // Test-Umleitung: Ist diese Adresse gesetzt, gehen ALLE Mails an sie statt an den echten Empfaenger.
+    // So bekommen echte Personen (z.B. Betreuer) beim Entwickeln keine Testmails.
+    // Leer lassen (oder Zeile weglassen), damit Mails an die echten Empfaenger gehen.
+    @Value("${app.mail.test-empfaenger:}")
+    private String testEmpfaenger;
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
@@ -108,13 +114,26 @@ public class EmailService {
         try {
             EmailTemplate template = ladeTemplate(templatePfad);
 
+            String betreff = fuelleTemplate(template.getSubject(), werte);
+            String text = fuelleTemplate(template.getBody(), werte);
+            String tatsaechlicherEmpfaenger = empfaenger;
+
+            // Test-Umleitung aktiv? Dann an die Testadresse schicken und den echten Empfaenger im Text vermerken.
+            if (testEmpfaenger != null && !testEmpfaenger.isBlank()) {
+                tatsaechlicherEmpfaenger = testEmpfaenger;
+                betreff = "[TEST] " + betreff;
+                text = "[TEST] Eigentlich an: " + empfaenger + "\n\n" + text;
+            }
+
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(absenderAdresse);
-            message.setTo(empfaenger);
-            message.setSubject(fuelleTemplate(template.getSubject(), werte));
-            message.setText(fuelleTemplate(template.getBody(), werte));
+            message.setTo(tatsaechlicherEmpfaenger);
+            message.setSubject(betreff);
+            message.setText(text);
 
             mailSender.send(message);
+            log.info("E-Mail ({}) gesendet an {} (eigentlicher Empfaenger: {})",
+                    templatePfad, tatsaechlicherEmpfaenger, empfaenger);
         } catch (Exception e) {
             log.warn("E-Mail ({}) konnte nicht an {} gesendet werden: {}", templatePfad, empfaenger, e.getMessage());
         }
