@@ -32,8 +32,18 @@ export async function getMeineProjekte(studentId) {
     return parseOrThrow(response);
 }
 
-export async function createProjekt(studentId, daten, betreuerId) {
-    const query = betreuerId ? `?betreuerId=${betreuerId}` : "";
+// Betreuer entweder aus der Liste (betreuerId)
+// oder selbst eingetippt (neuerBetreuer = { vorname, name, email })
+export async function createProjekt(studentId, daten, betreuerId, neuerBetreuer) {
+    const params = new URLSearchParams();
+    if (betreuerId) {
+        params.append("betreuerId", betreuerId);
+    } else if (neuerBetreuer) {
+        params.append("betreuerVorname", neuerBetreuer.vorname);
+        params.append("betreuerName", neuerBetreuer.name);
+        params.append("betreuerEmail", neuerBetreuer.email);
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
     const response = await fetch(`${API_BASE_URL}/projekte/student/${studentId}${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },

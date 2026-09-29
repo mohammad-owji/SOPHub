@@ -55,6 +55,27 @@ const PROJEKTARTEN = [
     "Hackathon",
 ];
 
+const HOCHSCHUL_DOMAIN = "@hs-bochum.de";
+
+// Zerlegt einen eingetippten Namen in Vorname und Nachname.
+// Titel wie "Prof.", "Dr." oder "Dr.-Ing." werden ignoriert.
+// Beispiel: "Prof. Dr. Max Beispiel" -> { vorname: "Max", name: "Beispiel" }
+function teileNamen(text) {
+    const woerter = text
+        .trim()
+        .split(/\s+/)
+        .filter((wort) => !/^(prof|dr|dr\.-ing|rer|nat|ing)\.?$/i.test(wort));
+
+    if (woerter.length < 2) {
+        return null;
+    }
+
+    return {
+        vorname: woerter.slice(0, -1).join(" "),
+        name: woerter[woerter.length - 1],
+    };
+}
+
 function CreateProject() {
     const navigate = useNavigate();
     const auth = getAuth();
@@ -65,7 +86,10 @@ function CreateProject() {
     const [fachbereich, setFachbereich] = useState("");
     const [projektart, setProjektart] = useState("");
     const [gruppenanzahl, setGruppenanzahl] = useState("3");
-    const [betreuerId, setBetreuerId] = useState("");
+    // Betreuer: Text im Auswahlfeld (Name aus der Liste oder selbst eingetippt)
+    const [betreuerText, setBetreuerText] = useState("");
+    // Nur noetig, wenn der Betreuer nicht in der Liste steht
+    const [neuerBetreuerEmail, setNeuerBetreuerEmail] = useState("");
     const [professoren, setProfessoren] = useState([]);
     const [alleStudenten, setAlleStudenten] = useState([]);
     const [teamSuche, setTeamSuche] = useState("");
@@ -86,6 +110,18 @@ function CreateProject() {
             .then((data) => setAlleStudenten(data || []))
             .catch(() => setAlleStudenten([]));
     }, []);
+
+    // Betreuer-Liste fuer das Auswahlfeld, z.B. "Anja Tenberge"
+    const betreuerNamen = professoren.map((prof) => `${prof.vorname} ${prof.name}`);
+
+    // Passt der eingegebene Text genau zu einem Betreuer aus der Liste?
+    const gefundenerBetreuer = professoren.find(
+        (prof) =>
+            `${prof.vorname} ${prof.name}`.toLowerCase() === betreuerText.trim().toLowerCase()
+    );
+
+    // Text eingegeben, aber nicht in der Liste -> neuer Betreuer, E-Mail wird gebraucht
+    const istNeuerBetreuer = betreuerText.trim() !== "" && !gefundenerBetreuer;
 
     const maxGroesse = gruppenanzahl ? Number(gruppenanzahl) : null;
     const aktuelleGroesse = 1 + ausgewaehlteMitglieder.length;
@@ -119,7 +155,8 @@ function CreateProject() {
         setFachbereich("");
         setProjektart("");
         setGruppenanzahl("3");
-        setBetreuerId("");
+        setBetreuerText("");
+        setNeuerBetreuerEmail("");
         setTeamSuche("");
         setAusgewaehlteMitglieder([]);
         setDokumente([{ typ: DOKUMENT_TYPEN[0].value, datei: null }]);
@@ -156,6 +193,26 @@ function CreateProject() {
             return;
         }
 
+        // Selbst eingetippter Betreuer: Name und Hochschul-E-Mail pruefen
+        let neuerBetreuer = null;
+        if (istNeuerBetreuer) {
+            const namensTeile = teileNamen(betreuerText);
+            if (!namensTeile) {
+                setMessage("Bitte Vor- und Nachnamen des Betreuers eingeben.");
+                setMessageType("error");
+                return;
+            }
+
+            const email = neuerBetreuerEmail.trim().toLowerCase();
+            if (!email.endsWith(HOCHSCHUL_DOMAIN)) {
+                setMessage(`Bitte die Hochschul-E-Mail des Betreuers angeben (endet auf ${HOCHSCHUL_DOMAIN}).`);
+                setMessageType("error");
+                return;
+            }
+
+            neuerBetreuer = { ...namensTeile, email };
+        }
+
         setWirdGespeichert(true);
         setMessage("");
 
@@ -170,7 +227,8 @@ function CreateProject() {
                     projektart,
                     gruppenanzahl: gruppenanzahl ? Number(gruppenanzahl) : null,
                 },
-                betreuerId || null
+                gefundenerBetreuer ? gefundenerBetreuer.id : null,
+                neuerBetreuer
             );
 
             const hochzuladen = dokumente.filter((eintrag) => eintrag.datei);
@@ -292,24 +350,37 @@ function CreateProject() {
                                         <option value="5">5 Personen</option>
                                     </select>
                                 </div>
-                            </div>
 
-                            <div className="row">
                                 <div className="col-md-4 mb-3">
                                     <label className="form-label">Betreuer:in</label>
-                                    <select
-                                        className="form-select"
-                                        value={betreuerId}
-                                        onChange={(e) => setBetreuerId(e.target.value)}
-                                    >
-                                        <option value="">Noch nicht zuweisen</option>
-                                        {professoren.map((prof) => (
-                                            <option key={prof.id} value={prof.id}>
-                                                {prof.vorname} {prof.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <AuswahlFeld
+                                        value={betreuerText}
+                                        onChange={setBetreuerText}
+                                        optionen={betreuerNamen}
+                                        placeholder="Auswählen oder Namen eintippen"
+                                    />
+                                    <div className="form-text">
+                                        Leer lassen, wenn noch kein Betreuer feststeht.
+                                    </div>
                                 </div>
+
+                                {/* Nur sichtbar, wenn der Betreuer nicht in der Liste steht */}
+                                {istNeuerBetreuer && (
+                                    <div className="col-md-4 mb-3">
+                                        <label className="form-label">E-Mail des Betreuers *</label>
+                                        <input
+                                            type="email"
+                                            className="form-control"
+                                            placeholder={`vorname.nachname${HOCHSCHUL_DOMAIN}`}
+                                            value={neuerBetreuerEmail}
+                                            onChange={(e) => setNeuerBetreuerEmail(e.target.value)}
+                                        />
+                                        <div className="form-text">
+                                            Nicht in der Liste? Dann wird der Betreuer neu angelegt
+                                            und bekommt die Projektanfrage an diese Adresse.
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <hr className="my-4" />
