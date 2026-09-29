@@ -52,6 +52,14 @@ export async function createProjekt(studentId, daten, betreuerId, neuerBetreuer)
     return parseOrThrow(response);
 }
 
+// Einladungen des eingeloggten Betreuers (wer eingeloggt ist, erkennt das Backend am Token)
+export async function getMeineEinladungen() {
+    const response = await fetch(`${API_BASE_URL}/projekte/einladungen`, {
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
 export async function getProfil() {
     const response = await fetch(`${API_BASE_URL}/benutzer/profil`, {
         headers: authHeaders(),

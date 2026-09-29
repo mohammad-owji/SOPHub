@@ -9,6 +9,7 @@ import java.util.List;
 @Repository
 public interface ProjektRepository extends JpaRepository<Projekt, Long> {
     List<Projekt> findByStudentId(Long studentId);
+    List<Projekt> findByBetreuerId(Long betreuerId);
     List<Projekt> findByStatus(String status);
     List<Projekt> findByZugriffsgrad(Integer zugriffsgrad);
 }

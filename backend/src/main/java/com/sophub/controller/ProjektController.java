@@ -41,6 +41,17 @@ public class ProjektController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // Einladungen des eingeloggten Betreuers.
+    // Wer eingeloggt ist, steht im JWT-Token -> niemand kann fremde Einladungen abrufen.
+    @GetMapping("/einladungen")
+    public ResponseEntity<?> meineEinladungen(Authentication authentication) {
+        try {
+            return ResponseEntity.ok(projektService.einladungenFuer(authentication.getName()));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<Projekt>> projektByStudent(@PathVariable Long studentId) {
         return ResponseEntity.ok(projektService.projektByStudent(studentId));

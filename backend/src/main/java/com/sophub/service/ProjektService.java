@@ -61,6 +61,19 @@ public class ProjektService {
     }
 
     /**
+     * Alle Projekte, zu denen der eingeloggte Benutzer als Betreuer eingeladen wurde
+     * (offene, angenommene und abgelehnte). Neueste zuerst.
+     */
+    public List<Projekt> einladungenFuer(String benutzername) {
+        User betreuer = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+
+        List<Projekt> projekte = new java.util.ArrayList<>(projektRepository.findByBetreuerId(betreuer.getId()));
+        projekte.sort((a, b) -> Long.compare(b.getId(), a.getId()));
+        return projekte;
+    }
+
+    /**
      * Projekt erstellen mit einem Betreuer, der entweder aus der Liste gewaehlt (betreuerId)
      * oder vom Studenten selbst eingetippt wurde (Vorname, Name, E-Mail).
      * Ein eingetippter Betreuer wird ueber den BetreuerService gefunden oder neu angelegt.
