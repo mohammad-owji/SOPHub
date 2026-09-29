@@ -83,6 +83,8 @@ public class BetreuerDatenInitializer implements CommandLineRunner {
             betreuer.setRolle(professorRolle);
             // Zufaelliges Passwort, das niemand kennt -> Login erst nach Aktivierung moeglich
             betreuer.setPasswort(passwordEncoder.encode(UUID.randomUUID().toString()));
+            // Vorbereitetes Konto: wird erst aktiviert, wenn der Betreuer sich selbst registriert
+            betreuer.setKontoAktiviert(false);
 
             userRepository.save(betreuer);
             neuAngelegt++;

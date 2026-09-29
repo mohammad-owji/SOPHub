@@ -76,6 +76,8 @@ public class BetreuerService {
         betreuer.setRolle(professorRolle);
         // Zufaelliges Passwort, das niemand kennt -> Login erst nach Aktivierung moeglich
         betreuer.setPasswort(passwordEncoder.encode(UUID.randomUUID().toString()));
+        // Vorbereitetes Konto: wird erst aktiviert, wenn der Betreuer sich selbst registriert
+        betreuer.setKontoAktiviert(false);
 
         User gespeichert = userRepository.save(betreuer);
         log.info("Neuer Betreuer angelegt: {} {} ({})", gespeichert.getVorname(), gespeichert.getName(), gespeichert.getEmail());
