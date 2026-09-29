@@ -1,9 +1,19 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "./Auth.css";
 
 function Login() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
+    // Ziel nach dem Login, z.B. /?redirect=/project-invitation/3 (Link aus der Projektanfrage-Mail).
+    // Nur interne Pfade erlauben (beginnt mit "/", aber nicht mit "//"),
+    // damit niemand ueber den Link auf eine fremde Webseite weiterleiten kann.
+    const redirectParam = searchParams.get("redirect");
+    const zielNachLogin =
+        redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+            ? redirectParam
+            : "/dashboard";
 
     const [mode, setMode] = useState("login");
     const [benutzername, setBenutzername] = useState("");
@@ -96,7 +106,7 @@ function Login() {
                             rolle: daten.rolle,
                         })
                     );
-                    navigate("/dashboard");
+                    navigate(zielNachLogin);
                 }
             } else {
                 setMessage(text || "Fehler bei der Anfrage.");
@@ -121,6 +131,12 @@ function Login() {
         <div className="auth-page">
             <div className="login-box">
                 <div className="logo-circle">SOP</div>
+
+                {redirectParam && !message && (
+                    <div className="message success">
+                        Bitte melden Sie sich an, um die Projektanfrage zu öffnen.
+                    </div>
+                )}
 
                 {message && <div className={`message ${messageType}`}>{message}</div>}
 
