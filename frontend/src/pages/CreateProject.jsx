@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import AuswahlFeld from "../components/AuswahlFeld";
 import {
     getAuth,
     createProjekt,
@@ -17,17 +18,52 @@ const DOKUMENT_TYPEN = [
     { value: "SONSTIGES", label: "Sonstiges" },
 ];
 
+// Vorschlaege fuer die Auswahlfelder. Man kann auswaehlen, danach suchen
+// (einfach lostippen) oder einen eigenen Wert eintragen, falls etwas fehlt.
+const SEMESTER = [
+    "SoSe 2027",
+    "WiSe 2026/27",
+    "SoSe 2026",
+    "WiSe 2025/26",
+    "SoSe 2025",
+];
+
+// Aktuelles Semester als Vorauswahl
+const STANDARD_SEMESTER = "WiSe 2026/27";
+
+const FACHBEREICHE = [
+    "Informatik",
+    "Wirtschaftsinformatik",
+    "Medieninformatik",
+    "Elektrotechnik",
+    "Mechatronik",
+    "Maschinenbau",
+    "Bauingenieurwesen",
+    "Architektur",
+    "Wirtschaft",
+    "Geodäsie",
+];
+
+const PROJEKTARTEN = [
+    "Softwareprojekt",
+    "Studienprojekt",
+    "Praxisprojekt",
+    "Forschungsprojekt",
+    "Bachelorarbeit",
+    "Masterarbeit",
+    "Seminararbeit",
+    "Hackathon",
+];
+
 function CreateProject() {
     const navigate = useNavigate();
     const auth = getAuth();
 
     const [titel, setTitel] = useState("");
     const [beschreibung, setBeschreibung] = useState("");
-    const [semester, setSemester] = useState("SoSe 2026");
+    const [semester, setSemester] = useState(STANDARD_SEMESTER);
     const [fachbereich, setFachbereich] = useState("");
     const [projektart, setProjektart] = useState("");
-    const [sprache, setSprache] = useState("Deutsch");
-    const [schlagwoerter, setSchlagwoerter] = useState("");
     const [gruppenanzahl, setGruppenanzahl] = useState("3");
     const [betreuerId, setBetreuerId] = useState("");
     const [professoren, setProfessoren] = useState([]);
@@ -79,11 +115,9 @@ function CreateProject() {
     const resetForm = () => {
         setTitel("");
         setBeschreibung("");
-        setSemester("SoSe 2026");
+        setSemester(STANDARD_SEMESTER);
         setFachbereich("");
         setProjektart("");
-        setSprache("Deutsch");
-        setSchlagwoerter("");
         setGruppenanzahl("3");
         setBetreuerId("");
         setTeamSuche("");
@@ -134,8 +168,6 @@ function CreateProject() {
                     semester,
                     fachbereich,
                     projektart,
-                    sprache,
-                    schlagwoerter,
                     gruppenanzahl: gruppenanzahl ? Number(gruppenanzahl) : null,
                 },
                 betreuerId || null
@@ -216,62 +248,36 @@ function CreateProject() {
                             <div className="row">
                                 <div className="col-md-4 mb-3">
                                     <label className="form-label">Semester</label>
-                                    <select
-                                        className="form-select"
+                                    <AuswahlFeld
                                         value={semester}
-                                        onChange={(e) => setSemester(e.target.value)}
-                                    >
-                                        <option>SoSe 2026</option>
-                                        <option>WiSe 2025</option>
-                                        <option>SoSe 2025</option>
-                                    </select>
+                                        onChange={setSemester}
+                                        optionen={SEMESTER}
+                                        placeholder="Auswählen oder eintippen"
+                                    />
                                 </div>
 
                                 <div className="col-md-4 mb-3">
                                     <label className="form-label">Fachbereich</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="z. B. Informatik"
+                                    <AuswahlFeld
                                         value={fachbereich}
-                                        onChange={(e) => setFachbereich(e.target.value)}
+                                        onChange={setFachbereich}
+                                        optionen={FACHBEREICHE}
+                                        placeholder="Auswählen oder eintippen"
                                     />
                                 </div>
 
                                 <div className="col-md-4 mb-3">
                                     <label className="form-label">Projektart</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="z. B. Abschlussprojekt"
+                                    <AuswahlFeld
                                         value={projektart}
-                                        onChange={(e) => setProjektart(e.target.value)}
+                                        onChange={setProjektart}
+                                        optionen={PROJEKTARTEN}
+                                        placeholder="Auswählen oder eintippen"
                                     />
                                 </div>
                             </div>
 
                             <div className="row">
-                                <div className="col-md-4 mb-3">
-                                    <label className="form-label">Sprache</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={sprache}
-                                        onChange={(e) => setSprache(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="col-md-4 mb-3">
-                                    <label className="form-label">Schlagwörter</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="z. B. React, KI, Web"
-                                        value={schlagwoerter}
-                                        onChange={(e) => setSchlagwoerter(e.target.value)}
-                                    />
-                                </div>
-
                                 <div className="col-md-4 mb-3">
                                     <label className="form-label">Gruppengröße</label>
                                     <select
