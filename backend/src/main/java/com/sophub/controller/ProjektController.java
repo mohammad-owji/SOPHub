@@ -46,12 +46,18 @@ public class ProjektController {
         return ResponseEntity.ok(projektService.projektByStudent(studentId));
     }
 
+    // Betreuer entweder per betreuerId (aus der Liste gewaehlt)
+    // oder per betreuerVorname + betreuerName + betreuerEmail (selbst eingetippt)
     @PostMapping("/student/{studentId}")
     public ResponseEntity<?> erstellen(@PathVariable Long studentId,
                                         @RequestParam(required = false) Long betreuerId,
+                                        @RequestParam(required = false) String betreuerVorname,
+                                        @RequestParam(required = false) String betreuerName,
+                                        @RequestParam(required = false) String betreuerEmail,
                                         @RequestBody Projekt projekt) {
         try {
-            return ResponseEntity.ok(projektService.erstellen(projekt, studentId, betreuerId));
+            return ResponseEntity.ok(projektService.erstellen(
+                    projekt, studentId, betreuerId, betreuerVorname, betreuerName, betreuerEmail));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }

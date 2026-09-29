@@ -26,15 +26,17 @@ public class ProjektService {
     private final EmailService emailService;
     private final AIService aiService;
     private final AnonymizerService anonymizerService;
+    private final BetreuerService betreuerService;
 
     public ProjektService(ProjektRepository projektRepository, UserRepository userRepository,
                           EmailService emailService, AIService aiService,
-                          AnonymizerService anonymizerService) {
+                          AnonymizerService anonymizerService, BetreuerService betreuerService) {
         this.projektRepository = projektRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
         this.aiService = aiService;
         this.anonymizerService = anonymizerService;
+        this.betreuerService = betreuerService;
     }
 
     public List<Projekt> alleProjeKte() {
@@ -56,6 +58,26 @@ public class ProjektService {
 
     public List<Projekt> projektByStudent(Long studentId) {
         return projektRepository.findByStudentId(studentId);
+    }
+
+    /**
+     * Projekt erstellen mit einem Betreuer, der entweder aus der Liste gewaehlt (betreuerId)
+     * oder vom Studenten selbst eingetippt wurde (Vorname, Name, E-Mail).
+     * Ein eingetippter Betreuer wird ueber den BetreuerService gefunden oder neu angelegt.
+     */
+    public Projekt erstellen(Projekt projekt, Long studentId, Long betreuerId,
+                             String neuerBetreuerVorname, String neuerBetreuerName,
+                             String neuerBetreuerEmail) {
+        Long ausgewaehlteBetreuerId = betreuerId;
+
+        boolean betreuerEingetippt = neuerBetreuerEmail != null && !neuerBetreuerEmail.isBlank();
+        if (ausgewaehlteBetreuerId == null && betreuerEingetippt) {
+            User betreuer = betreuerService.findeOderLegeAn(
+                    neuerBetreuerVorname, neuerBetreuerName, neuerBetreuerEmail);
+            ausgewaehlteBetreuerId = betreuer.getId();
+        }
+
+        return erstellen(projekt, studentId, ausgewaehlteBetreuerId);
     }
 
     public Projekt erstellen(Projekt projekt, Long studentId, Long betreuerId) {
@@ -134,7 +156,14 @@ public class ProjektService {
         projekt.setBetreuer(betreuer);
         projekt.setStatus(STATUS_ANGENOMMEN);
 
-        return projektRepository.save(projekt);
+        Projekt gespeichert = projektRepository.save(projekt);
+
+        // Student informieren: Projektanfrage wurde angenommen
+        if (gespeichert.getStudent() != null) {
+            emailService.sendeProjektEntscheidungEmail(gespeichert.getStudent(), betreuer, gespeichert, true);
+        }
+
+        return gespeichert;
     }
 
     // Projekt ablehnen
@@ -145,14 +174,21 @@ public class ProjektService {
         Projekt projekt = projektRepository.findById(projektId)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
 
-        userRepository.findById(betreuerId)
+        User betreuer = userRepository.findById(betreuerId)
                 .orElseThrow(() -> new RuntimeException("Betreuer nicht gefunden."));
 
         pruefeAnfrageOffen(projekt, betreuerId);
 
         projekt.setStatus(STATUS_ABGELEHNT);
 
-        return projektRepository.save(projekt);
+        Projekt gespeichert = projektRepository.save(projekt);
+
+        // Student informieren: Projektanfrage wurde abgelehnt
+        if (gespeichert.getStudent() != null) {
+            emailService.sendeProjektEntscheidungEmail(gespeichert.getStudent(), betreuer, gespeichert, false);
+        }
+
+        return gespeichert;
     }
 
     // Gemeinsame Pruefung fuer annehmen() und ablehnen()
