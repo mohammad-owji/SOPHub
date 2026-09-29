@@ -1,0 +1,4 @@
+{
+    "subject": "Ihre Projektanfrage wurde angenommen: ${projektTitel}",
+    "body": "Hallo ${studentVorname} ${studentName},\n\nIhre Projektanfrage wurde angenommen.\n\n${betreuerVorname} ${betreuerName} betreut ab sofort Ihr Projekt.\n\nProjekt: ${projektTitel}\nFachbereich: ${fachbereich}\nProjektart: ${projektart}\nSemester: ${semester}\n\nÜber den folgenden Link können Sie Ihr Projekt in SOPHub öffnen:\n\n${link}\n\nViel Erfolg bei Ihrem Projekt!\n\nViele Grüße\nIhr SOPHub-Team"
+}

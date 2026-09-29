@@ -25,6 +25,8 @@ public class EmailService {
     private static final String BETREUER_ZUWEISUNGS_TEMPLATE = "email-templates/betreuer-zuweisung.json";
     private static final String TEAM_HINZUGEFUEGT_TEMPLATE = "email-templates/team-hinzugefuegt.json";
     private static final String PROJEKT_ANFRAGE_TEMPLATE = "email-templates/projekt-anfrage.json";
+    private static final String PROJEKT_ANGENOMMEN_TEMPLATE = "email-templates/projekt-angenommen.json";
+    private static final String PROJEKT_ABGELEHNT_TEMPLATE = "email-templates/projekt-abgelehnt.json";
     private static final DateTimeFormatter DATUM_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final JavaMailSender mailSender;
@@ -103,6 +105,28 @@ public class EmailService {
                 "link", link
         );
         sende(PROJEKT_ANFRAGE_TEMPLATE, betreuer.getEmail(), werte);
+    }
+
+    /**
+     * Informiert den Studenten, ob der eingeladene Betreuer das Projekt angenommen oder abgelehnt hat.
+     * Der Link fuehrt auf die Projektdetails: /projectdetails/{projektId}.
+     */
+    public void sendeProjektEntscheidungEmail(User student, User betreuer, Projekt projekt, boolean angenommen) {
+        String link = frontendUrl + "/projectdetails/" + projekt.getId();
+        String vorlage = angenommen ? PROJEKT_ANGENOMMEN_TEMPLATE : PROJEKT_ABGELEHNT_TEMPLATE;
+
+        Map<String, String> werte = Map.of(
+                "studentVorname", textOderStrich(student.getVorname()),
+                "studentName", textOderStrich(student.getName()),
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "fachbereich", textOderStrich(projekt.getFachbereich()),
+                "projektart", textOderStrich(projekt.getProjektart()),
+                "semester", textOderStrich(projekt.getSemester()),
+                "link", link
+        );
+        sende(vorlage, student.getEmail(), werte);
     }
 
     // Map.of(...) erlaubt keine null-Werte. Leere Felder werden deshalb als "-" angezeigt.
