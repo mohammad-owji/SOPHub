@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "./Auth.css";
 
-function Login() {
+// startModus: "login" (Standard) oder "register" (z.B. ueber die Adresse /register)
+function Login({ startModus = "login" }) {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
@@ -15,7 +16,7 @@ function Login() {
             ? redirectParam
             : "/dashboard";
 
-    const [mode, setMode] = useState("login");
+    const [mode, setMode] = useState(startModus);
     const [benutzername, setBenutzername] = useState("");
     const [email, setEmail] = useState("");
     const [name, setName] = useState("");
@@ -127,97 +128,177 @@ function Login() {
         }
     };
 
+    const istLogin = mode === "login";
+
     return (
-        <div className="auth-page">
-            <div className="login-box">
-                <div className="logo-circle">SOP</div>
+        <div className="auth-seite">
 
-                {redirectParam && !message && (
-                    <div className="message success">
-                        Bitte melden Sie sich an, um die Projektanfrage zu öffnen.
-                    </div>
-                )}
+            {/* Linke Seite: Marke und Vorteile (nur auf grossen Bildschirmen) */}
+            <aside className="auth-marke d-none d-lg-flex">
+                <div className="auth-logo">
+                    <span className="auth-logo-zeichen">S</span>
+                    <span>SOP<span className="auth-akzent">hub</span></span>
+                </div>
 
-                {message && <div className={`message ${messageType}`}>{message}</div>}
+                <div>
+                    <h1 className="auth-titel">
+                        Von der Idee bis zum Abschluss –<br />
+                        <span className="auth-akzent">alles an einem Ort.</span>
+                    </h1>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="input-group-auth">
-                        <span className="icon">👤</span>
-                        <input
-                            type="text"
-                            placeholder="Benutzername"
-                            value={benutzername}
-                            onChange={(e) => setBenutzername(e.target.value)}
-                        />
-                    </div>
+                    <p className="auth-untertitel">
+                        Das Projektportal für Softwareprojekte an der Hochschule Bochum.
+                    </p>
 
-                    {mode === "register" && (
-                        <>
-                            <div className="input-group-auth">
-                                <span className="icon">✉</span>
-                                <input
-                                    type="email"
-                                    placeholder="E-Mail (@stud.hs-bochum.de oder @hs-bochum.de)"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                />
-                            </div>
+                    <ul className="auth-vorteile">
+                        <li>
+                            <span className="auth-haken">✓</span>
+                            Projekte anlegen, Teams bilden und den Status im Blick behalten
+                        </li>
+                        <li>
+                            <span className="auth-haken">✓</span>
+                            Betreuer:innen per E-Mail einladen – Annahme mit einem Klick
+                        </li>
+                        <li>
+                            <span className="auth-haken">✓</span>
+                            Lastenheft, Pflichtenheft und Datenbankmodell zentral ablegen
+                        </li>
+                    </ul>
+                </div>
 
-                            <div className="input-group-auth">
-                                <span className="icon">👤</span>
-                                <input
-                                    type="text"
-                                    placeholder="Vorname"
-                                    value={vorname}
-                                    onChange={(e) => setVorname(e.target.value)}
-                                />
-                            </div>
+                <p className="auth-fusszeile">Hochschule Bochum · Softwareprojekt SOPhub</p>
+            </aside>
 
-                            <div className="input-group-auth">
-                                <span className="icon">👤</span>
-                                <input
-                                    type="text"
-                                    placeholder="Name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                />
-                            </div>
-                        </>
-                    )}
+            {/* Rechte Seite: Formular */}
+            <main className="auth-bereich">
+                <div className="auth-karte">
 
-                    <div className="input-group-auth">
-                        <span className="icon">🔒</span>
-                        <input
-                            type="password"
-                            placeholder="Passwort"
-                            value={passwort}
-                            onChange={(e) => setPasswort(e.target.value)}
-                        />
+                    {/* Logo nur auf kleinen Bildschirmen */}
+                    <div className="auth-logo auth-logo-dunkel d-lg-none mb-4">
+                        <span className="auth-logo-zeichen">S</span>
+                        <span>SOP<span className="auth-akzent-dunkel">hub</span></span>
                     </div>
 
-                    {mode === "register" && (
-                        <div className="input-group-auth">
-                            <span className="icon">🔒</span>
-                            <input
-                                type="password"
-                                placeholder="Passwort bestätigen"
-                                value={passwortBestaetigen}
-                                onChange={(e) => setPasswortBestaetigen(e.target.value)}
-                            />
+                    <h2 className="mb-1">{istLogin ? "Willkommen zurück" : "Konto erstellen"}</h2>
+                    <p className="text-muted mb-4">
+                        {istLogin
+                            ? "Melden Sie sich mit Ihrem SOPhub-Konto an."
+                            : "Registrieren Sie sich mit Ihrer Hochschul-E-Mail-Adresse."}
+                    </p>
+
+                    {redirectParam && !message && (
+                        <div className="alert alert-info py-2 small">
+                            Bitte melden Sie sich an, um die Projektanfrage zu öffnen.
                         </div>
                     )}
 
-                    <button className="main-btn" type="submit">
-                        {mode === "login" ? "Anmelden" : "Registrieren"}
-                    </button>
-                </form>
+                    {message && (
+                        <div className={`alert py-2 small ${messageType === "error" ? "alert-danger" : "alert-success"}`}>
+                            {message}
+                        </div>
+                    )}
 
-                <button className="switch-link" type="button" onClick={switchMode}>
-                    {mode === "login"
-                        ? "Noch kein Konto? Registrieren"
-                        : "Bereits registriert? Anmelden"}
-                </button>
-            </div>
+                    <form onSubmit={handleSubmit} noValidate>
+                        <div className="mb-3">
+                            <label className="form-label" htmlFor="auth-benutzername">Benutzername</label>
+                            <input
+                                id="auth-benutzername"
+                                type="text"
+                                className="form-control"
+                                placeholder="z. B. s123456"
+                                autoComplete="username"
+                                value={benutzername}
+                                onChange={(e) => setBenutzername(e.target.value)}
+                            />
+                        </div>
+
+                        {!istLogin && (
+                            <>
+                                <div className="mb-3">
+                                    <label className="form-label" htmlFor="auth-email">E-Mail-Adresse</label>
+                                    <input
+                                        id="auth-email"
+                                        type="email"
+                                        className="form-control"
+                                        placeholder="name@stud.hs-bochum.de"
+                                        autoComplete="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                    />
+                                    <div className="form-text">
+                                        Studierende: @stud.hs-bochum.de · Lehrende: @hs-bochum.de
+                                    </div>
+                                </div>
+
+                                <div className="row">
+                                    <div className="col-6 mb-3">
+                                        <label className="form-label" htmlFor="auth-vorname">Vorname</label>
+                                        <input
+                                            id="auth-vorname"
+                                            type="text"
+                                            className="form-control"
+                                            autoComplete="given-name"
+                                            value={vorname}
+                                            onChange={(e) => setVorname(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div className="col-6 mb-3">
+                                        <label className="form-label" htmlFor="auth-name">Nachname</label>
+                                        <input
+                                            id="auth-name"
+                                            type="text"
+                                            className="form-control"
+                                            autoComplete="family-name"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        <div className="mb-3">
+                            <label className="form-label" htmlFor="auth-passwort">Passwort</label>
+                            <input
+                                id="auth-passwort"
+                                type="password"
+                                className="form-control"
+                                placeholder="••••••••"
+                                autoComplete={istLogin ? "current-password" : "new-password"}
+                                value={passwort}
+                                onChange={(e) => setPasswort(e.target.value)}
+                            />
+                        </div>
+
+                        {!istLogin && (
+                            <div className="mb-3">
+                                <label className="form-label" htmlFor="auth-passwort2">Passwort bestätigen</label>
+                                <input
+                                    id="auth-passwort2"
+                                    type="password"
+                                    className="form-control"
+                                    placeholder="••••••••"
+                                    autoComplete="new-password"
+                                    value={passwortBestaetigen}
+                                    onChange={(e) => setPasswortBestaetigen(e.target.value)}
+                                />
+                            </div>
+                        )}
+
+                        <button className="btn btn-primary w-100 py-2 mt-2" type="submit">
+                            {istLogin ? "Anmelden" : "Registrieren"}
+                        </button>
+                    </form>
+
+                    <p className="text-center text-muted mt-4 mb-0">
+                        {istLogin ? "Noch kein Konto?" : "Bereits registriert?"}{" "}
+                        <button className="auth-wechsel" type="button" onClick={switchMode}>
+                            {istLogin ? "Jetzt registrieren" : "Zur Anmeldung"}
+                        </button>
+                    </p>
+                </div>
+            </main>
         </div>
     );
 }

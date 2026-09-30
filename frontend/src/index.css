@@ -1,57 +1,83 @@
+/* ==========================================================================
+   SOPhub – zentrales Design (Farben, Schrift, Grundbausteine)
+   --------------------------------------------------------------------------
+   Alle Farben stehen EINMAL hier oben. Wer die Farbe aendern will,
+   aendert sie nur hier – alle Seiten passen sich automatisch an.
+   Die Bootstrap-Farben (btn-primary, bg-primary, text-primary, ...)
+   werden weiter unten auf unsere Farben umgestellt.
+   ========================================================================== */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Markenfarben */
+  --sop-navy: #0f2a44;
+  /* Dunkelblau: Navbar, Ueberschriften */
+  --sop-navy-hell: #1b3d61;
+  /* etwas heller, fuer Hover auf Dunkelblau */
+  --sop-tuerkis: #0f766e;
+  /* Hauptfarbe: Buttons, Links, Akzente */
+  --sop-tuerkis-dunkel: #115e59;
+  /* Hover/aktiv */
+  --sop-tuerkis-hell: #14b8a6;
+  /* Leuchtender Akzent (nur Deko, nicht fuer Text) */
+  --sop-tuerkis-flaeche: #e6f4f2;
+  /* sehr helle Flaeche, z.B. Abzeichen-Hintergrund */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Neutrale Farben */
+  --sop-hintergrund: #f5f7fa;
+  /* Seitenhintergrund */
+  --sop-flaeche: #ffffff;
+  /* Karten */
+  --sop-rahmen: #e2e8f0;
+  /* feine Linien */
+  --sop-text: #1e293b;
+  /* normaler Text */
+  --sop-text-leise: #64748b;
+  /* Nebentext */
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Form */
+  --sop-radius: 12px;
+  --sop-radius-klein: 8px;
+  --sop-schatten: 0 1px 2px rgba(15, 42, 68, 0.06), 0 4px 12px rgba(15, 42, 68, 0.06);
+  --sop-schatten-hover: 0 4px 8px rgba(15, 42, 68, 0.08), 0 12px 28px rgba(15, 42, 68, 0.1);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* Schrift */
+  --sop-schrift: "Inter", system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* ---- Bootstrap auf unsere Farben umstellen ---- */
+  --bs-primary: var(--sop-tuerkis);
+  --bs-primary-rgb: 15, 118, 110;
+  --bs-primary-text-emphasis: var(--sop-tuerkis-dunkel);
+  --bs-primary-bg-subtle: var(--sop-tuerkis-flaeche);
+  --bs-primary-border-subtle: #a7d8d2;
+
+  --bs-body-font-family: var(--sop-schrift);
+  --bs-body-font-size: 0.95rem;
+  --bs-body-color: var(--sop-text);
+  --bs-body-color-rgb: 30, 41, 59;
+  /* --bs-body-bg bleibt weiss: Bootstrap nutzt es fuer Listen, Dropdowns, Eingabefelder.
+     Den grauen Seitenhintergrund setzen wir unten direkt am body. */
+  --bs-secondary-color: var(--sop-text-leise);
+  --bs-border-color: var(--sop-rahmen);
+  --bs-border-radius: var(--sop-radius-klein);
+  --bs-border-radius-lg: var(--sop-radius);
+
+  --bs-link-color: var(--sop-tuerkis);
+  --bs-link-color-rgb: 15, 118, 110;
+  --bs-link-hover-color: var(--sop-tuerkis-dunkel);
+  --bs-link-hover-color-rgb: 17, 94, 89;
+
+  --bs-focus-ring-color: rgba(15, 118, 110, 0.25);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
+/* ---------- Grundlayout ---------- */
 
 body {
   margin: 0;
+  font-family: var(--sop-schrift);
+  background: var(--sop-hintergrund);
+  color: var(--sop-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -59,53 +85,217 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--sop-navy);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-size: 2rem;
 }
 
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  font-size: 1.6rem;
 }
 
-p {
-  margin: 0;
+h3 {
+  font-size: 1.3rem;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+h4 {
+  font-size: 1.15rem;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+h5 {
+  font-size: 1.05rem;
+}
+
+.text-muted {
+  color: var(--sop-text-leise) !important;
+}
+
+/* ---------- Karten ---------- */
+
+.card {
+  border: 1px solid var(--sop-rahmen) !important;
+  border-radius: var(--sop-radius);
+  box-shadow: var(--sop-schatten) !important;
+  background: var(--sop-flaeche);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  border-radius: var(--sop-radius-klein);
+  font-weight: 600;
+  padding: 0.5rem 1.1rem;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.btn-sm {
+  padding: 0.3rem 0.75rem;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--sop-tuerkis);
+  --bs-btn-border-color: var(--sop-tuerkis);
+  --bs-btn-hover-bg: var(--sop-tuerkis-dunkel);
+  --bs-btn-hover-border-color: var(--sop-tuerkis-dunkel);
+  --bs-btn-active-bg: var(--sop-tuerkis-dunkel);
+  --bs-btn-active-border-color: var(--sop-tuerkis-dunkel);
+  --bs-btn-disabled-bg: var(--sop-tuerkis);
+  --bs-btn-disabled-border-color: var(--sop-tuerkis);
+  --bs-btn-focus-shadow-rgb: 15, 118, 110;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--sop-tuerkis);
+  --bs-btn-border-color: var(--sop-tuerkis);
+  --bs-btn-hover-bg: var(--sop-tuerkis);
+  --bs-btn-hover-border-color: var(--sop-tuerkis);
+  --bs-btn-active-bg: var(--sop-tuerkis-dunkel);
+  --bs-btn-active-border-color: var(--sop-tuerkis-dunkel);
+  --bs-btn-focus-shadow-rgb: 15, 118, 110;
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--sop-navy);
+  --bs-btn-border-color: var(--sop-rahmen);
+  --bs-btn-hover-color: var(--sop-navy);
+  --bs-btn-hover-bg: #eef2f6;
+  --bs-btn-hover-border-color: #cbd5e1;
+  --bs-btn-active-color: var(--sop-navy);
+  --bs-btn-active-bg: #e2e8f0;
+  --bs-btn-active-border-color: #cbd5e1;
+}
+
+.btn-success {
+  --bs-btn-bg: var(--sop-tuerkis);
+  --bs-btn-border-color: var(--sop-tuerkis);
+  --bs-btn-hover-bg: var(--sop-tuerkis-dunkel);
+  --bs-btn-hover-border-color: var(--sop-tuerkis-dunkel);
+  --bs-btn-active-bg: var(--sop-tuerkis-dunkel);
+  --bs-btn-active-border-color: var(--sop-tuerkis-dunkel);
+}
+
+/* ---------- Formulare ---------- */
+
+.form-label {
+  font-weight: 600;
+  color: var(--sop-navy);
+  font-size: 0.875rem;
+  margin-bottom: 0.35rem;
+}
+
+.form-control,
+.form-select {
+  border-color: #cbd5e1;
+  border-radius: var(--sop-radius-klein);
+  padding: 0.55rem 0.8rem;
+  background-color: #ffffff;
+}
+
+.form-select {
+  padding-right: 2.25rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--sop-tuerkis);
+  box-shadow: 0 0 0 0.2rem rgba(15, 118, 110, 0.18);
+}
+
+.form-text {
+  color: var(--sop-text-leise);
+  font-size: 0.8rem;
+}
+
+/* ---------- Abzeichen (Badges) ---------- */
+
+.badge {
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.4em 0.75em;
+  letter-spacing: 0.01em;
+}
+
+.badge.bg-primary {
+  background-color: var(--sop-tuerkis-flaeche) !important;
+  color: var(--sop-tuerkis-dunkel) !important;
+}
+
+.badge.bg-secondary {
+  background-color: #e8edf3 !important;
+  color: var(--sop-navy) !important;
+}
+
+.badge.bg-info {
+  background-color: #e0f2fe !important;
+  color: #075985 !important;
+}
+
+.badge.bg-success {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.badge.bg-warning {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.badge.bg-danger {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+/* ---------- Listen ---------- */
+
+.list-group {
+  --bs-list-group-border-color: var(--sop-rahmen);
+  --bs-list-group-border-radius: var(--sop-radius-klein);
+  --bs-list-group-active-bg: var(--sop-tuerkis);
+  --bs-list-group-active-border-color: var(--sop-tuerkis);
+  --bs-list-group-action-hover-bg: #f1f5f9;
+}
+
+/* ---------- Hinweise (Alerts) ---------- */
+
+.alert {
+  border-radius: var(--sop-radius-klein);
+  border-width: 1px;
+}
+
+/* ---------- Dropdown-Menue ---------- */
+
+.dropdown-menu {
+  border-radius: var(--sop-radius-klein);
+  border: 1px solid var(--sop-rahmen) !important;
+  box-shadow: var(--sop-schatten-hover) !important;
+  padding: 0.4rem;
+}
+
+.dropdown-item {
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.dropdown-item:active {
+  background-color: var(--sop-tuerkis);
 }

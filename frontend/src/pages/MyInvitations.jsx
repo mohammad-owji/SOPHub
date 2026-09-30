@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import ProjektStatusBadge from "../components/ProjektStatus";
 import { getAuth, getMeineEinladungen } from "../services/api";
-
-// Farbe des Status-Abzeichens (Bootstrap-Klassen)
-const STATUS_FARBE = {
-    OFFEN: "bg-warning text-dark",
-    ANGENOMMEN: "bg-success",
-    ABGELEHNT: "bg-secondary",
-};
+import "./Einladungen.css";
 
 function MyInvitations() {
 
@@ -46,84 +41,93 @@ function MyInvitations() {
         return null;
     }
 
-    const einladungsKarte = (projekt) => (
-        <div className="col-md-6 mb-3" key={projekt.id}>
-            <div className="card shadow-sm border-0 h-100">
-                <div className="card-body p-4 d-flex flex-column">
+    const einladungsKarte = (projekt) => {
+        const istOffen = projekt.status === "OFFEN";
 
-                    <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h5 className="fw-bold mb-0">{projekt.titel}</h5>
-                        <span className={`badge ${STATUS_FARBE[projekt.status] || "bg-light text-dark"}`}>
-                            {projekt.status}
-                        </span>
-                    </div>
+        return (
+            <div className="col-md-6 col-xl-4" key={projekt.id}>
+                <div className={`card einl-karte ${istOffen ? "einl-karte-offen" : ""}`}>
+                    <div className="card-body">
 
-                    <div className="text-muted small mb-3">
-                        Eingeladen von{" "}
-                        {projekt.student
-                            ? `${projekt.student.vorname} ${projekt.student.name}`
-                            : "-"}
-                    </div>
+                        <div className="d-flex justify-content-between align-items-start gap-2">
+                            <h3 className="einl-titel">{projekt.titel}</h3>
+                            <ProjektStatusBadge status={projekt.status} className="flex-shrink-0" />
+                        </div>
 
-                    <div className="mb-1">
-                        <strong>Fachbereich:</strong>
-                        <span className="text-muted ms-2">{projekt.fachbereich || "-"}</span>
-                    </div>
-                    <div className="mb-1">
-                        <strong>Projektart:</strong>
-                        <span className="text-muted ms-2">{projekt.projektart || "-"}</span>
-                    </div>
-                    <div className="mb-3">
-                        <strong>Semester:</strong>
-                        <span className="text-muted ms-2">{projekt.semester || "-"}</span>
-                    </div>
+                        <div className="einl-von">
+                            Eingeladen von{" "}
+                            <strong>
+                                {projekt.student
+                                    ? `${projekt.student.vorname} ${projekt.student.name}`
+                                    : "–"}
+                            </strong>
+                        </div>
 
-                    <div className="mt-auto">
-                        <button
-                            className={`btn ${projekt.status === "OFFEN" ? "btn-primary" : "btn-outline-secondary"}`}
-                            onClick={() => navigate(`/project-invitation/${projekt.id}`)}
-                        >
-                            {projekt.status === "OFFEN" ? "Anfrage öffnen" : "Details ansehen"}
-                        </button>
-                    </div>
+                        <div className="einl-meta">
+                            <span><strong>Fachbereich:</strong> {projekt.fachbereich || "–"}</span>
+                            <span><strong>Projektart:</strong> {projekt.projektart || "–"}</span>
+                            <span><strong>Semester:</strong> {projekt.semester || "–"}</span>
+                        </div>
 
+                        <div className="mt-auto pt-2">
+                            <button
+                                className={`btn w-100 ${istOffen ? "btn-primary" : "btn-outline-secondary"}`}
+                                onClick={() => navigate(`/project-invitation/${projekt.id}`)}
+                            >
+                                {istOffen ? "Anfrage öffnen" : "Details ansehen"}
+                            </button>
+                        </div>
+
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div>
             <Navbar />
 
-            <div className="container mt-5">
+            <div className="container py-4">
 
-                <h2 className="fw-bold mb-4">Meine Einladungen</h2>
+                <div className="mb-4">
+                    <h2 className="mb-1">Meine Einladungen</h2>
+                    <p className="text-muted mb-0">
+                        Projektanfragen von Studierenden, die Sie als Betreuer:in angefragt haben.
+                    </p>
+                </div>
 
-                {laedt && <p className="text-muted">Laden...</p>}
+                {laedt && <p className="text-muted">Einladungen werden geladen...</p>}
 
                 {error && <div className="alert alert-danger">{error}</div>}
 
                 {!laedt && !error && einladungen.length === 0 && (
-                    <div className="alert alert-light border">
-                        Sie haben noch keine Projektanfragen erhalten.
+                    <div className="card">
+                        <div className="einl-leer">
+                            <div className="einl-leer-symbol">✉</div>
+                            <h4>Keine Projektanfragen</h4>
+                            <p className="text-muted mb-0">
+                                Sie haben noch keine Projektanfragen erhalten. Sobald Studierende Sie
+                                als Betreuer:in anfragen, erscheinen die Anfragen hier.
+                            </p>
+                        </div>
                     </div>
                 )}
 
                 {offene.length > 0 && (
-                    <>
-                        <h5 className="mb-3">
-                            Offene Anfragen <span className="badge bg-warning text-dark">{offene.length}</span>
-                        </h5>
-                        <div className="row">{offene.map(einladungsKarte)}</div>
-                    </>
+                    <section className="mb-5">
+                        <h4 className="einl-abschnitt">
+                            Offene Anfragen <span className="einl-zaehler">{offene.length}</span>
+                        </h4>
+                        <div className="row g-4">{offene.map(einladungsKarte)}</div>
+                    </section>
                 )}
 
                 {erledigte.length > 0 && (
-                    <>
-                        <h5 className="mt-4 mb-3">Bereits entschieden</h5>
-                        <div className="row">{erledigte.map(einladungsKarte)}</div>
-                    </>
+                    <section>
+                        <h4 className="einl-abschnitt">Bereits entschieden</h4>
+                        <div className="row g-4">{erledigte.map(einladungsKarte)}</div>
+                    </section>
                 )}
 
             </div>

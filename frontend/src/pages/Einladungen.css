@@ -1,0 +1,191 @@
+/* Einladungsseiten (Meine Einladungen / Projektanfrage) – Farben aus index.css */
+
+.einl-zurueck {
+    display: inline-block;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sop-text-leise);
+    text-decoration: none;
+}
+
+.einl-zurueck:hover {
+    color: var(--sop-tuerkis);
+}
+
+/* Abschnitts-Ueberschrift mit Zaehler */
+.einl-abschnitt {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+}
+
+.einl-zaehler {
+    min-width: 26px;
+    height: 26px;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+}
+
+/* Karten in "Meine Einladungen" */
+.einl-karte {
+    height: 100%;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.einl-karte:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sop-schatten-hover) !important;
+}
+
+.einl-karte-offen {
+    border-left: 4px solid #f59e0b !important;
+}
+
+.einl-karte .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.einl-titel {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.einl-von {
+    font-size: 0.85rem;
+    color: var(--sop-text-leise);
+}
+
+.einl-von strong {
+    color: var(--sop-navy);
+}
+
+.einl-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+    font-size: 0.82rem;
+    color: var(--sop-text-leise);
+}
+
+.einl-meta strong {
+    color: var(--sop-navy);
+    font-weight: 600;
+}
+
+/* Leerer Zustand */
+.einl-leer {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.einl-leer-symbol {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+/* ---------- Seite "Projektanfrage" ---------- */
+
+.anfrage-seite {
+    max-width: 800px;
+}
+
+.anfrage-kopf {
+    padding: 1.75rem 2rem;
+    border-radius: var(--sop-radius) var(--sop-radius) 0 0;
+    color: #cbd5e1;
+    background:
+        radial-gradient(circle at 90% 0%, rgba(20, 184, 166, 0.35), transparent 50%),
+        var(--sop-navy);
+}
+
+.anfrage-kopf-symbol {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: var(--sop-navy);
+    background: var(--sop-tuerkis-hell);
+}
+
+.anfrage-kopf h2 {
+    color: #ffffff;
+    margin: 0;
+}
+
+.anfrage-titel {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.anfrage-infos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0;
+}
+
+@media (max-width: 575.98px) {
+    .anfrage-infos {
+        grid-template-columns: 1fr;
+    }
+}
+
+.anfrage-infos>div {
+    padding: 0.8rem 1rem;
+    border-radius: var(--sop-radius-klein);
+    border: 1px solid var(--sop-rahmen);
+    background: var(--sop-hintergrund);
+}
+
+.anfrage-infos dt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--sop-text-leise);
+    margin-bottom: 0.2rem;
+}
+
+.anfrage-infos dd {
+    margin: 0;
+    font-weight: 600;
+    color: var(--sop-navy);
+}
+
+.anfrage-entscheidung {
+    padding: 1.5rem;
+    border-radius: var(--sop-radius);
+    border: 1px solid #a7d8d2;
+    background: var(--sop-tuerkis-flaeche);
+    text-align: center;
+}
+
+.anfrage-entscheidung p {
+    font-weight: 700;
+    color: var(--sop-navy);
+    margin-bottom: 1rem;
+}

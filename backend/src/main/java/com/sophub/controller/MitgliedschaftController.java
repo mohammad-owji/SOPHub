@@ -34,10 +34,16 @@ public class MitgliedschaftController {
         }
     }
 
+    // Antwort "204 No Content" = erfolgreich geloescht, ohne Inhalt.
+    // (Vorher kam reiner Text zurueck – das Frontend erwartet aber JSON oder eine leere Antwort.)
     @DeleteMapping("/{studentId}")
     public ResponseEntity<?> entfernen(@PathVariable Long projektId, @PathVariable Long studentId) {
-        mitgliedschaftService.entfernen(projektId, studentId);
-        return ResponseEntity.ok("Teammitglied entfernt.");
+        try {
+            mitgliedschaftService.entfernen(projektId, studentId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
     }
 
     record MitgliedInfo(Long studentId, String vorname, String name, String email) {

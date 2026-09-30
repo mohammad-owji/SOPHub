@@ -1,0 +1,76 @@
+/* Seite "Projekt erstellen" – Farben aus index.css */
+
+.cp-seite {
+    max-width: 1000px;
+}
+
+.cp-abschnitt {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+}
+
+.cp-nummer {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #ffffff;
+    background: var(--sop-tuerkis);
+}
+
+/* Teammitglieder-Bereich */
+.cp-team {
+    padding-top: 1rem;
+    border-top: 1px solid var(--sop-rahmen);
+}
+
+.cp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.5rem 0.35rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+.cp-chip-x {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    color: var(--sop-tuerkis-dunkel);
+    background: rgba(15, 118, 110, 0.12);
+    cursor: pointer;
+}
+
+.cp-chip-x:hover {
+    color: #ffffff;
+    background: var(--sop-tuerkis);
+}
+
+/* Dokumente */
+.cp-dokument {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px dashed #cbd5e1;
+    border-radius: var(--sop-radius-klein);
+    background: #fafbfc;
+}
+
+/* Buttons unten */
+.cp-aktionen {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-bottom: 2rem;
+}

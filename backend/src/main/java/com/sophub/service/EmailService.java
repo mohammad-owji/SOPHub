@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,6 +18,9 @@ import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
+// @Async: Alle oeffentlichen Methoden dieser Klasse laufen im Hintergrund.
+// Die Webseite muss so nicht warten, bis der Mailserver (Gmail) geantwortet hat.
+@Async
 @Service
 public class EmailService {
 

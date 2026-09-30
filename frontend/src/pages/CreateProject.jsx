@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import AuswahlFeld from "../components/AuswahlFeld";
 import {
@@ -10,10 +10,12 @@ import {
     getStudenten,
     mitgliedHinzufuegen,
 } from "../services/api";
+import "./CreateProject.css";
 
 const DOKUMENT_TYPEN = [
     { value: "PFLICHTENHEFT", label: "Pflichtenheft" },
     { value: "LASTENHEFT", label: "Lastenheft" },
+    { value: "DATENBANKMODELL", label: "Datenbankmodell" },
     { value: "DOKUMENTATION", label: "Dokumentation" },
     { value: "SONSTIGES", label: "Sonstiges" },
 ];
@@ -264,11 +266,11 @@ function CreateProject() {
         <div>
             <Navbar />
 
-            <div className="container mt-4">
+            <div className="container py-4 cp-seite">
                 <div className="mb-4">
-                    <h2 className="fw-bold text-dark">Projekt erstellen</h2>
-                    <p className="text-muted">
-                        Erstelle eine neue Projektidee oder ein neues SOP-Projekt.
+                    <h2 className="mb-1">Projekt erstellen</h2>
+                    <p className="text-muted mb-0">
+                        Legen Sie eine neue Projektidee an, wählen Sie eine Betreuung und laden Sie erste Dokumente hoch.
                     </p>
                 </div>
 
@@ -278,33 +280,41 @@ function CreateProject() {
                     </div>
                 )}
 
-                <div className="card shadow-sm border-0">
-                    <div className="card-body p-4">
-                        <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit}>
+
+                    {/* 1. Grunddaten */}
+                    <section className="card mb-4">
+                        <div className="card-body">
+                            <h4 className="cp-abschnitt">
+                                <span className="cp-nummer">1</span> Grunddaten
+                            </h4>
+
                             <div className="mb-3">
-                                <label className="form-label">Projekttitel *</label>
+                                <label className="form-label" htmlFor="cp-titel">Projekttitel *</label>
                                 <input
+                                    id="cp-titel"
                                     type="text"
                                     className="form-control"
-                                    placeholder="z. B. SOPhub"
+                                    placeholder="z. B. SmartCampus Parking"
                                     value={titel}
                                     onChange={(e) => setTitel(e.target.value)}
                                 />
                             </div>
 
                             <div className="mb-3">
-                                <label className="form-label">Beschreibung</label>
+                                <label className="form-label" htmlFor="cp-beschreibung">Beschreibung</label>
                                 <textarea
+                                    id="cp-beschreibung"
                                     className="form-control"
                                     rows="4"
-                                    placeholder="Beschreibe kurz, worum es im Projekt geht..."
+                                    placeholder="Worum geht es im Projekt? Welches Problem wird gelöst, welche Technologien sind geplant?"
                                     value={beschreibung}
                                     onChange={(e) => setBeschreibung(e.target.value)}
                                 ></textarea>
                             </div>
 
                             <div className="row">
-                                <div className="col-md-4 mb-3">
+                                <div className="col-md-4 mb-3 mb-md-0">
                                     <label className="form-label">Semester</label>
                                     <AuswahlFeld
                                         value={semester}
@@ -314,7 +324,7 @@ function CreateProject() {
                                     />
                                 </div>
 
-                                <div className="col-md-4 mb-3">
+                                <div className="col-md-4 mb-3 mb-md-0">
                                     <label className="form-label">Fachbereich</label>
                                     <AuswahlFeld
                                         value={fachbereich}
@@ -324,7 +334,7 @@ function CreateProject() {
                                     />
                                 </div>
 
-                                <div className="col-md-4 mb-3">
+                                <div className="col-md-4">
                                     <label className="form-label">Projektart</label>
                                     <AuswahlFeld
                                         value={projektart}
@@ -334,11 +344,21 @@ function CreateProject() {
                                     />
                                 </div>
                             </div>
+                        </div>
+                    </section>
+
+                    {/* 2. Betreuung und Team */}
+                    <section className="card mb-4">
+                        <div className="card-body">
+                            <h4 className="cp-abschnitt">
+                                <span className="cp-nummer">2</span> Betreuung & Team
+                            </h4>
 
                             <div className="row">
                                 <div className="col-md-4 mb-3">
-                                    <label className="form-label">Gruppengröße</label>
+                                    <label className="form-label" htmlFor="cp-gruppe">Gruppengröße</label>
                                     <select
+                                        id="cp-gruppe"
                                         className="form-select"
                                         value={gruppenanzahl}
                                         onChange={(e) => setGruppenanzahl(e.target.value)}
@@ -360,15 +380,18 @@ function CreateProject() {
                                         placeholder="Auswählen oder Namen eintippen"
                                     />
                                     <div className="form-text">
-                                        Leer lassen, wenn noch kein Betreuer feststeht.
+                                        {gefundenerBetreuer
+                                            ? "✓ Die Projektanfrage wird per E-Mail an diese Person gesendet."
+                                            : "Leer lassen, wenn noch kein Betreuer feststeht."}
                                     </div>
                                 </div>
 
                                 {/* Nur sichtbar, wenn der Betreuer nicht in der Liste steht */}
                                 {istNeuerBetreuer && (
                                     <div className="col-md-4 mb-3">
-                                        <label className="form-label">E-Mail des Betreuers *</label>
+                                        <label className="form-label" htmlFor="cp-betreuer-email">E-Mail des Betreuers *</label>
                                         <input
+                                            id="cp-betreuer-email"
                                             type="email"
                                             className="form-control"
                                             placeholder={`vorname.nachname${HOCHSCHUL_DOMAIN}`}
@@ -383,135 +406,148 @@ function CreateProject() {
                                 )}
                             </div>
 
-                            <hr className="my-4" />
-
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                                <h5 className="mb-0">Teammitglieder (optional)</h5>
-                                <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
-                                    {aktuelleGroesse} / {maxGroesse ?? "-"}
-                                </span>
-                            </div>
-
-                            {ausgewaehlteMitglieder.length > 0 && (
-                                <ul className="list-group mb-2">
-                                    {ausgewaehlteMitglieder.map((m) => (
-                                        <li
-                                            className="list-group-item d-flex justify-content-between align-items-center"
-                                            key={m.id}
-                                        >
-                                            {m.vorname} {m.name}
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() => mitgliedAbwaehlen(m.id)}
-                                                title="Entfernen"
-                                            >
-                                                ✕
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-
-                            {maxErreicht ? (
-                                <p className="text-muted mb-4">
-                                    Maximale Gruppengröße erreicht ({aktuelleGroesse}/{maxGroesse}).
-                                </p>
-                            ) : (
-                                <div className="mb-4">
-                                    <input
-                                        type="text"
-                                        className="form-control mb-2"
-                                        placeholder="Studierende suchen..."
-                                        value={teamSuche}
-                                        onChange={(e) => setTeamSuche(e.target.value)}
-                                    />
-
-                                    {gefilterteStudenten.length > 0 && (
-                                        <ul className="list-group">
-                                            {gefilterteStudenten.map((s) => (
-                                                <li
-                                                    className="list-group-item d-flex justify-content-between align-items-center"
-                                                    key={s.id}
-                                                >
-                                                    {s.vorname} {s.name}
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => mitgliedAuswaehlen(s)}
-                                                    >
-                                                        + Hinzufügen
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
+                            <div className="cp-team">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <label className="form-label mb-0" htmlFor="cp-team-suche">
+                                        Teammitglieder (optional)
+                                    </label>
+                                    <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
+                                        {aktuelleGroesse} / {maxGroesse ?? "-"}
+                                    </span>
                                 </div>
-                            )}
 
-                            <hr className="my-4" />
-
-                            <h5 className="mb-3">Dokumente hochladen (optional)</h5>
-                            {dokumente.map((eintrag, index) => (
-                                <div className="row align-items-end" key={index}>
-                                    <div className="col-md-4 mb-3">
-                                        <label className="form-label">Dokumententyp</label>
-                                        <select
-                                            className="form-select"
-                                            value={eintrag.typ}
-                                            onChange={(e) => dokumentAendern(index, "typ", e.target.value)}
-                                        >
-                                            {DOKUMENT_TYPEN.map((typ) => (
-                                                <option key={typ.value} value={typ.value}>
-                                                    {typ.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                {ausgewaehlteMitglieder.length > 0 && (
+                                    <div className="d-flex flex-wrap gap-2 mb-2">
+                                        {ausgewaehlteMitglieder.map((m) => (
+                                            <span className="cp-chip" key={m.id}>
+                                                {m.vorname} {m.name}
+                                                <button
+                                                    type="button"
+                                                    className="cp-chip-x"
+                                                    onClick={() => mitgliedAbwaehlen(m.id)}
+                                                    title="Entfernen"
+                                                    aria-label={`${m.vorname} ${m.name} entfernen`}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </span>
+                                        ))}
                                     </div>
+                                )}
 
-                                    <div className="col-md-7 mb-3">
-                                        <label className="form-label">PDF-Datei</label>
+                                {maxErreicht ? (
+                                    <p className="text-muted small mb-0">
+                                        Maximale Gruppengröße erreicht ({aktuelleGroesse}/{maxGroesse}).
+                                    </p>
+                                ) : (
+                                    <>
                                         <input
-                                            type="file"
+                                            id="cp-team-suche"
+                                            type="text"
                                             className="form-control"
-                                            accept="application/pdf"
-                                            onChange={(e) =>
-                                                dokumentAendern(index, "datei", e.target.files[0] ?? null)
-                                            }
+                                            placeholder="Studierende suchen..."
+                                            value={teamSuche}
+                                            onChange={(e) => setTeamSuche(e.target.value)}
                                         />
-                                    </div>
 
-                                    <div className="col-md-1 mb-3">
-                                        {dokumente.length > 1 && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-danger"
-                                                onClick={() => dokumentEntfernen(index)}
-                                                title="Dokument entfernen"
+                                        {gefilterteStudenten.length > 0 && (
+                                            <ul className="list-group mt-2">
+                                                {gefilterteStudenten.map((s) => (
+                                                    <li
+                                                        className="list-group-item d-flex justify-content-between align-items-center"
+                                                        key={s.id}
+                                                    >
+                                                        {s.vorname} {s.name}
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => mitgliedAuswaehlen(s)}
+                                                        >
+                                                            + Hinzufügen
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 3. Dokumente */}
+                    <section className="card mb-4">
+                        <div className="card-body">
+                            <h4 className="cp-abschnitt">
+                                <span className="cp-nummer">3</span> Dokumente (optional)
+                            </h4>
+
+                            {dokumente.map((eintrag, index) => (
+                                <div className="cp-dokument" key={index}>
+                                    <div className="row g-3 align-items-end">
+                                        <div className="col-md-4">
+                                            <label className="form-label">Dokumententyp</label>
+                                            <select
+                                                className="form-select"
+                                                value={eintrag.typ}
+                                                onChange={(e) => dokumentAendern(index, "typ", e.target.value)}
                                             >
-                                                ✕
-                                            </button>
+                                                {DOKUMENT_TYPEN.map((typ) => (
+                                                    <option key={typ.value} value={typ.value}>
+                                                        {typ.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className={dokumente.length > 1 ? "col-md-7" : "col-md-8"}>
+                                            <label className="form-label">PDF-Datei</label>
+                                            <input
+                                                type="file"
+                                                className="form-control"
+                                                accept="application/pdf"
+                                                onChange={(e) =>
+                                                    dokumentAendern(index, "datei", e.target.files[0] ?? null)
+                                                }
+                                            />
+                                        </div>
+
+                                        {dokumente.length > 1 && (
+                                            <div className="col-md-1 text-md-end">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger"
+                                                    onClick={() => dokumentEntfernen(index)}
+                                                    title="Dokument entfernen"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                             ))}
 
-                            <div className="d-flex align-items-center gap-3 mb-4">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary"
-                                    onClick={dokumentHinzufuegen}
-                                >
-                                    + Weiteres Dokument
-                                </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                onClick={dokumentHinzufuegen}
+                            >
+                                + Weiteres Dokument
+                            </button>
+                        </div>
+                    </section>
 
-                                <button type="submit" className="btn btn-primary" disabled={wirdGespeichert}>
-                                    {wirdGespeichert ? "Wird erstellt..." : "Projekt erstellen"}
-                                </button>
-                            </div>
-                        </form>
+                    {/* Aktionen */}
+                    <div className="cp-aktionen">
+                        <Link to="/my-projects" className="btn btn-outline-secondary">
+                            Abbrechen
+                        </Link>
+                        <button type="submit" className="btn btn-primary px-4" disabled={wirdGespeichert}>
+                            {wirdGespeichert ? "Wird erstellt..." : "Projekt erstellen"}
+                        </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );

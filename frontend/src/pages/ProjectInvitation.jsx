@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import ProjektStatusBadge from "../components/ProjektStatus";
 import {
     acceptProject,
     declineProject,
     getAuth,
     getProjektById
 } from "../services/api";
+import "./Einladungen.css";
 
 
 function ProjectInvitation() {
@@ -82,11 +84,11 @@ function ProjectInvitation() {
         return (
             <>
                 <Navbar />
-                <div className="container mt-5">
+                <div className="container py-4 anfrage-seite">
                     {error ? (
                         <div className="alert alert-danger text-center">{error}</div>
                     ) : (
-                        "Laden..."
+                        <p className="text-muted">Projektanfrage wird geladen...</p>
                     )}
                 </div>
             </>
@@ -103,93 +105,94 @@ function ProjectInvitation() {
         <div>
             <Navbar />
 
-            <div className="container mt-5">
-                <div
-                    className="card shadow-sm border-0 mx-auto"
-                    style={{ maxWidth: "750px" }}
-                >
-                    <div className="card-body p-5">
+            <div className="container py-4 anfrage-seite">
 
-                        <div className="text-center mb-4">
-                            <h2 className="fw-bold">Projektanfrage</h2>
-                            <p className="text-muted">
-                                Sie wurden eingeladen, folgendes Projekt zu betreuen.
-                            </p>
+                <Link to="/einladungen" className="einl-zurueck">← Meine Einladungen</Link>
+
+                <div className="card overflow-hidden">
+
+                    {/* Kopf */}
+                    <div className="anfrage-kopf">
+                        <div className="d-flex align-items-center gap-3">
+                            <span className="anfrage-kopf-symbol">✉</span>
+                            <div>
+                                <h2>Projektanfrage</h2>
+                                <div>Sie wurden eingeladen, folgendes Projekt zu betreuen.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card-body p-4 p-md-5">
+
+                        <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                            <h3 className="anfrage-titel">{projekt.titel}</h3>
+                            <ProjektStatusBadge status={projekt.status} />
                         </div>
 
-                        <hr />
+                        <p className="text-muted mb-4" style={{ whiteSpace: "pre-line" }}>
+                            {projekt.beschreibung || "Keine Beschreibung hinterlegt."}
+                        </p>
 
-                        <h3 className="fw-bold">{projekt.titel}</h3>
-
-                        <p className="text-muted">{projekt.beschreibung}</p>
-
-                        <div className="row mt-4">
-
-                            <div className="col-md-6 mb-3">
-                                <strong>Eingeladen von</strong>
-                                <div>
+                        <dl className="anfrage-infos mb-4">
+                            <div>
+                                <dt>Eingeladen von</dt>
+                                <dd>
                                     {projekt.student
                                         ? `${projekt.student.vorname} ${projekt.student.name}`
-                                        : "-"}
-                                </div>
+                                        : "–"}
+                                </dd>
                             </div>
-
-                            <div className="col-md-6 mb-3">
-                                <strong>Fachbereich</strong>
-                                <div>{projekt.fachbereich}</div>
+                            <div>
+                                <dt>Fachbereich</dt>
+                                <dd>{projekt.fachbereich || "–"}</dd>
                             </div>
-
-                            <div className="col-md-6 mb-3">
-                                <strong>Projektart</strong>
-                                <div>{projekt.projektart}</div>
+                            <div>
+                                <dt>Projektart</dt>
+                                <dd>{projekt.projektart || "–"}</dd>
                             </div>
-
-                            <div className="col-md-6 mb-3">
-                                <strong>Semester</strong>
-                                <div>{projekt.semester}</div>
+                            <div>
+                                <dt>Semester</dt>
+                                <dd>{projekt.semester || "–"}</dd>
                             </div>
-
-                            <div className="col-md-6 mb-3">
-                                <strong>Teamgröße</strong>
-                                <div>{projekt.gruppenanzahl} Personen</div>
+                            <div>
+                                <dt>Teamgröße</dt>
+                                <dd>{projekt.gruppenanzahl != null ? `${projekt.gruppenanzahl} Personen` : "–"}</dd>
                             </div>
-
-                            <div className="col-md-6 mb-3">
-                                <strong>Status</strong>
-                                <div>{projekt.status}</div>
+                            <div>
+                                <dt>Status</dt>
+                                <dd><ProjektStatusBadge status={projekt.status} /></dd>
                             </div>
-
-                        </div>
+                        </dl>
 
 
                         {/* Buttons nur fuer den eingeladenen Betreuer und nur solange das Projekt OFFEN ist */}
                         {projekt.status === "OFFEN" && !decision && istEingeladenerBetreuer && (
-                            <>
-                                <hr />
-                                <p className="text-center fw-semibold">
-                                    Möchten Sie dieses Projekt betreuen?
-                                </p>
-                                <div className="d-flex justify-content-center gap-3">
+                            <div className="anfrage-entscheidung">
+                                <p>Möchten Sie dieses Projekt betreuen?</p>
+                                <div className="d-flex flex-column flex-sm-row justify-content-center gap-3">
                                     <button
-                                        className="btn btn-success px-4"
+                                        className="btn btn-primary px-4"
                                         onClick={handleAccept}
                                     >
-                                        Projekt annehmen
+                                        ✓ Projekt annehmen
                                     </button>
                                     <button
                                         className="btn btn-outline-danger px-4"
                                         onClick={handleDecline}
                                     >
-                                        Projekt ablehnen
+                                        ✕ Projekt ablehnen
                                     </button>
                                 </div>
-                            </>
+                                <div className="form-text mt-3">
+                                    Der/die Student:in wird über Ihre Entscheidung per E-Mail informiert.
+                                </div>
+                            </div>
                         )}
 
 
                         {/* Eingeloggt, aber nicht der eingeladene Betreuer */}
                         {projekt.status === "OFFEN" && !istEingeladenerBetreuer && (
-                            <div className="alert alert-secondary mt-4 text-center">
+                            <div className="alert alert-secondary text-center mb-0">
                                 Diese Projektanfrage ist an eine andere Person gerichtet.
                                 Bitte melden Sie sich mit dem eingeladenen Betreuer-Konto an.
                             </div>
@@ -197,34 +200,40 @@ function ProjectInvitation() {
 
 
                         {decision === "accepted" && (
-                            <div className="alert alert-success mt-4 text-center">
-                                Sie haben das Projekt angenommen.
+                            <div className="alert alert-success text-center mb-0">
+                                <strong>Vielen Dank!</strong> Sie haben das Projekt angenommen.
                             </div>
                         )}
 
                         {decision === "declined" && (
-                            <div className="alert alert-warning mt-4 text-center">
+                            <div className="alert alert-warning text-center mb-0">
                                 Sie haben das Projekt abgelehnt.
                             </div>
                         )}
 
                         {projekt.status === "ANGENOMMEN" && decision !== "accepted" && (
-                            <div className="alert alert-info mt-4 text-center">
+                            <div className="alert alert-info text-center mb-0">
                                 Dieses Projekt wurde bereits angenommen.
                             </div>
                         )}
 
                         {projekt.status === "ABGELEHNT" && decision !== "declined" && (
-                            <div className="alert alert-warning mt-4 text-center">
+                            <div className="alert alert-warning text-center mb-0">
                                 Dieses Projekt wurde bereits abgelehnt.
                             </div>
                         )}
 
                         {error && (
-                            <div className="alert alert-danger mt-4 text-center">
+                            <div className="alert alert-danger text-center mt-3 mb-0">
                                 {error}
                             </div>
                         )}
+
+                        <div className="text-center mt-4">
+                            <Link to={`/projectdetails/${projekt.id}`} className="btn btn-outline-secondary">
+                                Zur Projektseite
+                            </Link>
+                        </div>
 
                     </div>
                 </div>

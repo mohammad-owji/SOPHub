@@ -1,0 +1,198 @@
+/* Projektseite (ProjectDetails) – Farben aus index.css */
+
+.pd-zurueck {
+    display: inline-block;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sop-text-leise);
+    text-decoration: none;
+}
+
+.pd-zurueck:hover {
+    color: var(--sop-tuerkis);
+}
+
+/* Kopfbereich mit tuerkisem Streifen oben */
+.pd-kopf {
+    border-top: 4px solid var(--sop-tuerkis-hell) !important;
+}
+
+.pd-titel {
+    font-size: 1.9rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+
+.pd-meta {
+    color: var(--sop-text-leise);
+}
+
+.pd-beispiel {
+    background: #f1f5f9;
+    color: var(--sop-text-leise);
+    border: 1px dashed #cbd5e1;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.pd-kennzahlen {
+    display: flex;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.pd-kennzahlen>div {
+    min-width: 110px;
+    padding: 0.75rem 1rem;
+    border-radius: var(--sop-radius-klein);
+    background: var(--sop-hintergrund);
+    border: 1px solid var(--sop-rahmen);
+    text-align: center;
+}
+
+.pd-kennzahl {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--sop-navy);
+    line-height: 1.1;
+}
+
+.pd-kennzahl small {
+    font-size: 0.9rem;
+    color: var(--sop-text-leise);
+    font-weight: 600;
+}
+
+.pd-kennzahl-text {
+    font-size: 0.75rem;
+    color: var(--sop-text-leise);
+}
+
+/* Abschnitte */
+.pd-abschnitt {
+    margin-bottom: 0.9rem;
+}
+
+.pd-text {
+    line-height: 1.65;
+    white-space: pre-line;
+}
+
+/* KI-Karte mit leichtem Tuerkis-Verlauf */
+.pd-ki {
+    background: linear-gradient(135deg, #ffffff 60%, var(--sop-tuerkis-flaeche)) !important;
+}
+
+.pd-ki-symbol {
+    color: var(--sop-tuerkis-hell);
+    margin-right: 0.25rem;
+}
+
+/* Dokumente */
+.pd-dokument {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.pd-dokument:hover {
+    border-color: #a7d8d2;
+    background: #fafcfc;
+}
+
+.pd-dokument-symbol {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #b42318;
+    background: #fee4e2;
+}
+
+.pd-dokument-name {
+    font-weight: 600;
+    color: var(--sop-navy);
+    margin-bottom: 0.2rem;
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+/* Projektinformationen als Liste */
+.pd-infos {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.7rem 1rem;
+    align-items: center;
+}
+
+.pd-infos dt {
+    font-weight: 500;
+    color: var(--sop-text-leise);
+    font-size: 0.875rem;
+}
+
+.pd-infos dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 600;
+    color: var(--sop-navy);
+}
+
+/* Team */
+.pd-person {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+}
+
+.pd-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+.pd-avatar-betreuer {
+    color: #ffffff;
+    background: var(--sop-navy);
+}
+
+.pd-avatar-leer {
+    color: var(--sop-text-leise);
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+}
+
+.pd-person-name {
+    font-weight: 600;
+    color: var(--sop-navy);
+    line-height: 1.2;
+}
+
+.pd-person-rolle {
+    font-size: 0.78rem;
+    color: var(--sop-text-leise);
+}
