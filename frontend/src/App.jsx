@@ -4,7 +4,6 @@ import Profile from "./pages/Profile";
 import ProjectDetails from "./pages/ProjectDetails";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectInvitation from "./pages/ProjectInvitation";
@@ -14,7 +13,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* Registrierung = Login-Seite, die direkt im Registrieren-Modus startet */}
+        <Route path="/register" element={<Login startModus="register" />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects scope="alle" />} />
         <Route path="/my-projects" element={<Projects scope="meine" />} />

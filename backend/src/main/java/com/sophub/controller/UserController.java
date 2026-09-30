@@ -12,6 +12,10 @@ import java.util.List;
 @RequestMapping("/sop/api/benutzer")
 public class UserController {
 
+    // Systemkonto, das die Beispielprojekte "besitzt" (siehe BeispielprojekteInitializer).
+    // Es ist kein echter Mensch und soll deshalb nicht als Teammitglied auswaehlbar sein.
+    private static final String SYSTEM_BENUTZERNAME = "sophub.beispielprojekte";
+
     private final UserRepository userRepository;
 
     public UserController(UserRepository userRepository) {
@@ -37,6 +41,8 @@ public class UserController {
     @GetMapping("/studenten")
     public ResponseEntity<List<BenutzerKurzInfo>> studenten() {
         List<BenutzerKurzInfo> ergebnis = userRepository.findByRolle_Name("STUDENT").stream()
+                // Systemkonto der Beispielprojekte nicht in der Studierenden-Liste anzeigen
+                .filter(user -> !SYSTEM_BENUTZERNAME.equals(user.getBenutzername()))
                 .map(BenutzerKurzInfo::new)
                 .toList();
         return ResponseEntity.ok(ergebnis);

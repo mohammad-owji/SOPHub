@@ -1,245 +1,186 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { getAuth, getProfil } from "../services/api";
+import { getAuth, getProfil, getMeineProjekte, getMeineEinladungen } from "../services/api";
+import "./Profile.css";
+
+// Lesbare Bezeichnung fuer die Rolle aus der Datenbank
+const ROLLEN_NAME = {
+    STUDENT: "Student:in",
+    PROFESSOR: "Betreuer:in",
+    ADMIN: "Admin",
+};
+
+// Datum aus dem Backend (z.B. "2026-09-30T01:45:12") lesbar machen
+function formatDatum(wert, mitUhrzeit = false) {
+    if (!wert) return "–";
+    const datum = new Date(wert);
+    if (Number.isNaN(datum.getTime())) return "–";
+    return mitUhrzeit
+        ? datum.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })
+        : datum.toLocaleDateString("de-DE", { dateStyle: "long" });
+}
 
 function Profile() {
-    const [message, setMessage] = useState("");
+    const navigate = useNavigate();
+    const auth = getAuth();
+    const istBetreuer = auth?.rolle === "PROFESSOR";
+
     const [profil, setProfil] = useState(null);
+    const [fehler, setFehler] = useState("");
+    const [anzahlProjekte, setAnzahlProjekte] = useState(null);
+    const [anzahlOffen, setAnzahlOffen] = useState(null);
 
     useEffect(() => {
+        if (!auth?.id) {
+            navigate("/?redirect=/profile");
+            return;
+        }
+
         getProfil()
             .then(setProfil)
-            .catch(() => setProfil(null));
+            .catch(() => setFehler("Profil konnte nicht geladen werden."));
+
+        // Kennzahlen: Studierende -> eigene Projekte, Betreuer -> erhaltene Anfragen
+        if (istBetreuer) {
+            getMeineEinladungen()
+                .then((liste) => {
+                    const alle = liste || [];
+                    setAnzahlProjekte(alle.filter((p) => p.status === "ANGENOMMEN").length);
+                    setAnzahlOffen(alle.filter((p) => p.status === "OFFEN").length);
+                })
+                .catch(() => { });
+        } else {
+            getMeineProjekte(auth.id)
+                .then((liste) => {
+                    const alle = liste || [];
+                    setAnzahlProjekte(alle.length);
+                    setAnzahlOffen(alle.filter((p) => (p.status || "").toUpperCase() === "OFFEN").length);
+                })
+                .catch(() => { });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const auth = getAuth();
+    if (!auth?.id) {
+        return null;
+    }
+
+    // Solange das Profil laedt, Werte aus dem Login verwenden
     const vorname = profil?.vorname || auth?.vorname || "";
     const name = profil?.name || auth?.name || "";
-    const email = profil?.email || "";
     const rolle = profil?.rolle || auth?.rolle || "";
-
-    const handleSave = (e) => {
-        e.preventDefault();
-
-        setMessage(
-            "Profil erfolgreich gespeichert. Backend-Anbindung folgt später."
-        );
-    };
+    const initialen = `${vorname.charAt(0)}${name.charAt(0)}`.toUpperCase() || "?";
 
     return (
         <div>
             <Navbar />
 
-            <div className="container mt-4">
+            <div className="container py-4">
 
                 <div className="mb-4">
-                    <h2 className="fw-bold text-dark">
-                        Mein Profil
-                    </h2>
-
-                    <p className="text-muted">
-                        Verwalte deine persönlichen Daten und Kontoeinstellungen.
-                    </p>
+                    <h2 className="mb-1">Mein Profil</h2>
+                    <p className="text-muted mb-0">Ihre persönlichen Daten und Ihr SOPhub-Konto.</p>
                 </div>
 
-                {message && (
-                    <div className="alert alert-success">
-                        {message}
+                {fehler && <div className="alert alert-warning">{fehler}</div>}
+
+                <div className="row g-4">
+
+                    {/* Linke Spalte: Profilkarte */}
+                    <div className="col-lg-4">
+                        <div className="card profil-kopf text-center">
+                            <div className="profil-banner"></div>
+
+                            <div className="px-4 pb-4">
+                                <div className="profil-avatar">{initialen}</div>
+                                <h3 className="profil-name">{vorname} {name}</h3>
+                                <span className="badge bg-primary">{ROLLEN_NAME[rolle] || rolle}</span>
+                                <div className="text-muted small mt-2">{profil?.email || ""}</div>
+                            </div>
+
+                            <div className="profil-zahlen">
+                                <div>
+                                    <span className="profil-zahl">{anzahlProjekte ?? "–"}</span>
+                                    <span className="profil-zahl-text">
+                                        {istBetreuer ? "Betreute Projekte" : "Eigene Projekte"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="profil-zahl">{anzahlOffen ?? "–"}</span>
+                                    <span className="profil-zahl-text">
+                                        {istBetreuer ? "Offene Anfragen" : "Warten auf Betreuer"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                )}
 
-                <div className="row">
+                    {/* Rechte Spalte: Angaben */}
+                    <div className="col-lg-8 d-flex flex-column gap-4">
 
-                    {/* Linke Seite */}
-                    <div className="col-lg-4 mb-4">
-
-                        <div className="card shadow-sm border-0 text-center">
+                        <div className="card">
                             <div className="card-body">
+                                <h4 className="mb-2">Persönliche Daten</h4>
 
-                                <div
-                                    className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold mx-auto mb-3"
-                                    style={{
-                                        width: "100px",
-                                        height: "100px",
-                                        fontSize: "36px",
-                                    }}
-                                >
-                                    {vorname ? vorname.charAt(0).toUpperCase() : "?"}
-                                </div>
-
-                                <h4>{vorname} {name}</h4>
-
-                                <p className="text-muted">
-                                    {rolle}
-                                </p>
-
-                                <hr />
-
-                                <div className="row text-center">
-
-                                    <div className="col-4">
-                                        <h5 className="text-primary">3</h5>
-                                        <small>Projekte</small>
+                                <dl className="profil-daten">
+                                    <div>
+                                        <dt>Vorname</dt>
+                                        <dd>{vorname || "–"}</dd>
                                     </div>
-
-                                    <div className="col-4">
-                                        <h5 className="text-success">12</h5>
-                                        <small>Ideen</small>
+                                    <div>
+                                        <dt>Nachname</dt>
+                                        <dd>{name || "–"}</dd>
                                     </div>
-
-                                    <div className="col-4">
-                                        <h5 className="text-warning">7</h5>
-                                        <small>Teams</small>
+                                    <div>
+                                        <dt>E-Mail-Adresse</dt>
+                                        <dd>{profil?.email || "–"}</dd>
                                     </div>
-
-                                </div>
-
+                                </dl>
                             </div>
                         </div>
 
-                    </div>
-
-                    {/* Rechte Seite */}
-                    <div className="col-lg-8">
-
-                        <div className="card shadow-sm border-0">
+                        <div className="card">
                             <div className="card-body">
+                                <h4 className="mb-2">Konto</h4>
 
-                                <form onSubmit={handleSave} key={profil ? "loaded" : "loading"}>
-
-                                    <h4 className="mb-4">
-                                        Persönliche Daten
-                                    </h4>
-
-                                    <div className="row">
-
-                                        <div className="col-md-6 mb-3">
-                                            <label className="form-label">
-                                                Vorname
-                                            </label>
-
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                defaultValue={vorname}
-                                            />
-                                        </div>
-
-                                        <div className="col-md-6 mb-3">
-                                            <label className="form-label">
-                                                Nachname
-                                            </label>
-
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                defaultValue={name}
-                                            />
-                                        </div>
-
+                                <dl className="profil-daten">
+                                    <div>
+                                        <dt>Benutzername</dt>
+                                        <dd>{profil?.benutzername || auth?.benutzername || "–"}</dd>
                                     </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">
-                                            E-Mail-Adresse
-                                        </label>
-
-                                        <input
-                                            type="email"
-                                            className="form-control"
-                                            defaultValue={email}
-                                        />
+                                    <div>
+                                        <dt>Rolle</dt>
+                                        <dd>{ROLLEN_NAME[rolle] || rolle || "–"}</dd>
                                     </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">
-                                            Rolle
-                                        </label>
-
-                                        <select
-                                            className="form-select"
-                                            defaultValue={rolle === "PROFESSOR" ? "lehrender" : "student"}
-                                        >
-                                            <option value="student">
-                                                Student:in
-                                            </option>
-
-                                            <option value="lehrender">
-                                                Lehrende:r
-                                            </option>
-
-                                            <option value="admin">
-                                                Administrator
-                                            </option>
-                                        </select>
+                                    <div>
+                                        <dt>Mitglied seit</dt>
+                                        <dd>{formatDatum(profil?.erstelltAm)}</dd>
                                     </div>
-
-                                    <div className="mb-4">
-                                        <label className="form-label">
-                                            Profilbild hochladen
-                                        </label>
-
-                                        <input
-                                            type="file"
-                                            className="form-control"
-                                        />
+                                    <div>
+                                        <dt>Letzte Anmeldung</dt>
+                                        <dd>{formatDatum(profil?.lastLogin, true)}</dd>
                                     </div>
+                                </dl>
 
-                                    <hr className="my-4" />
-
-                                    <h4 className="mb-4">
-                                        Passwort ändern
-                                    </h4>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">
-                                            Aktuelles Passwort
-                                        </label>
-
-                                        <input
-                                            type="password"
-                                            className="form-control"
-                                        />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">
-                                            Neues Passwort
-                                        </label>
-
-                                        <input
-                                            type="password"
-                                            className="form-control"
-                                        />
-                                    </div>
-
-                                    <div className="mb-4">
-                                        <label className="form-label">
-                                            Passwort bestätigen
-                                        </label>
-
-                                        <input
-                                            type="password"
-                                            className="form-control"
-                                        />
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        className="btn btn-primary"
-                                    >
-                                        Änderungen speichern
-                                    </button>
-
-                                </form>
-
+                                <div className="form-text mt-2">
+                                    Die Rolle wird automatisch über die E-Mail-Adresse vergeben
+                                    (@hs-bochum.de = Betreuer:in, sonst Student:in).
+                                </div>
                             </div>
                         </div>
 
+                        <div className="d-flex flex-wrap gap-2">
+                            <Link className="btn btn-primary" to={istBetreuer ? "/einladungen" : "/my-projects"}>
+                                {istBetreuer ? "Zu meinen Einladungen" : "Zu meinen Projekten"}
+                            </Link>
+                            <Link className="btn btn-outline-secondary" to="/dashboard">
+                                Zum Dashboard
+                            </Link>
+                        </div>
                     </div>
 
                 </div>
-
             </div>
         </div>
     );

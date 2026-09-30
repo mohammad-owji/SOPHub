@@ -1,0 +1,4 @@
+{
+    "subject": "Projektanfrage für ${projektTitel}",
+    "body": "Hallo ${betreuerVorname} ${betreuerName},\n\nSie wurden von ${studentVorname} ${studentName} eingeladen, ein Projekt in SOPHub zu betreuen.\n\nProjekt: ${projektTitel}\nFachbereich: ${fachbereich}\nProjektart: ${projektart}\nSemester: ${semester}\n\nÜber den folgenden Link können Sie die Projektanfrage öffnen:\n\n${link}\n\nDort können Sie das Projekt annehmen oder ablehnen.\n\nViele Grüße\nIhr SOPHub-Team"
+}

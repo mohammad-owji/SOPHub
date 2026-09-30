@@ -10,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class AuthService {
@@ -45,28 +46,61 @@ public class AuthService {
         if (name == null || name.isBlank() || vorname == null || vorname.isBlank()) {
             throw new RuntimeException("Name und Vorname dürfen nicht leer sein.");
         }
-        if (userRepository.findByBenutzername(benutzername).isPresent()) {
-            throw new RuntimeException("Dieser Benutzername ist bereits vergeben.");
-        }
-        if (userRepository.findByEmail(email).isPresent()) {
-            throw new RuntimeException("Diese E-Mail-Adresse ist bereits registriert.");
+
+        // E-Mail einheitlich speichern (ohne Leerzeichen, klein geschrieben)
+        String bereinigteEmail = email.trim().toLowerCase();
+
+        Optional<User> vorhandenesKonto = userRepository.findByEmail(bereinigteEmail);
+
+        if (vorhandenesKonto.isPresent()) {
+            User konto = vorhandenesKonto.get();
+
+            // Aktiviertes Konto darf nicht erneut registriert (= uebernommen) werden
+            if (konto.istKontoAktiviert()) {
+                throw new RuntimeException("Diese E-Mail-Adresse ist bereits registriert.");
+            }
+
+            // Vorbereitetes Konto (z.B. Betreuer): jetzt aktivieren
+            pruefeBenutzernameFrei(benutzername, konto.getId());
+
+            konto.setBenutzername(benutzername);
+            konto.setPasswort(passwordEncoder.encode(passwort));
+            konto.setName(name);
+            konto.setVorname(vorname);
+            konto.setKontoAktiviert(true);
+            userRepository.save(konto);
+
+            return "Konto aktiviert! Sie können sich jetzt anmelden.";
         }
 
-        String rollenName = bestimmeRolle(email);
+        // Ganz neues Konto
+        pruefeBenutzernameFrei(benutzername, null);
+
+        String rollenName = bestimmeRolle(bereinigteEmail);
         Rolle rolle = findOrCreateRolle(rollenName);
 
         User user = new User();
         user.setBenutzername(benutzername);
         user.setPasswort(passwordEncoder.encode(passwort));
-        user.setEmail(email);
+        user.setEmail(bereinigteEmail);
         user.setName(name);
         user.setVorname(vorname);
         user.setRolle(rolle);
+        user.setKontoAktiviert(true);
         userRepository.save(user);
 
         emailService.sendeRegistrierungsEmail(user);
 
         return "Registrierung erfolgreich! Du kannst dich jetzt anmelden.";
+    }
+
+    // Benutzername darf nicht von einem ANDEREN Konto belegt sein
+    private void pruefeBenutzernameFrei(String benutzername, Long eigeneId) {
+        userRepository.findByBenutzername(benutzername).ifPresent(anderer -> {
+            if (eigeneId == null || !anderer.getId().equals(eigeneId)) {
+                throw new RuntimeException("Dieser Benutzername ist bereits vergeben.");
+            }
+        });
     }
 
     public LoginResponse login(String benutzername, String passwort) {
@@ -76,6 +110,12 @@ public class AuthService {
 
         User user = userRepository.findByBenutzername(benutzername)
                 .orElseThrow(() -> new RuntimeException("Benutzername oder Passwort falsch."));
+
+        // Vorbereitetes Konto (z.B. Betreuer), das noch nicht aktiviert wurde
+        if (!user.istKontoAktiviert()) {
+            throw new RuntimeException("Ihr Konto ist noch nicht aktiviert. "
+                    + "Bitte registrieren Sie sich einmalig mit Ihrer Hochschul-E-Mail.");
+        }
 
         if (!passwordEncoder.matches(passwort, user.getPasswort())) {
             throw new RuntimeException("Benutzername oder Passwort falsch.");

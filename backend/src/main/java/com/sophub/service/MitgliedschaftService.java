@@ -7,6 +7,7 @@ import com.sophub.repository.ProjektMitgliedRepository;
 import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -66,6 +67,9 @@ public class MitgliedschaftService {
         return gespeichert;
     }
 
+    // @Transactional ist noetig: "deleteBy..." laedt den Eintrag zuerst und loescht ihn dann.
+    // Beides muss in EINER Transaktion passieren, sonst bricht Spring mit einem Fehler ab.
+    @Transactional
     public void entfernen(Long projektId, Long studentId) {
         projektMitgliedRepository.deleteByProjektIdAndStudentId(projektId, studentId);
     }
