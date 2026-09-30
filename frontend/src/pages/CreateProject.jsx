@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import AuswahlFeld from "../components/AuswahlFeld";
 import {
     getAuth,
     createProjekt,
@@ -9,13 +10,73 @@ import {
     getStudenten,
     mitgliedHinzufuegen,
 } from "../services/api";
+import "./CreateProject.css";
 
 const DOKUMENT_TYPEN = [
     { value: "PFLICHTENHEFT", label: "Pflichtenheft" },
     { value: "LASTENHEFT", label: "Lastenheft" },
+    { value: "DATENBANKMODELL", label: "Datenbankmodell" },
     { value: "DOKUMENTATION", label: "Dokumentation" },
     { value: "SONSTIGES", label: "Sonstiges" },
 ];
+
+// Vorschlaege fuer die Auswahlfelder. Man kann auswaehlen, danach suchen
+// (einfach lostippen) oder einen eigenen Wert eintragen, falls etwas fehlt.
+const SEMESTER = [
+    "SoSe 2027",
+    "WiSe 2026/27",
+    "SoSe 2026",
+    "WiSe 2025/26",
+    "SoSe 2025",
+];
+
+// Aktuelles Semester als Vorauswahl
+const STANDARD_SEMESTER = "WiSe 2026/27";
+
+const FACHBEREICHE = [
+    "Informatik",
+    "Wirtschaftsinformatik",
+    "Medieninformatik",
+    "Elektrotechnik",
+    "Mechatronik",
+    "Maschinenbau",
+    "Bauingenieurwesen",
+    "Architektur",
+    "Wirtschaft",
+    "Geodäsie",
+];
+
+const PROJEKTARTEN = [
+    "Softwareprojekt",
+    "Studienprojekt",
+    "Praxisprojekt",
+    "Forschungsprojekt",
+    "Bachelorarbeit",
+    "Masterarbeit",
+    "Seminararbeit",
+    "Hackathon",
+];
+
+const HOCHSCHUL_DOMAIN = "@hs-bochum.de";
+
+// Zerlegt einen eingetippten Namen in Vorname und Nachname.
+// Titel wie "Prof.", "Dr." oder "Dr.-Ing." werden ignoriert.
+// Beispiel: "Prof. Dr. Max Beispiel" -> { vorname: "Max", name: "Beispiel" }
+function teileNamen(text) {
+    const woerter = text
+        .trim()
+        .split(/\s+/)
+        .filter((wort) => !/^(prof|dr|dr\.-ing|rer|nat|ing)\.?$/i.test(wort));
+
+    if (woerter.length < 2) {
+        return null;
+    }
+
+    return {
+        vorname: woerter.slice(0, -1).join(" "),
+        name: woerter[woerter.length - 1],
+    };
+}
 
 function CreateProject() {
     const navigate = useNavigate();
@@ -23,13 +84,14 @@ function CreateProject() {
 
     const [titel, setTitel] = useState("");
     const [beschreibung, setBeschreibung] = useState("");
-    const [semester, setSemester] = useState("SoSe 2026");
+    const [semester, setSemester] = useState(STANDARD_SEMESTER);
     const [fachbereich, setFachbereich] = useState("");
     const [projektart, setProjektart] = useState("");
-    const [sprache, setSprache] = useState("Deutsch");
-    const [schlagwoerter, setSchlagwoerter] = useState("");
     const [gruppenanzahl, setGruppenanzahl] = useState("3");
-    const [betreuerId, setBetreuerId] = useState("");
+    // Betreuer: Text im Auswahlfeld (Name aus der Liste oder selbst eingetippt)
+    const [betreuerText, setBetreuerText] = useState("");
+    // Nur noetig, wenn der Betreuer nicht in der Liste steht
+    const [neuerBetreuerEmail, setNeuerBetreuerEmail] = useState("");
     const [professoren, setProfessoren] = useState([]);
     const [alleStudenten, setAlleStudenten] = useState([]);
     const [teamSuche, setTeamSuche] = useState("");
@@ -50,6 +112,18 @@ function CreateProject() {
             .then((data) => setAlleStudenten(data || []))
             .catch(() => setAlleStudenten([]));
     }, []);
+
+    // Betreuer-Liste fuer das Auswahlfeld, z.B. "Anja Tenberge"
+    const betreuerNamen = professoren.map((prof) => `${prof.vorname} ${prof.name}`);
+
+    // Passt der eingegebene Text genau zu einem Betreuer aus der Liste?
+    const gefundenerBetreuer = professoren.find(
+        (prof) =>
+            `${prof.vorname} ${prof.name}`.toLowerCase() === betreuerText.trim().toLowerCase()
+    );
+
+    // Text eingegeben, aber nicht in der Liste -> neuer Betreuer, E-Mail wird gebraucht
+    const istNeuerBetreuer = betreuerText.trim() !== "" && !gefundenerBetreuer;
 
     const maxGroesse = gruppenanzahl ? Number(gruppenanzahl) : null;
     const aktuelleGroesse = 1 + ausgewaehlteMitglieder.length;
@@ -79,13 +153,12 @@ function CreateProject() {
     const resetForm = () => {
         setTitel("");
         setBeschreibung("");
-        setSemester("SoSe 2026");
+        setSemester(STANDARD_SEMESTER);
         setFachbereich("");
         setProjektart("");
-        setSprache("Deutsch");
-        setSchlagwoerter("");
         setGruppenanzahl("3");
-        setBetreuerId("");
+        setBetreuerText("");
+        setNeuerBetreuerEmail("");
         setTeamSuche("");
         setAusgewaehlteMitglieder([]);
         setDokumente([{ typ: DOKUMENT_TYPEN[0].value, datei: null }]);
@@ -122,6 +195,26 @@ function CreateProject() {
             return;
         }
 
+        // Selbst eingetippter Betreuer: Name und Hochschul-E-Mail pruefen
+        let neuerBetreuer = null;
+        if (istNeuerBetreuer) {
+            const namensTeile = teileNamen(betreuerText);
+            if (!namensTeile) {
+                setMessage("Bitte Vor- und Nachnamen des Betreuers eingeben.");
+                setMessageType("error");
+                return;
+            }
+
+            const email = neuerBetreuerEmail.trim().toLowerCase();
+            if (!email.endsWith(HOCHSCHUL_DOMAIN)) {
+                setMessage(`Bitte die Hochschul-E-Mail des Betreuers angeben (endet auf ${HOCHSCHUL_DOMAIN}).`);
+                setMessageType("error");
+                return;
+            }
+
+            neuerBetreuer = { ...namensTeile, email };
+        }
+
         setWirdGespeichert(true);
         setMessage("");
 
@@ -134,11 +227,10 @@ function CreateProject() {
                     semester,
                     fachbereich,
                     projektart,
-                    sprache,
-                    schlagwoerter,
                     gruppenanzahl: gruppenanzahl ? Number(gruppenanzahl) : null,
                 },
-                betreuerId || null
+                gefundenerBetreuer ? gefundenerBetreuer.id : null,
+                neuerBetreuer
             );
 
             const hochzuladen = dokumente.filter((eintrag) => eintrag.datei);
@@ -174,11 +266,11 @@ function CreateProject() {
         <div>
             <Navbar />
 
-            <div className="container mt-4">
+            <div className="container py-4 cp-seite">
                 <div className="mb-4">
-                    <h2 className="fw-bold text-dark">Projekt erstellen</h2>
-                    <p className="text-muted">
-                        Erstelle eine neue Projektidee oder ein neues SOP-Projekt.
+                    <h2 className="mb-1">Projekt erstellen</h2>
+                    <p className="text-muted mb-0">
+                        Legen Sie eine neue Projektidee an, wählen Sie eine Betreuung und laden Sie erste Dokumente hoch.
                     </p>
                 </div>
 
@@ -188,93 +280,85 @@ function CreateProject() {
                     </div>
                 )}
 
-                <div className="card shadow-sm border-0">
-                    <div className="card-body p-4">
-                        <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit}>
+
+                    {/* 1. Grunddaten */}
+                    <section className="card mb-4">
+                        <div className="card-body">
+                            <h4 className="cp-abschnitt">
+                                <span className="cp-nummer">1</span> Grunddaten
+                            </h4>
+
                             <div className="mb-3">
-                                <label className="form-label">Projekttitel *</label>
+                                <label className="form-label" htmlFor="cp-titel">Projekttitel *</label>
                                 <input
+                                    id="cp-titel"
                                     type="text"
                                     className="form-control"
-                                    placeholder="z. B. SOPhub"
+                                    placeholder="z. B. SmartCampus Parking"
                                     value={titel}
                                     onChange={(e) => setTitel(e.target.value)}
                                 />
                             </div>
 
                             <div className="mb-3">
-                                <label className="form-label">Beschreibung</label>
+                                <label className="form-label" htmlFor="cp-beschreibung">Beschreibung</label>
                                 <textarea
+                                    id="cp-beschreibung"
                                     className="form-control"
                                     rows="4"
-                                    placeholder="Beschreibe kurz, worum es im Projekt geht..."
+                                    placeholder="Worum geht es im Projekt? Welches Problem wird gelöst, welche Technologien sind geplant?"
                                     value={beschreibung}
                                     onChange={(e) => setBeschreibung(e.target.value)}
                                 ></textarea>
                             </div>
 
                             <div className="row">
-                                <div className="col-md-4 mb-3">
+                                <div className="col-md-4 mb-3 mb-md-0">
                                     <label className="form-label">Semester</label>
-                                    <select
-                                        className="form-select"
+                                    <AuswahlFeld
                                         value={semester}
-                                        onChange={(e) => setSemester(e.target.value)}
-                                    >
-                                        <option>SoSe 2026</option>
-                                        <option>WiSe 2025</option>
-                                        <option>SoSe 2025</option>
-                                    </select>
-                                </div>
-
-                                <div className="col-md-4 mb-3">
-                                    <label className="form-label">Fachbereich</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="z. B. Informatik"
-                                        value={fachbereich}
-                                        onChange={(e) => setFachbereich(e.target.value)}
+                                        onChange={setSemester}
+                                        optionen={SEMESTER}
+                                        placeholder="Auswählen oder eintippen"
                                     />
                                 </div>
 
-                                <div className="col-md-4 mb-3">
+                                <div className="col-md-4 mb-3 mb-md-0">
+                                    <label className="form-label">Fachbereich</label>
+                                    <AuswahlFeld
+                                        value={fachbereich}
+                                        onChange={setFachbereich}
+                                        optionen={FACHBEREICHE}
+                                        placeholder="Auswählen oder eintippen"
+                                    />
+                                </div>
+
+                                <div className="col-md-4">
                                     <label className="form-label">Projektart</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="z. B. Abschlussprojekt"
+                                    <AuswahlFeld
                                         value={projektart}
-                                        onChange={(e) => setProjektart(e.target.value)}
+                                        onChange={setProjektart}
+                                        optionen={PROJEKTARTEN}
+                                        placeholder="Auswählen oder eintippen"
                                     />
                                 </div>
                             </div>
+                        </div>
+                    </section>
+
+                    {/* 2. Betreuung und Team */}
+                    <section className="card mb-4">
+                        <div className="card-body">
+                            <h4 className="cp-abschnitt">
+                                <span className="cp-nummer">2</span> Betreuung & Team
+                            </h4>
 
                             <div className="row">
                                 <div className="col-md-4 mb-3">
-                                    <label className="form-label">Sprache</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={sprache}
-                                        onChange={(e) => setSprache(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="col-md-4 mb-3">
-                                    <label className="form-label">Schlagwörter</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="z. B. React, KI, Web"
-                                        value={schlagwoerter}
-                                        onChange={(e) => setSchlagwoerter(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="col-md-4 mb-3">
-                                    <label className="form-label">Gruppengröße</label>
+                                    <label className="form-label" htmlFor="cp-gruppe">Gruppengröße</label>
                                     <select
+                                        id="cp-gruppe"
                                         className="form-select"
                                         value={gruppenanzahl}
                                         onChange={(e) => setGruppenanzahl(e.target.value)}
@@ -286,155 +370,184 @@ function CreateProject() {
                                         <option value="5">5 Personen</option>
                                     </select>
                                 </div>
-                            </div>
 
-                            <div className="row">
                                 <div className="col-md-4 mb-3">
                                     <label className="form-label">Betreuer:in</label>
-                                    <select
-                                        className="form-select"
-                                        value={betreuerId}
-                                        onChange={(e) => setBetreuerId(e.target.value)}
-                                    >
-                                        <option value="">Noch nicht zuweisen</option>
-                                        {professoren.map((prof) => (
-                                            <option key={prof.id} value={prof.id}>
-                                                {prof.vorname} {prof.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <hr className="my-4" />
-
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                                <h5 className="mb-0">Teammitglieder (optional)</h5>
-                                <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
-                                    {aktuelleGroesse} / {maxGroesse ?? "-"}
-                                </span>
-                            </div>
-
-                            {ausgewaehlteMitglieder.length > 0 && (
-                                <ul className="list-group mb-2">
-                                    {ausgewaehlteMitglieder.map((m) => (
-                                        <li
-                                            className="list-group-item d-flex justify-content-between align-items-center"
-                                            key={m.id}
-                                        >
-                                            {m.vorname} {m.name}
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() => mitgliedAbwaehlen(m.id)}
-                                                title="Entfernen"
-                                            >
-                                                ✕
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-
-                            {maxErreicht ? (
-                                <p className="text-muted mb-4">
-                                    Maximale Gruppengröße erreicht ({aktuelleGroesse}/{maxGroesse}).
-                                </p>
-                            ) : (
-                                <div className="mb-4">
-                                    <input
-                                        type="text"
-                                        className="form-control mb-2"
-                                        placeholder="Studierende suchen..."
-                                        value={teamSuche}
-                                        onChange={(e) => setTeamSuche(e.target.value)}
+                                    <AuswahlFeld
+                                        value={betreuerText}
+                                        onChange={setBetreuerText}
+                                        optionen={betreuerNamen}
+                                        placeholder="Auswählen oder Namen eintippen"
                                     />
-
-                                    {gefilterteStudenten.length > 0 && (
-                                        <ul className="list-group">
-                                            {gefilterteStudenten.map((s) => (
-                                                <li
-                                                    className="list-group-item d-flex justify-content-between align-items-center"
-                                                    key={s.id}
-                                                >
-                                                    {s.vorname} {s.name}
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => mitgliedAuswaehlen(s)}
-                                                    >
-                                                        + Hinzufügen
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
+                                    <div className="form-text">
+                                        {gefundenerBetreuer
+                                            ? "✓ Die Projektanfrage wird per E-Mail an diese Person gesendet."
+                                            : "Leer lassen, wenn noch kein Betreuer feststeht."}
+                                    </div>
                                 </div>
-                            )}
 
-                            <hr className="my-4" />
-
-                            <h5 className="mb-3">Dokumente hochladen (optional)</h5>
-                            {dokumente.map((eintrag, index) => (
-                                <div className="row align-items-end" key={index}>
+                                {/* Nur sichtbar, wenn der Betreuer nicht in der Liste steht */}
+                                {istNeuerBetreuer && (
                                     <div className="col-md-4 mb-3">
-                                        <label className="form-label">Dokumententyp</label>
-                                        <select
-                                            className="form-select"
-                                            value={eintrag.typ}
-                                            onChange={(e) => dokumentAendern(index, "typ", e.target.value)}
-                                        >
-                                            {DOKUMENT_TYPEN.map((typ) => (
-                                                <option key={typ.value} value={typ.value}>
-                                                    {typ.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="col-md-7 mb-3">
-                                        <label className="form-label">PDF-Datei</label>
+                                        <label className="form-label" htmlFor="cp-betreuer-email">E-Mail des Betreuers *</label>
                                         <input
-                                            type="file"
+                                            id="cp-betreuer-email"
+                                            type="email"
                                             className="form-control"
-                                            accept="application/pdf"
-                                            onChange={(e) =>
-                                                dokumentAendern(index, "datei", e.target.files[0] ?? null)
-                                            }
+                                            placeholder={`vorname.nachname${HOCHSCHUL_DOMAIN}`}
+                                            value={neuerBetreuerEmail}
+                                            onChange={(e) => setNeuerBetreuerEmail(e.target.value)}
                                         />
+                                        <div className="form-text">
+                                            Nicht in der Liste? Dann wird der Betreuer neu angelegt
+                                            und bekommt die Projektanfrage an diese Adresse.
+                                        </div>
                                     </div>
+                                )}
+                            </div>
 
-                                    <div className="col-md-1 mb-3">
-                                        {dokumente.length > 1 && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-danger"
-                                                onClick={() => dokumentEntfernen(index)}
-                                                title="Dokument entfernen"
+                            <div className="cp-team">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <label className="form-label mb-0" htmlFor="cp-team-suche">
+                                        Teammitglieder (optional)
+                                    </label>
+                                    <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
+                                        {aktuelleGroesse} / {maxGroesse ?? "-"}
+                                    </span>
+                                </div>
+
+                                {ausgewaehlteMitglieder.length > 0 && (
+                                    <div className="d-flex flex-wrap gap-2 mb-2">
+                                        {ausgewaehlteMitglieder.map((m) => (
+                                            <span className="cp-chip" key={m.id}>
+                                                {m.vorname} {m.name}
+                                                <button
+                                                    type="button"
+                                                    className="cp-chip-x"
+                                                    onClick={() => mitgliedAbwaehlen(m.id)}
+                                                    title="Entfernen"
+                                                    aria-label={`${m.vorname} ${m.name} entfernen`}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {maxErreicht ? (
+                                    <p className="text-muted small mb-0">
+                                        Maximale Gruppengröße erreicht ({aktuelleGroesse}/{maxGroesse}).
+                                    </p>
+                                ) : (
+                                    <>
+                                        <input
+                                            id="cp-team-suche"
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="Studierende suchen..."
+                                            value={teamSuche}
+                                            onChange={(e) => setTeamSuche(e.target.value)}
+                                        />
+
+                                        {gefilterteStudenten.length > 0 && (
+                                            <ul className="list-group mt-2">
+                                                {gefilterteStudenten.map((s) => (
+                                                    <li
+                                                        className="list-group-item d-flex justify-content-between align-items-center"
+                                                        key={s.id}
+                                                    >
+                                                        {s.vorname} {s.name}
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => mitgliedAuswaehlen(s)}
+                                                        >
+                                                            + Hinzufügen
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 3. Dokumente */}
+                    <section className="card mb-4">
+                        <div className="card-body">
+                            <h4 className="cp-abschnitt">
+                                <span className="cp-nummer">3</span> Dokumente (optional)
+                            </h4>
+
+                            {dokumente.map((eintrag, index) => (
+                                <div className="cp-dokument" key={index}>
+                                    <div className="row g-3 align-items-end">
+                                        <div className="col-md-4">
+                                            <label className="form-label">Dokumententyp</label>
+                                            <select
+                                                className="form-select"
+                                                value={eintrag.typ}
+                                                onChange={(e) => dokumentAendern(index, "typ", e.target.value)}
                                             >
-                                                ✕
-                                            </button>
+                                                {DOKUMENT_TYPEN.map((typ) => (
+                                                    <option key={typ.value} value={typ.value}>
+                                                        {typ.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className={dokumente.length > 1 ? "col-md-7" : "col-md-8"}>
+                                            <label className="form-label">PDF-Datei</label>
+                                            <input
+                                                type="file"
+                                                className="form-control"
+                                                accept="application/pdf"
+                                                onChange={(e) =>
+                                                    dokumentAendern(index, "datei", e.target.files[0] ?? null)
+                                                }
+                                            />
+                                        </div>
+
+                                        {dokumente.length > 1 && (
+                                            <div className="col-md-1 text-md-end">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger"
+                                                    onClick={() => dokumentEntfernen(index)}
+                                                    title="Dokument entfernen"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                             ))}
 
-                            <div className="d-flex align-items-center gap-3 mb-4">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary"
-                                    onClick={dokumentHinzufuegen}
-                                >
-                                    + Weiteres Dokument
-                                </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                onClick={dokumentHinzufuegen}
+                            >
+                                + Weiteres Dokument
+                            </button>
+                        </div>
+                    </section>
 
-                                <button type="submit" className="btn btn-primary" disabled={wirdGespeichert}>
-                                    {wirdGespeichert ? "Wird erstellt..." : "Projekt erstellen"}
-                                </button>
-                            </div>
-                        </form>
+                    {/* Aktionen */}
+                    <div className="cp-aktionen">
+                        <Link to="/my-projects" className="btn btn-outline-secondary">
+                            Abbrechen
+                        </Link>
+                        <button type="submit" className="btn btn-primary px-4" disabled={wirdGespeichert}>
+                            {wirdGespeichert ? "Wird erstellt..." : "Projekt erstellen"}
+                        </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );

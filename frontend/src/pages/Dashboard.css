@@ -1,0 +1,112 @@
+/* Dashboard von SOPhub – Farben kommen aus index.css (--sop-...) */
+
+/* Begruessungsbereich */
+.dash-hero {
+    border-radius: 16px;
+    padding: 2.25rem 2.5rem;
+    color: #e2e8f0;
+    background:
+        radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.35), transparent 45%),
+        linear-gradient(135deg, var(--sop-navy), var(--sop-navy-hell));
+    box-shadow: var(--sop-schatten);
+}
+
+.dash-hero h1 {
+    color: #ffffff;
+    font-size: 1.9rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+
+.dash-hero p {
+    color: #cbd5e1;
+    margin-bottom: 0;
+}
+
+.dash-hero .btn-light {
+    color: var(--sop-navy);
+    font-weight: 700;
+}
+
+.dash-hero .btn-outline-light:hover {
+    color: var(--sop-navy);
+}
+
+/* Kennzahlen-Kacheln */
+.dash-kachel {
+    display: flex;
+    flex-direction: row;
+    /* .card ist sonst untereinander (column) */
+    align-items: center;
+    gap: 1rem;
+    height: 100%;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+a.dash-kachel:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sop-schatten-hover) !important;
+    color: inherit;
+}
+
+.dash-kachel-symbol {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    background: var(--sop-tuerkis-flaeche);
+    color: var(--sop-tuerkis-dunkel);
+}
+
+.dash-kachel-zahl {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--sop-navy);
+}
+
+.dash-kachel-text {
+    font-size: 0.85rem;
+    color: var(--sop-text-leise);
+}
+
+/* Listen "Letzte Projekte" und "Schnellzugriff" */
+.dash-eintrag {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--sop-rahmen);
+    color: inherit;
+    text-decoration: none;
+}
+
+.dash-eintrag:last-child {
+    border-bottom: none;
+}
+
+a.dash-eintrag:hover .dash-eintrag-titel {
+    color: var(--sop-tuerkis);
+}
+
+.dash-eintrag-titel {
+    font-weight: 600;
+    color: var(--sop-navy);
+}
+
+.dash-eintrag-info {
+    font-size: 0.8rem;
+    color: var(--sop-text-leise);
+}
+
+.dash-pfeil {
+    color: var(--sop-text-leise);
+    font-size: 1.1rem;
+}

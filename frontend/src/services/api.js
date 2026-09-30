@@ -32,12 +32,30 @@ export async function getMeineProjekte(studentId) {
     return parseOrThrow(response);
 }
 
-export async function createProjekt(studentId, daten, betreuerId) {
-    const query = betreuerId ? `?betreuerId=${betreuerId}` : "";
+// Betreuer entweder aus der Liste (betreuerId)
+// oder selbst eingetippt (neuerBetreuer = { vorname, name, email })
+export async function createProjekt(studentId, daten, betreuerId, neuerBetreuer) {
+    const params = new URLSearchParams();
+    if (betreuerId) {
+        params.append("betreuerId", betreuerId);
+    } else if (neuerBetreuer) {
+        params.append("betreuerVorname", neuerBetreuer.vorname);
+        params.append("betreuerName", neuerBetreuer.name);
+        params.append("betreuerEmail", neuerBetreuer.email);
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
     const response = await fetch(`${API_BASE_URL}/projekte/student/${studentId}${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(daten),
+    });
+    return parseOrThrow(response);
+}
+
+// Einladungen des eingeloggten Betreuers (wer eingeloggt ist, erkennt das Backend am Token)
+export async function getMeineEinladungen() {
+    const response = await fetch(`${API_BASE_URL}/projekte/einladungen`, {
+        headers: authHeaders(),
     });
     return parseOrThrow(response);
 }
@@ -123,4 +141,22 @@ export async function downloadDokument(dokumentId, dateiName) {
     link.download = dateiName || "dokument";
     link.click();
     URL.revokeObjectURL(url);
+}
+
+// Projekt annehmen
+export async function acceptProject(projectId, betreuerId) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${projectId}/annehmen/${betreuerId}`, {
+        method: "PUT",
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
+// Projekt ablehnen
+export async function declineProject(projectId, betreuerId) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${projectId}/ablehnen/${betreuerId}`, {
+        method: "PUT",
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
 }

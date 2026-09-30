@@ -44,17 +44,34 @@ public class ProjektController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // Einladungen des eingeloggten Betreuers.
+    // Wer eingeloggt ist, steht im JWT-Token -> niemand kann fremde Einladungen abrufen.
+    @GetMapping("/einladungen")
+    public ResponseEntity<?> meineEinladungen(Authentication authentication) {
+        try {
+            return ResponseEntity.ok(projektService.einladungenFuer(authentication.getName()));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<Projekt>> projektByStudent(@PathVariable Long studentId) {
         return ResponseEntity.ok(projektService.projektByStudent(studentId));
     }
 
+    // Betreuer entweder per betreuerId (aus der Liste gewaehlt)
+    // oder per betreuerVorname + betreuerName + betreuerEmail (selbst eingetippt)
     @PostMapping("/student/{studentId}")
     public ResponseEntity<?> erstellen(@PathVariable Long studentId,
                                         @RequestParam(required = false) Long betreuerId,
+                                        @RequestParam(required = false) String betreuerVorname,
+                                        @RequestParam(required = false) String betreuerName,
+                                        @RequestParam(required = false) String betreuerEmail,
                                         @RequestBody Projekt projekt) {
         try {
-            return ResponseEntity.ok(projektService.erstellen(projekt, studentId, betreuerId));
+            return ResponseEntity.ok(projektService.erstellen(
+                    projekt, studentId, betreuerId, betreuerVorname, betreuerName, betreuerEmail));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }
@@ -64,6 +81,26 @@ public class ProjektController {
     public ResponseEntity<?> aktualisieren(@PathVariable Long id, @RequestBody Projekt projekt) {
         try {
             return ResponseEntity.ok(projektService.aktualisieren(id, projekt));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
+    // Projekt annehmen
+    @PutMapping("/{projektId}/annehmen/{betreuerId}")
+    public ResponseEntity<?> annehmen(@PathVariable Long projektId, @PathVariable Long betreuerId) {
+        try {
+            return ResponseEntity.ok(projektService.annehmen(projektId, betreuerId));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
+    // Projekt ablehnen
+    @PutMapping("/{projektId}/ablehnen/{betreuerId}")
+    public ResponseEntity<?> ablehnen(@PathVariable Long projektId, @PathVariable Long betreuerId) {
+        try {
+            return ResponseEntity.ok(projektService.ablehnen(projektId, betreuerId));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }
@@ -88,7 +125,6 @@ public class ProjektController {
             return ResponseEntity.status(503).body(e.getMessage());
         }
     }
-
     /**
      * KI-Übersicht des Projekts: skriptbasierte Projektzusammenfassung und
      * kategorisierte Stichwörter aus allen Dokumenten des Projekts.

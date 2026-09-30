@@ -1,5 +1,23 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { getAuth } from "../services/api";
+import "./Navbar.css";
+
+// Lesbare Bezeichnung fuer die Rolle aus der Datenbank
+const ROLLEN_NAME = {
+    STUDENT: "Student:in",
+    PROFESSOR: "Betreuer:in",
+    ADMIN: "Admin",
+};
+
+// Hauptmenue (Reihenfolge = Reihenfolge in der Navbar)
+const MENUE = [
+    { ziel: "/dashboard", text: "Dashboard" },
+    { ziel: "/my-projects", text: "Meine Projekte" },
+    { ziel: "/projects", text: "Alle Projekte" },
+    { ziel: "/einladungen", text: "Einladungen" },
+    { ziel: "/ideas", text: "Projektideen" },
+    { ziel: "/ai", text: "KI" },
+];
 
 function Navbar() {
     const navigate = useNavigate();
@@ -10,91 +28,99 @@ function Navbar() {
         navigate("/");
     };
 
-    const navLinkClass = ({ isActive }) =>
-        isActive ? "nav-link active fw-semibold" : "nav-link";
+    const initiale = auth?.vorname ? auth.vorname.charAt(0).toUpperCase() : "?";
+    const rolle = ROLLEN_NAME[auth?.rolle] || auth?.rolle || "";
 
     return (
-        <nav
-            className="navbar navbar-expand navbar-dark shadow-sm"
-            style={{ backgroundColor: "#00a7ef" }}
-        >
+        <nav className="navbar navbar-expand-lg navbar-dark sop-navbar sticky-top">
             <div className="container-fluid px-4">
-                <Link className="navbar-brand fw-bold fs-4" to="/dashboard">
-                    SOPhub
+
+                {/* Logo */}
+                <Link className="navbar-brand sop-brand" to="/dashboard">
+                    <span className="sop-brand-logo">S</span>
+                    <span>SOP<span className="sop-brand-akzent">hub</span></span>
                 </Link>
 
-                <div className="navbar-nav mx-auto">
-                    <NavLink className={navLinkClass} to="/dashboard">
-                        Dashboard
-                    </NavLink>
+                {/* Menue-Knopf fuer kleine Bildschirme (Handy) */}
+                <button
+                    className="navbar-toggler border-0"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#sopHauptmenue"
+                    aria-controls="sopHauptmenue"
+                    aria-expanded="false"
+                    aria-label="Menü öffnen"
+                >
+                    <span className="navbar-toggler-icon"></span>
+                </button>
 
-                    <NavLink className={navLinkClass} to="/my-projects">
-                        Meine Projekte
-                    </NavLink>
-
-                    <NavLink className={navLinkClass} to="/projects">
-                        Alle Projekte
-                    </NavLink>
-
-                    <NavLink className={navLinkClass} to="/ideas">
-                        Projektideen
-                    </NavLink>
-
-                    <NavLink className={navLinkClass} to="/create-project">
-                        Projekt erstellen
-                    </NavLink>
-
-                    <NavLink className={navLinkClass} to="/ai">
-                        KI
-                    </NavLink>
-                </div>
-
-                <div className="dropdown">
-                    <button
-                        className="btn text-white dropdown-toggle d-flex align-items-center gap-2 border-0"
-                        type="button"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                    >
-                        <div
-                            className="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center fw-bold"
-                            style={{ width: "38px", height: "38px" }}
-                        >
-                            {auth?.vorname ? auth.vorname.charAt(0).toUpperCase() : "?"}
-                        </div>
-
-                        <div className="text-start d-none d-md-block">
-                            <div className="fw-semibold">{auth?.vorname || "Gast"}</div>
-                            <small className="text-white-50">{auth?.rolle || ""}</small>
-                        </div>
-                    </button>
-
-                    <ul className="dropdown-menu dropdown-menu-end shadow border-0">
-                        <li>
-                            <Link className="dropdown-item" to="/profile">
-                                Profil bearbeiten
-                            </Link>
-                        </li>
-
-                        <li>
-                            <Link className="dropdown-item" to="/my-projects">
-                                Meine Projekte
-                            </Link>
-                        </li>
-
-                        <li>
-                            <hr className="dropdown-divider" />
-                        </li>
-
-                        <li>
-                            <button
-                                className="dropdown-item text-danger"
-                                onClick={handleLogout}
+                <div className="collapse navbar-collapse" id="sopHauptmenue">
+                    <div className="navbar-nav mx-auto sop-nav-links">
+                        {MENUE.map((eintrag) => (
+                            <NavLink
+                                key={eintrag.ziel}
+                                className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+                                to={eintrag.ziel}
                             >
-                                Logout
+                                {eintrag.text}
+                            </NavLink>
+                        ))}
+                    </div>
+
+                    <div className="d-flex align-items-center gap-3">
+                        <Link className="btn btn-sm sop-btn-neu" to="/create-project">
+                            + Projekt erstellen
+                        </Link>
+
+                        <div className="dropdown">
+                            <button
+                                className="btn sop-benutzer dropdown-toggle d-flex align-items-center gap-2"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                            >
+                                <span className="sop-avatar">{initiale}</span>
+
+                                <span className="text-start d-none d-md-block lh-sm">
+                                    <span className="d-block fw-semibold">{auth?.vorname || "Gast"}</span>
+                                    <small className="sop-rolle">{rolle}</small>
+                                </span>
                             </button>
-                        </li>
-                    </ul>
+
+                            <ul className="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <Link className="dropdown-item" to="/profile">
+                                        Profil bearbeiten
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link className="dropdown-item" to="/my-projects">
+                                        Meine Projekte
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link className="dropdown-item" to="/einladungen">
+                                        Einladungen
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <hr className="dropdown-divider" />
+                                </li>
+
+                                <li>
+                                    <button
+                                        className="dropdown-item text-danger"
+                                        onClick={handleLogout}
+                                    >
+                                        Logout
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </nav>

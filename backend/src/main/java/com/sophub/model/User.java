@@ -41,6 +41,12 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
+    // false = Konto wurde automatisch vorbereitet (z.B. Betreuer), Passwort noch nicht selbst gesetzt.
+    // true  = Konto ist aktiviert (selbst registriert).
+    // null  = aeltere Konten von vor dieser Spalte -> gelten als aktiviert.
+    @Column(name = "konto_aktiviert")
+    private Boolean kontoAktiviert;
+
     @PrePersist
     protected void onCreate() {
         erstelltAm = LocalDateTime.now();
@@ -63,6 +69,10 @@ public class User {
     public LocalDateTime getErstelltAm() { return erstelltAm; }
     public LocalDateTime getBearbeitetAm() { return bearbeitetAm; }
     public LocalDateTime getLastLogin() { return lastLogin; }
+    public Boolean getKontoAktiviert() { return kontoAktiviert; }
+
+    // Hilfsmethode: null (alte Konten) zaehlt als aktiviert
+    public boolean istKontoAktiviert() { return kontoAktiviert == null || kontoAktiviert; }
 
     // setter
     public void setId(Long id) { this.id = id; }
@@ -75,4 +85,5 @@ public class User {
     public void setErstelltAm(LocalDateTime erstelltAm) { this.erstelltAm = erstelltAm; }
     public void setBearbeitetAm(LocalDateTime bearbeitetAm) { this.bearbeitetAm = bearbeitetAm; }
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
+    public void setKontoAktiviert(Boolean kontoAktiviert) { this.kontoAktiviert = kontoAktiviert; }
 }

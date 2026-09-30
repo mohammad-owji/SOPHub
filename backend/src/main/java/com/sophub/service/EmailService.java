@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,6 +18,9 @@ import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
+// @Async: Alle oeffentlichen Methoden dieser Klasse laufen im Hintergrund.
+// Die Webseite muss so nicht warten, bis der Mailserver (Gmail) geantwortet hat.
+@Async
 @Service
 public class EmailService {
 
@@ -24,6 +28,9 @@ public class EmailService {
     private static final String REGISTRIERUNGS_TEMPLATE = "email-templates/registrierung.json";
     private static final String BETREUER_ZUWEISUNGS_TEMPLATE = "email-templates/betreuer-zuweisung.json";
     private static final String TEAM_HINZUGEFUEGT_TEMPLATE = "email-templates/team-hinzugefuegt.json";
+    private static final String PROJEKT_ANFRAGE_TEMPLATE = "email-templates/projekt-anfrage.json";
+    private static final String PROJEKT_ANGENOMMEN_TEMPLATE = "email-templates/projekt-angenommen.json";
+    private static final String PROJEKT_ABGELEHNT_TEMPLATE = "email-templates/projekt-abgelehnt.json";
     private static final DateTimeFormatter DATUM_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final JavaMailSender mailSender;
@@ -31,6 +38,17 @@ public class EmailService {
 
     @Value("${app.mail.from}")
     private String absenderAdresse;
+
+    // Adresse des React-Frontends. Daraus wird der Link in der Projektanfrage-Mail gebaut.
+    // Steht nichts in application.properties, wird http://localhost:5173 verwendet.
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
+    // Test-Umleitung: Ist diese Adresse gesetzt, gehen ALLE Mails an sie statt an den echten Empfaenger.
+    // So bekommen echte Personen (z.B. Betreuer) beim Entwickeln keine Testmails.
+    // Leer lassen (oder Zeile weglassen), damit Mails an die echten Empfaenger gehen.
+    @Value("${app.mail.test-empfaenger:}")
+    private String testEmpfaenger;
 
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
@@ -72,17 +90,78 @@ public class EmailService {
         sende(TEAM_HINZUGEFUEGT_TEMPLATE, mitglied.getEmail(), werte);
     }
 
+    /**
+     * Schickt dem eingeladenen Betreuer eine Projektanfrage mit Link zur Einladungsseite.
+     * Der Link fuehrt direkt auf die React-Route /project-invitation/{projektId}.
+     */
+    public void sendeProjektAnfrageEmail(User betreuer, User student, Projekt projekt) {
+        String link = frontendUrl + "/project-invitation/" + projekt.getId();
+
+        Map<String, String> werte = Map.of(
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "studentVorname", textOderStrich(student.getVorname()),
+                "studentName", textOderStrich(student.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "fachbereich", textOderStrich(projekt.getFachbereich()),
+                "projektart", textOderStrich(projekt.getProjektart()),
+                "semester", textOderStrich(projekt.getSemester()),
+                "link", link
+        );
+        sende(PROJEKT_ANFRAGE_TEMPLATE, betreuer.getEmail(), werte);
+    }
+
+    /**
+     * Informiert den Studenten, ob der eingeladene Betreuer das Projekt angenommen oder abgelehnt hat.
+     * Der Link fuehrt auf die Projektdetails: /projectdetails/{projektId}.
+     */
+    public void sendeProjektEntscheidungEmail(User student, User betreuer, Projekt projekt, boolean angenommen) {
+        String link = frontendUrl + "/projectdetails/" + projekt.getId();
+        String vorlage = angenommen ? PROJEKT_ANGENOMMEN_TEMPLATE : PROJEKT_ABGELEHNT_TEMPLATE;
+
+        Map<String, String> werte = Map.of(
+                "studentVorname", textOderStrich(student.getVorname()),
+                "studentName", textOderStrich(student.getName()),
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "fachbereich", textOderStrich(projekt.getFachbereich()),
+                "projektart", textOderStrich(projekt.getProjektart()),
+                "semester", textOderStrich(projekt.getSemester()),
+                "link", link
+        );
+        sende(vorlage, student.getEmail(), werte);
+    }
+
+    // Map.of(...) erlaubt keine null-Werte. Leere Felder werden deshalb als "-" angezeigt.
+    private String textOderStrich(String text) {
+        return (text == null || text.isBlank()) ? "-" : text;
+    }
+
     private void sende(String templatePfad, String empfaenger, Map<String, String> werte) {
         try {
             EmailTemplate template = ladeTemplate(templatePfad);
 
+            String betreff = fuelleTemplate(template.getSubject(), werte);
+            String text = fuelleTemplate(template.getBody(), werte);
+            String tatsaechlicherEmpfaenger = empfaenger;
+
+            // Test-Umleitung aktiv? Dann an die Testadresse schicken und den echten Empfaenger im Text vermerken.
+            if (testEmpfaenger != null && !testEmpfaenger.isBlank()) {
+                tatsaechlicherEmpfaenger = testEmpfaenger;
+                betreff = "[TEST] " + betreff;
+                text = "[TEST] Eigentlich an: " + empfaenger + "\n\n" + text;
+            }
+
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(absenderAdresse);
-            message.setTo(empfaenger);
-            message.setSubject(fuelleTemplate(template.getSubject(), werte));
-            message.setText(fuelleTemplate(template.getBody(), werte));
+            message.setTo(tatsaechlicherEmpfaenger);
+            message.setSubject(betreff);
+            message.setText(text);
 
             mailSender.send(message);
+            log.info("E-Mail ({}) gesendet an {} (eigentlicher Empfaenger: {})",
+                    templatePfad, tatsaechlicherEmpfaenger, empfaenger);
         } catch (Exception e) {
             log.warn("E-Mail ({}) konnte nicht an {} gesendet werden: {}", templatePfad, empfaenger, e.getMessage());
         }
