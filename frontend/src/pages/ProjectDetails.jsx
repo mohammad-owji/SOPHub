@@ -12,7 +12,7 @@ import {
     mitgliedHinzufuegen,
     mitgliedEntfernen,
 } from "../services/api";
-import { getKiUebersicht } from "../services/aiService";
+import { generiereProjektZusammenfassung } from "../services/aiService";
 import "./ProjectDetails.css";
 
 // Systemkonto der Beispielprojekte (siehe BeispielprojekteInitializer im Backend)
@@ -30,44 +30,6 @@ const DOKUMENT_TYP_LABEL = {
     SONSTIGES: "Sonstiges",
 };
 
-const KATEGORIE_LABEL = {
-    themenbereich: "Themenbereich",
-    fachliche_kernfunktionen: "Fachliche Kernfunktionen",
-    technologien: "Technologien",
-    architektur_muster: "Architektur & Muster",
-    vorgehensmodell: "Vorgehensmodell",
-    verfuegbare_dokumente: "Verfügbare Dokumente",
-    zielgruppen_rollen: "Zielgruppen & Rollen",
-    nichtfunktionale_schwerpunkte: "Nichtfunktionale Schwerpunkte",
-    externe_systeme_integrationen: "Externe Systeme",
-    erforderliche_kompetenzen: "Erforderliche Kompetenzen",
-    projektstatus_reifegrad: "Projektstatus",
-};
-
-const TECH_LABEL = {
-    sprachen: "Sprachen",
-    frontend: "Frontend",
-    backend: "Backend",
-    datenbank: "Datenbank",
-    schnittstellen_apis: "Schnittstellen & APIs",
-    sicherheit_auth: "Sicherheit & Auth",
-    testwerkzeuge: "Testwerkzeuge",
-    devops_infrastruktur: "DevOps & Infrastruktur",
-    modellierung_diagramme: "Modellierung & Diagramme",
-    dokumentation_werkzeuge: "Dokumentation",
-    ki_ml: "KI / ML",
-    sonstige: "Sonstige",
-};
-
-function StichwortBadges({ items }) {
-    if (!Array.isArray(items) || items.length === 0) return null;
-    return items.map((it, i) => (
-        <span className="badge bg-primary me-1 mb-1" key={i}>
-            {typeof it === "string" ? it : it.wert}
-        </span>
-    ));
-}
-
 function ProjectDetails() {
     const { id } = useParams();
 
@@ -80,7 +42,6 @@ function ProjectDetails() {
     const [alleStudenten, setAlleStudenten] = useState([]);
     const [suche, setSuche] = useState("");
     const [mitgliedFehler, setMitgliedFehler] = useState("");
-    const [kiUebersicht, setKiUebersicht] = useState(null);
     const [kiLaedt, setKiLaedt] = useState(false);
     const [kiFehler, setKiFehler] = useState("");
 
@@ -107,16 +68,6 @@ function ProjectDetails() {
         getStudenten()
             .then((data) => setAlleStudenten(data || []))
             .catch(() => setAlleStudenten([]));
-
-        // KI-Übersicht automatisch beim Öffnen laden (beim ersten Mal wird sie erzeugt,
-        // danach kommt sie gecacht sofort zurück).
-        setKiFehler("");
-        setKiUebersicht(null);
-        setKiLaedt(true);
-        getKiUebersicht(id)
-            .then(setKiUebersicht)
-            .catch((e) => setKiFehler(e.message || "KI-Übersicht konnte nicht geladen werden."))
-            .finally(() => setKiLaedt(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
@@ -155,21 +106,22 @@ function ProjectDetails() {
         }
     };
 
-    const handleKiNeuErzeugen = async () => {
+    const handleZusammenfassungErzeugen = async () => {
         setKiLaedt(true);
         setKiFehler("");
         try {
-            setKiUebersicht(await getKiUebersicht(id, true));
+            const antwort = await generiereProjektZusammenfassung(id);
+            setProjekt((prev) => ({ ...prev, kiZusammenfassung: antwort.antwort }));
         } catch (error) {
-            setKiFehler(error.message || "KI-Übersicht konnte nicht neu erzeugt werden.");
+            setKiFehler(error.message || "Zusammenfassung konnte nicht erzeugt werden.");
         } finally {
             setKiLaedt(false);
         }
     };
 
-    const zf = kiUebersicht?.projektZusammenfassung;
-    const kategorien = kiUebersicht?.stichwoerter?.kategorien;
-    const schwierigkeit = kiUebersicht?.stichwoerter?.schwierigkeitsanalyse?.stufe;
+    const schlagwoerterListe = projekt?.schlagwoerter
+        ? projekt.schlagwoerter.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
 
     // Einfacher Rahmen fuer die Sonderfaelle (kein Projekt gewaehlt, Fehler, Laden)
     const Hinweis = ({ art, text }) => (
@@ -202,9 +154,6 @@ function ProjectDetails() {
     }
 
     const istBeispiel = projekt.student?.benutzername === BEISPIEL_KONTO;
-    const schlagwoerterListe = projekt.schlagwoerter
-        ? projekt.schlagwoerter.split(",").map((wort) => wort.trim()).filter(Boolean)
-        : [];
     const hatSchlagwoerterOderTags = schlagwoerterListe.length > 0 || projekt.tags?.length > 0;
 
     return (
@@ -272,92 +221,28 @@ function ProjectDetails() {
 
                                     <button
                                         className="btn btn-sm btn-outline-primary"
-                                        onClick={handleKiNeuErzeugen}
+                                        onClick={handleZusammenfassungErzeugen}
                                         disabled={kiLaedt}
                                     >
-                                        {kiLaedt ? "Wird verarbeitet..." : "Neu erzeugen"}
+                                        {kiLaedt
+                                            ? "Wird verarbeitet..."
+                                            : projekt.kiZusammenfassung
+                                                ? "Neu erzeugen"
+                                                : "Zusammenfassung erzeugen"}
                                     </button>
                                 </div>
 
-                                {kiLaedt ? (
-                                    <p className="text-muted mb-0">Die KI wertet die Projektdokumente aus...</p>
-                                ) : kiFehler ? (
-                                    <div className="alert alert-warning py-2 mb-0">{kiFehler}</div>
-                                ) : zf ? (
-                                    <>
-                                        {zf.kurzfassung && <p className="fw-semibold">{zf.kurzfassung}</p>}
-                                        {zf.einleitung && <p className="pd-text">{zf.einleitung}</p>}
-                                        {Array.isArray(zf.hauptteil) && zf.hauptteil.map((abschnitt, index) => (
-                                            <div className="mb-3" key={index}>
-                                                <h6 className="fw-bold mb-1">{abschnitt.titel}</h6>
-                                                {abschnitt.inhalt && <p className="pd-text mb-1">{abschnitt.inhalt}</p>}
-                                                {Array.isArray(abschnitt.stichpunkte) && abschnitt.stichpunkte.length > 0 && (
-                                                    <ul className="mb-0">
-                                                        {abschnitt.stichpunkte.map((punkt, punktIndex) => (
-                                                            <li key={punktIndex}>{punkt}</li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {zf.schluss?.fazit && <p className="pd-text mb-0">{zf.schluss.fazit}</p>}
-                                    </>
-                                ) : (
-                                    <p className="text-muted mb-0">Noch keine Zusammenfassung verfügbar.</p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="card">
-                            <div className="card-body">
-                                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                                    <h4 className="pd-abschnitt mb-0">Stichwörter (KI)</h4>
-                                    {schwierigkeit && (
-                                        <span className="badge bg-dark">Schwierigkeit: {schwierigkeit}</span>
-                                    )}
-                                </div>
+                                {kiFehler && <div className="alert alert-warning py-2 mb-2">{kiFehler}</div>}
 
                                 {kiLaedt ? (
-                                    <p className="text-muted mb-0">Wird erstellt...</p>
-                                ) : kategorien ? (
-                                    Object.entries(kategorien).map(([key, value]) => {
-                                        if (key === "technologien" && value && typeof value === "object" && !Array.isArray(value)) {
-                                            const unterkategorien = Object.entries(value).filter(
-                                                ([, items]) => Array.isArray(items) && items.length > 0
-                                            );
-                                            if (unterkategorien.length === 0) return null;
-                                            return (
-                                                <div className="mb-3" key={key}>
-                                                    <h6 className="fw-bold">{KATEGORIE_LABEL[key] || key}</h6>
-                                                    {unterkategorien.map(([unterkey, items]) => (
-                                                        <div className="mb-1" key={unterkey}>
-                                                            <small className="text-muted d-block">{TECH_LABEL[unterkey] || unterkey}</small>
-                                                            <StichwortBadges items={items} />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            );
-                                        }
-                                        if (value && typeof value === "object" && !Array.isArray(value) && value.wert) {
-                                            return (
-                                                <div className="mb-2" key={key}>
-                                                    <span className="fw-bold me-2">{KATEGORIE_LABEL[key] || key}:</span>
-                                                    <span className="badge bg-primary">{value.wert}</span>
-                                                </div>
-                                            );
-                                        }
-                                        if (Array.isArray(value) && value.length > 0) {
-                                            return (
-                                                <div className="mb-2" key={key}>
-                                                    <h6 className="fw-bold mb-1">{KATEGORIE_LABEL[key] || key}</h6>
-                                                    <StichwortBadges items={value} />
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    })
+                                    <p className="text-muted mb-0">Die KI liest die Projektunterlagen...</p>
+                                ) : projekt.kiZusammenfassung ? (
+                                    <p className="pd-text mb-0">{projekt.kiZusammenfassung}</p>
                                 ) : (
-                                    <p className="text-muted mb-0">Keine Stichwörter verfügbar.</p>
+                                    <p className="text-muted mb-0">
+                                        Noch keine Zusammenfassung erzeugt. Die KI fasst Beschreibung und
+                                        Dokumente des Projekts in wenigen Sätzen zusammen.
+                                    </p>
                                 )}
                             </div>
                         </div>
