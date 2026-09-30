@@ -98,19 +98,10 @@ public class DokumentService {
             dokument.setExtrahierterText(textAusTxtExtrahieren(datei));
         }
 
-        if (dokument.getExtrahierterText() != null && !dokument.getExtrahierterText().isBlank()) {
-            zusammenfassungBeiUploadErzeugen(dokument);
-        }
-
-        Dokument gespeichert = dokumentRepository.save(dokument);
-
-        if (gespeichert.getProjekt() != null
-                && gespeichert.getExtrahierterText() != null
-                && !gespeichert.getExtrahierterText().isBlank()) {
-            autoTaggingAusloesen(gespeichert);
-        }
-
-        return gespeichert;
+        // Die KI-Auswertung läuft nicht mehr synchron beim Upload (das blockierte die Anfrage
+        // mit mehreren KI-Aufrufen), sondern gebündelt on-demand über den Endpunkt
+        // GET /sop/api/projekte/{id}/ki-uebersicht.
+        return dokumentRepository.save(dokument);
     }
 
     /**

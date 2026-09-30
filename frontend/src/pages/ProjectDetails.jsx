@@ -11,7 +11,7 @@ import {
     mitgliedHinzufuegen,
     mitgliedEntfernen,
 } from "../services/api";
-import { generiereProjektZusammenfassung } from "../services/aiService";
+import { getKiUebersicht } from "../services/aiService";
 
 const DOKUMENT_TYP_LABEL = {
     PFLICHTENHEFT: "Pflichtenheft",
@@ -19,6 +19,44 @@ const DOKUMENT_TYP_LABEL = {
     DOKUMENTATION: "Dokumentation",
     SONSTIGES: "Sonstiges",
 };
+
+const KATEGORIE_LABEL = {
+    themenbereich: "Themenbereich",
+    fachliche_kernfunktionen: "Fachliche Kernfunktionen",
+    technologien: "Technologien",
+    architektur_muster: "Architektur & Muster",
+    vorgehensmodell: "Vorgehensmodell",
+    verfuegbare_dokumente: "Verfügbare Dokumente",
+    zielgruppen_rollen: "Zielgruppen & Rollen",
+    nichtfunktionale_schwerpunkte: "Nichtfunktionale Schwerpunkte",
+    externe_systeme_integrationen: "Externe Systeme",
+    erforderliche_kompetenzen: "Erforderliche Kompetenzen",
+    projektstatus_reifegrad: "Projektstatus",
+};
+
+const TECH_LABEL = {
+    sprachen: "Sprachen",
+    frontend: "Frontend",
+    backend: "Backend",
+    datenbank: "Datenbank",
+    schnittstellen_apis: "Schnittstellen & APIs",
+    sicherheit_auth: "Sicherheit & Auth",
+    testwerkzeuge: "Testwerkzeuge",
+    devops_infrastruktur: "DevOps & Infrastruktur",
+    modellierung_diagramme: "Modellierung & Diagramme",
+    dokumentation_werkzeuge: "Dokumentation",
+    ki_ml: "KI / ML",
+    sonstige: "Sonstige",
+};
+
+function StichwortBadges({ items }) {
+    if (!Array.isArray(items) || items.length === 0) return null;
+    return items.map((it, i) => (
+        <span className="badge bg-primary me-1 mb-1" key={i}>
+            {typeof it === "string" ? it : it.wert}
+        </span>
+    ));
+}
 
 function ProjectDetails() {
     const { id } = useParams();
@@ -32,6 +70,7 @@ function ProjectDetails() {
     const [alleStudenten, setAlleStudenten] = useState([]);
     const [suche, setSuche] = useState("");
     const [mitgliedFehler, setMitgliedFehler] = useState("");
+    const [kiUebersicht, setKiUebersicht] = useState(null);
     const [kiLaedt, setKiLaedt] = useState(false);
     const [kiFehler, setKiFehler] = useState("");
 
@@ -58,6 +97,16 @@ function ProjectDetails() {
         getStudenten()
             .then((data) => setAlleStudenten(data || []))
             .catch(() => setAlleStudenten([]));
+
+        // KI-Übersicht automatisch beim Öffnen laden (beim ersten Mal wird sie erzeugt,
+        // danach kommt sie gecacht sofort zurück).
+        setKiFehler("");
+        setKiUebersicht(null);
+        setKiLaedt(true);
+        getKiUebersicht(id)
+            .then(setKiUebersicht)
+            .catch((e) => setKiFehler(e.message || "KI-Übersicht konnte nicht geladen werden."))
+            .finally(() => setKiLaedt(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
@@ -96,22 +145,9 @@ function ProjectDetails() {
         }
     };
 
-    const handleZusammenfassungErzeugen = async () => {
-        setKiLaedt(true);
-        setKiFehler("");
-        try {
-            const antwort = await generiereProjektZusammenfassung(id);
-            setProjekt((prev) => ({ ...prev, kiZusammenfassung: antwort.antwort }));
-        } catch (error) {
-            setKiFehler(error.message || "Zusammenfassung konnte nicht erzeugt werden.");
-        } finally {
-            setKiLaedt(false);
-        }
-    };
-
-    const schlagwoerterListe = projekt?.schlagwoerter
-        ? projekt.schlagwoerter.split(",").map((s) => s.trim()).filter(Boolean)
-        : [];
+    const zf = kiUebersicht?.projektZusammenfassung;
+    const kategorien = kiUebersicht?.stichwoerter?.kategorien;
+    const schwierigkeit = kiUebersicht?.stichwoerter?.schwierigkeitsanalyse?.stufe;
 
     if (!id) {
         return (
@@ -187,26 +223,33 @@ function ProjectDetails() {
                         <div className="card shadow-sm border-0 mb-4">
                             <div className="card-body">
 
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                    <h4 className="mb-0">KI-Zusammenfassung</h4>
-
-                                    <button
-                                        className="btn btn-sm btn-outline-primary"
-                                        onClick={handleZusammenfassungErzeugen}
-                                        disabled={kiLaedt}
-                                    >
-                                        {kiLaedt ? "Wird verarbeitet..." : "Zusammenfassung erzeugen"}
-                                    </button>
-                                </div>
-
-                                {kiFehler && <div className="alert alert-warning py-2 mb-2">{kiFehler}</div>}
+                                <h4 className="mb-2">KI-Zusammenfassung</h4>
 
                                 {kiLaedt ? (
-                                    <p className="text-muted mb-0">Wird verarbeitet...</p>
-                                ) : projekt.kiZusammenfassung ? (
-                                    <p className="mb-0">{projekt.kiZusammenfassung}</p>
+                                    <p className="text-muted mb-0">
+                                        Wird erstellt… (beim ersten Öffnen kann das etwas dauern)
+                                    </p>
+                                ) : kiFehler ? (
+                                    <div className="alert alert-warning py-2 mb-0">{kiFehler}</div>
+                                ) : zf ? (
+                                    <>
+                                        {zf.kurzfassung && <p className="fw-semibold">{zf.kurzfassung}</p>}
+                                        {zf.einleitung && <p>{zf.einleitung}</p>}
+                                        {Array.isArray(zf.hauptteil) && zf.hauptteil.map((ab, i) => (
+                                            <div className="mb-2" key={i}>
+                                                <h6 className="fw-bold mb-1">{ab.titel}</h6>
+                                                {ab.inhalt && <p className="mb-1">{ab.inhalt}</p>}
+                                                {Array.isArray(ab.stichpunkte) && ab.stichpunkte.length > 0 && (
+                                                    <ul className="mb-0">
+                                                        {ab.stichpunkte.map((sp, j) => <li key={j}>{sp}</li>)}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {zf.schluss?.fazit && <p className="mt-2 mb-0">{zf.schluss.fazit}</p>}
+                                    </>
                                 ) : (
-                                    <p className="text-muted mb-0">Noch keine Zusammenfassung erzeugt.</p>
+                                    <p className="text-muted mb-0">Keine Zusammenfassung verfügbar.</p>
                                 )}
 
                             </div>
@@ -215,16 +258,54 @@ function ProjectDetails() {
                         <div className="card shadow-sm border-0 mb-4">
                             <div className="card-body">
 
-                                <h4>Schlagwörter</h4>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <h4 className="mb-0">Stichwörter (KI)</h4>
+                                    {schwierigkeit && (
+                                        <span className="badge bg-dark">Schwierigkeit: {schwierigkeit}</span>
+                                    )}
+                                </div>
 
-                                {schlagwoerterListe.length > 0 ? (
-                                    schlagwoerterListe.map((wort) => (
-                                        <span className="badge bg-primary me-2" key={wort}>
-                                            {wort}
-                                        </span>
-                                    ))
+                                {kiLaedt ? (
+                                    <p className="text-muted mb-0">Wird erstellt…</p>
+                                ) : kategorien ? (
+                                    Object.entries(kategorien).map(([key, value]) => {
+                                        if (key === "technologien" && value && typeof value === "object" && !Array.isArray(value)) {
+                                            const subs = Object.entries(value).filter(
+                                                ([, arr]) => Array.isArray(arr) && arr.length > 0
+                                            );
+                                            if (subs.length === 0) return null;
+                                            return (
+                                                <div className="mb-3" key={key}>
+                                                    <h6 className="fw-bold">{KATEGORIE_LABEL[key] || key}</h6>
+                                                    {subs.map(([sk, arr]) => (
+                                                        <div className="mb-1" key={sk}>
+                                                            <small className="text-muted d-block">{TECH_LABEL[sk] || sk}</small>
+                                                            <StichwortBadges items={arr} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        if (value && typeof value === "object" && !Array.isArray(value) && value.wert) {
+                                            return (
+                                                <div className="mb-2" key={key}>
+                                                    <span className="fw-bold me-2">{KATEGORIE_LABEL[key] || key}:</span>
+                                                    <span className="badge bg-primary">{value.wert}</span>
+                                                </div>
+                                            );
+                                        }
+                                        if (Array.isArray(value) && value.length > 0) {
+                                            return (
+                                                <div className="mb-2" key={key}>
+                                                    <h6 className="fw-bold mb-1">{KATEGORIE_LABEL[key] || key}</h6>
+                                                    <StichwortBadges items={value} />
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })
                                 ) : (
-                                    <p className="text-muted mb-0">Keine Schlagwörter hinterlegt.</p>
+                                    <p className="text-muted mb-0">Keine Stichwörter verfügbar.</p>
                                 )}
 
                             </div>

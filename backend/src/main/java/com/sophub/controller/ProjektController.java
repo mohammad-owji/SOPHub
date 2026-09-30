@@ -2,6 +2,7 @@ package com.sophub.controller;
 
 import com.sophub.model.AIResponse;
 import com.sophub.model.Projekt;
+import com.sophub.service.ProjektKiService;
 import com.sophub.service.ProjektService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -14,9 +15,11 @@ import java.util.List;
 public class ProjektController {
 
     private final ProjektService projektService;
+    private final ProjektKiService projektKiService;
 
-    public ProjektController(ProjektService projektService) {
+    public ProjektController(ProjektService projektService, ProjektKiService projektKiService) {
         this.projektService = projektService;
+        this.projektKiService = projektKiService;
     }
 
     @GetMapping
@@ -81,6 +84,22 @@ public class ProjektController {
         try {
             String zusammenfassung = projektService.zusammenfassungErzeugen(id);
             return ResponseEntity.ok(new AIResponse(zusammenfassung));
+        } catch (Exception e) {
+            return ResponseEntity.status(503).body(e.getMessage());
+        }
+    }
+
+    /**
+     * KI-Übersicht des Projekts: skriptbasierte Projektzusammenfassung und
+     * kategorisierte Stichwörter aus allen Dokumenten des Projekts.
+     * Wird beim ersten Aufruf erzeugt und gecacht; {@code ?neu=true} erzwingt
+     * eine Neuerzeugung.
+     */
+    @GetMapping("/{id}/ki-uebersicht")
+    public ResponseEntity<?> kiUebersicht(@PathVariable Long id,
+                                          @RequestParam(value = "neu", defaultValue = "false") boolean neu) {
+        try {
+            return ResponseEntity.ok(projektKiService.uebersicht(id, neu));
         } catch (Exception e) {
             return ResponseEntity.status(503).body(e.getMessage());
         }

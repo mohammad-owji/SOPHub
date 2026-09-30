@@ -72,7 +72,8 @@ public class ProjektService {
 
         Projekt gespeichert = projektRepository.save(projekt);
 
-        zusammenfassungGenerierenFallsNoetig(gespeichert);
+        // KI-Zusammenfassung wird nicht mehr synchron beim Anlegen erzeugt (blockierte die Anfrage),
+        // sondern on-demand über GET /sop/api/projekte/{id}/ki-uebersicht.
 
         if (betreuer != null) {
             emailService.sendeBetreuerZuweisungsEmail(betreuer, student, gespeichert);
