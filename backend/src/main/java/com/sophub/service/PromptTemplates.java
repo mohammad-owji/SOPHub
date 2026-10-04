@@ -24,8 +24,37 @@ public class PromptTemplates {
 
     public static String dokumentZusammenfassung(String dokumentText) {
         return """
-                Fasse den folgenden Dokumenttext in 2 bis 3 sachlichen Sätzen auf Deutsch zusammen.
+                Fasse den folgenden Dokumenttext in 2 bis 4 sachlichen Sätzen auf Deutsch zusammen.
                 Nutze ausschließlich die gegebenen Informationen, erfinde nichts hinzu.
+                Gib ausschließlich den Fließtext der Zusammenfassung zurück - ohne Überschriften,
+                ohne Aufzählungen, ohne Emojis und ohne Rückfragen oder weitere Kommentare.
+
+                Text:
+                %s
+                """.formatted(wertOderPlatzhalter(dokumentText));
+    }
+
+    public static String pdfZusammenfassung(String pdfText) {
+        return """
+                Fasse den folgenden Text aus einem PDF-Dokument sachlich auf Deutsch zusammen.
+                Die Zusammenfassung darf höchstens eine halbe DIN-A4-Seite lang sein (maximal 200 Wörter).
+                Nutze ausschließlich die gegebenen Informationen, erfinde nichts hinzu.
+                Gib ausschließlich den Fließtext der Zusammenfassung zurück - ohne Überschriften,
+                ohne Emojis und ohne Rückfragen oder weitere Kommentare.
+
+                Text:
+                %s
+                """.formatted(wertOderPlatzhalter(pdfText));
+    }
+
+    public static String stichwoerter(String dokumentText) {
+        return """
+                Lies den folgenden Dokumenttext und extrahiere die wichtigsten Stichwörter.
+                Dazu gehören z. B. Technologien, Programmiersprachen, Frameworks, Tools und Fachbegriffe
+                (Beispiel: HTML, CSS, JavaScript, TypeScript, Vue, KI, Frontend).
+                Nutze ausschließlich Begriffe, die im Text wirklich vorkommen, erfinde nichts hinzu.
+                Gib NUR eine einfache, kommagetrennte Liste zurück - ohne Nummerierung, ohne Erklärungen,
+                ohne Anführungszeichen. Maximal 30 Stichwörter.
 
                 Text:
                 %s

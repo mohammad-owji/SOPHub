@@ -4,6 +4,13 @@ spring.datasource.password=DEIN_PASSWORT
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 
+# JWT: beliebiger langer Zufallsstring (mind. 32 Zeichen), jeder waehlt seinen eigenen
+jwt.secret=DEIN_JWT_SECRET_MINDESTENS_32_ZEICHEN_LANG
+jwt.expiration=86400000
+
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+
 # Gmail SMTP: https://myaccount.google.com/apppasswords (App-Passwort, nicht das normale Google-Passwort)
 spring.mail.host=smtp.gmail.com
 spring.mail.port=587
