@@ -87,6 +87,58 @@
     background: linear-gradient(135deg, #ffffff 60%, var(--sop-tuerkis-flaeche)) !important;
 }
 
+@property --pd-ki-rahmenwinkel {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+}
+
+.pd-ki-laedt {
+    position: relative;
+    isolation: isolate;
+}
+
+.pd-ki-laedt::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    z-index: 0;
+    padding: 2px;
+    border-radius: inherit;
+    background: conic-gradient(
+        from var(--pd-ki-rahmenwinkel),
+        transparent 0deg 300deg,
+        rgba(31, 174, 163, 0.2) 318deg,
+        #35c6b7 335deg,
+        #ffffff 342deg,
+        transparent 355deg 360deg
+    );
+    filter: drop-shadow(0 0 5px rgba(31, 174, 163, 0.6));
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: pd-ki-rahmenlauf 2.4s linear infinite;
+}
+
+.pd-ki-laedt > .card-body {
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes pd-ki-rahmenlauf {
+    to {
+        --pd-ki-rahmenwinkel: 360deg;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pd-ki-laedt::before {
+        animation: none;
+    }
+}
+
 .pd-ki-symbol {
     color: var(--sop-tuerkis-hell);
     margin-right: 0.25rem;
