@@ -2,8 +2,11 @@ package com.sophub.controller;
 
 import com.sophub.model.AIResponse;
 import com.sophub.model.Projekt;
+import com.sophub.model.Tag;
+import com.sophub.model.User;
 import com.sophub.service.ProjektKiService;
 import com.sophub.service.ProjektService;
+import com.sophub.service.MitgliedschaftService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +19,13 @@ public class ProjektController {
 
     private final ProjektService projektService;
     private final ProjektKiService projektKiService;
+    private final MitgliedschaftService mitgliedschaftService;
 
-    public ProjektController(ProjektService projektService, ProjektKiService projektKiService) {
+    public ProjektController(ProjektService projektService, ProjektKiService projektKiService,
+                             MitgliedschaftService mitgliedschaftService) {
         this.projektService = projektService;
         this.projektKiService = projektKiService;
+        this.mitgliedschaftService = mitgliedschaftService;
     }
 
     @GetMapping
@@ -38,10 +44,36 @@ public class ProjektController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> projektById(@PathVariable Long id) {
-        return projektService.projektById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        public ResponseEntity<?> projektById(@PathVariable Long id, Authentication authentication) {
+        Projekt projekt = projektService.projektById(id).orElse(null);
+        if (projekt == null) return ResponseEntity.notFound().build();
+
+        boolean owner = mitgliedschaftService.istErsteller(id, authentication.getName());
+        boolean teammitglied = mitgliedschaftService.istTeammitglied(id, authentication.getName());
+        boolean eingeladenerBetreuer = projekt.getBetreuer() != null
+            && authentication.getName().equals(projekt.getBetreuer().getBenutzername());
+        if (owner || teammitglied || eingeladenerBetreuer) return ResponseEntity.ok(projekt);
+        return ResponseEntity.ok(oeffentlicheAnsicht(projekt));
+        }
+
+        @GetMapping("/{id}/details")
+        public ResponseEntity<?> projektDetails(@PathVariable Long id, Authentication authentication) {
+        Projekt projekt = projektService.projektById(id).orElse(null);
+        if (projekt == null) return ResponseEntity.notFound().build();
+
+        boolean owner = mitgliedschaftService.istErsteller(id, authentication.getName());
+        boolean teammitglied = mitgliedschaftService.istTeammitglied(id, authentication.getName());
+        if (!owner && !teammitglied) {
+            return ResponseEntity.ok(oeffentlicheAnsicht(projekt));
+        }
+
+        return ResponseEntity.ok(new ProjektDetailansicht(
+            projekt.getId(), projekt.getTitel(), projekt.getBeschreibung(), projekt.getSemester(),
+            projekt.getFachbereich(), projekt.getProjektart(), projekt.getStatus(),
+            projekt.getGruppenanzahl(), projekt.getSchlagwoerter(),
+            projekt.getStudent() == null ? null : new PersonAnsicht(projekt.getStudent()),
+            projekt.getBetreuer() == null ? null : new PersonAnsicht(projekt.getBetreuer()),
+            projekt.getTags().stream().map(TagAnsicht::new).toList(), owner, teammitglied));
     }
 
     // Einladungen des eingeloggten Betreuers.
@@ -78,9 +110,16 @@ public class ProjektController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> aktualisieren(@PathVariable Long id, @RequestBody Projekt projekt) {
+    public ResponseEntity<?> aktualisieren(@PathVariable Long id, @RequestBody Projekt projekt,
+                                           Authentication authentication) {
+        if (!mitgliedschaftService.darfProjektVerwalten(id, authentication.getName())) {
+            return ResponseEntity.status(403).body("Nur Projekt-Ersteller und Teammitglieder können das Projekt bearbeiten.");
+        }
         try {
-            return ResponseEntity.ok(projektService.aktualisieren(id, projekt));
+            Projekt aenderung = new Projekt();
+            aenderung.setTitel(projekt.getTitel());
+            aenderung.setBeschreibung(projekt.getBeschreibung());
+            return ResponseEntity.ok(projektService.aktualisieren(id, aenderung));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }
@@ -107,7 +146,10 @@ public class ProjektController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> loeschen(@PathVariable Long id) {
+    public ResponseEntity<?> loeschen(@PathVariable Long id, Authentication authentication) {
+        if (!mitgliedschaftService.istErsteller(id, authentication.getName())) {
+            return ResponseEntity.status(403).body("Nur der Projekt-Ersteller kann das Projekt löschen.");
+        }
         try {
             projektService.loeschen(id);
             return ResponseEntity.ok("Projekt gelöscht.");
@@ -139,5 +181,29 @@ public class ProjektController {
         } catch (Exception e) {
             return ResponseEntity.status(503).body(e.getMessage());
         }
+    }
+
+    record OeffentlicheProjektansicht(Long id, String titel, String beschreibung,
+                                      boolean istOwner, boolean istTeammitglied) {}
+
+    record ProjektDetailansicht(Long id, String titel, String beschreibung, String semester,
+                                String fachbereich, String projektart, String status, Integer gruppenanzahl,
+                                String schlagwoerter, PersonAnsicht student, PersonAnsicht betreuer,
+                                List<TagAnsicht> tags, boolean istOwner, boolean istTeammitglied) {}
+
+    record PersonAnsicht(Long id, String vorname, String name, String benutzername) {
+        PersonAnsicht(User user) {
+            this(user.getId(), user.getVorname(), user.getName(), user.getBenutzername());
+        }
+    }
+
+    record TagAnsicht(Long id, String name) {
+        TagAnsicht(Tag tag) {
+            this(tag.getId(), tag.getName());
+        }
+    }
+
+    private OeffentlicheProjektansicht oeffentlicheAnsicht(Projekt projekt) {
+        return new OeffentlicheProjektansicht(projekt.getId(), projekt.getTitel(), projekt.getBeschreibung(), false, false);
     }
 }
