@@ -8,6 +8,7 @@ import EmailBestaetigen from "./pages/EmailBestaetigen";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectInvitation from "./pages/ProjectInvitation";
+import KI from "./pages/KI";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/create-project" element={<CreateProject />} />
         <Route path="/einladungen" element={<MyInvitations />} />
         <Route path="/project-invitation/:projektId" element={<ProjectInvitation />} />
+        <Route path="/ai" element={<KI />} />
       </Routes>
     </BrowserRouter>
   );

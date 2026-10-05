@@ -20,7 +20,9 @@ spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 app.mail.from=DEINE_GMAIL_ADRESSE
 
-# Gemini API-Key: https://aistudio.google.com/apikey (kostenlos)
-# Wird NICHT hier eingetragen, sondern als Umgebungsvariable gesetzt: GEMINI_API_KEY
-gemini.api.key=${GEMINI_API_KEY:}
-gemini.model=${GEMINI_MODEL:gemini-3.6-flash}
+# KI:connect NRW (OpenAI-kompatibel, kostenlos ueber die Hochschule)
+# API-Key erstellen in KI:connect -> "API-Schluesselverwaltung"
+kiconnect.api.url=https://chat.kiconnect.nrw/api/v1
+kiconnect.api.key=DEIN_KICONNECT_API_KEY
+# Modellname aus der eigenen KI:connect-Freigabe (z.B. qwen3.5-397b-a17b_stud, glm-4.7_stud)
+kiconnect.model=DEIN_KICONNECT_MODELL

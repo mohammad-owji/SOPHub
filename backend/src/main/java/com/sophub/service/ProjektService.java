@@ -114,7 +114,8 @@ public class ProjektService {
 
         Projekt gespeichert = projektRepository.save(projekt);
 
-        zusammenfassungGenerierenFallsNoetig(gespeichert);
+        // KI-Zusammenfassung wird nicht mehr synchron beim Anlegen erzeugt (blockierte die Anfrage),
+        // sondern on-demand über GET /sop/api/projekte/{id}/ki-uebersicht.
 
         // Eingeladener Betreuer bekommt eine Projektanfrage mit Link zur Einladungsseite
         if (betreuer != null) {
