@@ -36,6 +36,10 @@ public class DokumentService {
     private static final Logger log = LoggerFactory.getLogger(DokumentService.class);
     private static final String UPLOAD_DIR = "uploads/dokumente/";
 
+    // Systemkonto der Beispielprojekte (siehe BeispielprojekteInitializer).
+    // Dokumente dieser Projekte sind Anschauungsmaterial und fuer alle angemeldeten Nutzer freigegeben.
+    private static final String BEISPIEL_KONTO = "sophub.beispielprojekte";
+
     private final DokumentRepository dokumentRepository;
     private final UserRepository userRepository;
     private final ProjektRepository projektRepository;
@@ -117,6 +121,7 @@ public class DokumentService {
      * Prüft, ob der angegebene Benutzer Zugriff auf die Originaldatei eines Dokuments hat:
      * Teammitglied des Projekts (Ersteller, hinzugefügtes Mitglied), zugewiesener Betreuer,
      * oder Admin. Ohne Projektbezug hat nur der Uploader selbst Zugriff.
+     * Ausnahme: Dokumente der Beispielprojekte darf jeder angemeldete Nutzer herunterladen.
      */
     public boolean hatZugriffAufOriginal(Long dokumentId, String benutzername) {
         Dokument dokument = dokumentRepository.findById(dokumentId)
@@ -135,6 +140,10 @@ public class DokumentService {
         Projekt projekt = dokument.getProjekt();
         if (projekt == null) {
             return dokument.getHochgeladenVon().getId().equals(benutzer.getId());
+        }
+
+        if (projekt.getStudent() != null && BEISPIEL_KONTO.equals(projekt.getStudent().getBenutzername())) {
+            return true;
         }
 
         if (projekt.getBetreuer() != null && projekt.getBetreuer().getId().equals(benutzer.getId())) {

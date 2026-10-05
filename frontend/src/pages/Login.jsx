@@ -88,12 +88,16 @@ function Login({ startModus = "login" }) {
 
             if (response.ok) {
                 if (mode === "register") {
-                    setMessage(text || "Registrierung erfolgreich.");
+                    // Hinweis "Bitte E-Mail bestaetigen" stehen lassen und zur Anmeldung wechseln.
+                    // (Nicht switchMode() benutzen: das wuerde die Meldung wieder loeschen.)
+                    setMode("login");
+                    setPasswort("");
+                    setPasswortBestaetigen("");
+                    setEmail("");
+                    setName("");
+                    setVorname("");
+                    setMessage(text || "Registrierung erfolgreich. Bitte bestätigen Sie Ihre E-Mail-Adresse.");
                     setMessageType("success");
-
-                    setTimeout(() => {
-                        switchMode();
-                    }, 1500);
                 } else {
                     const daten = JSON.parse(text);
                     localStorage.setItem(

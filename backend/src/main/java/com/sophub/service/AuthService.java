@@ -11,11 +11,19 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthService {
 
     private static final String DOMAIN_PROFESSOR = "@hs-bochum.de";
+
+    // So lange ist ein Bestaetigungslink gueltig
+    private static final int TOKEN_GUELTIG_STUNDEN = 24;
+
+    private static final String HINWEIS_BESTAETIGUNG =
+            "Fast geschafft! Wir haben Ihnen eine E-Mail mit einem Bestätigungslink geschickt. "
+            + "Bitte klicken Sie auf den Link, danach können Sie sich anmelden.";
 
     private final UserRepository userRepository;
     private final RolleRepository rolleRepository;
@@ -55,22 +63,25 @@ public class AuthService {
         if (vorhandenesKonto.isPresent()) {
             User konto = vorhandenesKonto.get();
 
-            // Aktiviertes Konto darf nicht erneut registriert (= uebernommen) werden
-            if (konto.istKontoAktiviert()) {
+            // Fertiges Konto (aktiviert UND bestaetigt) darf nicht erneut registriert (= uebernommen) werden
+            if (konto.istKontoAktiviert() && konto.istEmailBestaetigt()) {
                 throw new RuntimeException("Diese E-Mail-Adresse ist bereits registriert.");
             }
 
-            // Vorbereitetes Konto (z.B. Betreuer): jetzt aktivieren
+            // Vorbereitetes Konto (z.B. Betreuer) ODER Registrierung, die noch nicht bestaetigt wurde:
+            // Daten uebernehmen und einen NEUEN Bestaetigungslink schicken.
+            // Freigeschaltet wird das Konto erst, wenn der Link angeklickt wurde.
             pruefeBenutzernameFrei(benutzername, konto.getId());
 
             konto.setBenutzername(benutzername);
             konto.setPasswort(passwordEncoder.encode(passwort));
             konto.setName(name);
             konto.setVorname(vorname);
-            konto.setKontoAktiviert(true);
+            String token = neuerBestaetigungsToken(konto);
             userRepository.save(konto);
 
-            return "Konto aktiviert! Sie können sich jetzt anmelden.";
+            emailService.sendeBestaetigungsEmail(konto, token);
+            return HINWEIS_BESTAETIGUNG;
         }
 
         // Ganz neues Konto
@@ -87,11 +98,51 @@ public class AuthService {
         user.setVorname(vorname);
         user.setRolle(rolle);
         user.setKontoAktiviert(true);
+        String token = neuerBestaetigungsToken(user);
         userRepository.save(user);
 
+        emailService.sendeBestaetigungsEmail(user, token);
+        return HINWEIS_BESTAETIGUNG;
+    }
+
+    /**
+     * Wird aufgerufen, wenn jemand auf den Link in der Bestaetigungs-Mail klickt.
+     * Schaltet das Konto frei und loescht den Token (Link funktioniert nur einmal).
+     */
+    public String bestaetigen(String token) {
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("Der Bestätigungslink ist unvollständig.");
+        }
+
+        User user = userRepository.findByBestaetigungsToken(token)
+                .orElseThrow(() -> new RuntimeException(
+                        "Dieser Bestätigungslink ist ungültig oder wurde bereits verwendet."));
+
+        if (user.getTokenGueltigBis() == null || user.getTokenGueltigBis().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException(
+                    "Dieser Bestätigungslink ist abgelaufen. Bitte registrieren Sie sich erneut, "
+                    + "dann erhalten Sie einen neuen Link.");
+        }
+
+        user.setEmailBestaetigt(true);
+        user.setKontoAktiviert(true);
+        user.setBestaetigungsToken(null);
+        user.setTokenGueltigBis(null);
+        userRepository.save(user);
+
+        // Jetzt die Willkommens-Mail schicken
         emailService.sendeRegistrierungsEmail(user);
 
-        return "Registrierung erfolgreich! Du kannst dich jetzt anmelden.";
+        return "Ihre E-Mail-Adresse wurde bestätigt. Sie können sich jetzt anmelden.";
+    }
+
+    // Erzeugt einen zufaelligen, nicht erratbaren Token und setzt das Konto auf "nicht bestaetigt"
+    private String neuerBestaetigungsToken(User user) {
+        String token = UUID.randomUUID().toString();
+        user.setEmailBestaetigt(false);
+        user.setBestaetigungsToken(token);
+        user.setTokenGueltigBis(LocalDateTime.now().plusHours(TOKEN_GUELTIG_STUNDEN));
+        return token;
     }
 
     // Benutzername darf nicht von einem ANDEREN Konto belegt sein
@@ -119,6 +170,12 @@ public class AuthService {
 
         if (!passwordEncoder.matches(passwort, user.getPasswort())) {
             throw new RuntimeException("Benutzername oder Passwort falsch.");
+        }
+
+        // Erst nach dem Passwort pruefen, damit Fremde nicht herausfinden, welche Konten es gibt
+        if (!user.istEmailBestaetigt()) {
+            throw new RuntimeException("Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse. "
+                    + "Den Link finden Sie in der E-Mail, die wir Ihnen nach der Registrierung geschickt haben.");
         }
 
         user.setLastLogin(LocalDateTime.now());

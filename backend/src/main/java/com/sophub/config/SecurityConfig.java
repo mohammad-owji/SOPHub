@@ -38,7 +38,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/sop/api/auth/login", "/sop/api/auth/register").permitAll()
+                        // Ohne Login erreichbar: Anmelden, Registrieren, E-Mail bestaetigen
+                        .requestMatchers("/sop/api/auth/login", "/sop/api/auth/register",
+                                "/sop/api/auth/bestaetigen").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )

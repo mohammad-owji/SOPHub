@@ -26,6 +26,7 @@ public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
     private static final String REGISTRIERUNGS_TEMPLATE = "email-templates/registrierung.json";
+    private static final String BESTAETIGUNGS_TEMPLATE = "email-templates/email-bestaetigung.json";
     private static final String BETREUER_ZUWEISUNGS_TEMPLATE = "email-templates/betreuer-zuweisung.json";
     private static final String TEAM_HINZUGEFUEGT_TEMPLATE = "email-templates/team-hinzugefuegt.json";
     private static final String PROJEKT_ANFRAGE_TEMPLATE = "email-templates/projekt-anfrage.json";
@@ -62,6 +63,24 @@ public class EmailService {
                 "vorname", user.getVorname()
         );
         sende(REGISTRIERUNGS_TEMPLATE, user.getEmail(), werte);
+    }
+
+    /**
+     * Schickt nach der Registrierung den Link zur Bestaetigung der E-Mail-Adresse.
+     * Der Link fuehrt auf die React-Route /email-bestaetigen?token=...
+     * Der Token wird als Parameter uebergeben (nicht aus dem User gelesen),
+     * weil diese Methode im Hintergrund (@Async) laeuft.
+     */
+    public void sendeBestaetigungsEmail(User user, String token) {
+        String link = frontendUrl + "/email-bestaetigen?token=" + token;
+
+        Map<String, String> werte = Map.of(
+                "vorname", textOderStrich(user.getVorname()),
+                "name", textOderStrich(user.getName()),
+                "benutzername", textOderStrich(user.getBenutzername()),
+                "link", link
+        );
+        sende(BESTAETIGUNGS_TEMPLATE, user.getEmail(), werte);
     }
 
     public void sendeBetreuerZuweisungsEmail(User betreuer, User student, Projekt projekt) {

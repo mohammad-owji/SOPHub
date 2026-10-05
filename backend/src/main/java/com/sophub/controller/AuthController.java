@@ -40,6 +40,17 @@ public class AuthController {
         }
     }
 
+    // Link aus der Bestaetigungs-Mail: GET /sop/api/auth/bestaetigen?token=...
+    // Ohne Login erreichbar (siehe SecurityConfig), denn der Nutzer ist ja noch nicht angemeldet.
+    @GetMapping("/bestaetigen")
+    public ResponseEntity<?> bestaetigen(@RequestParam(required = false) String token) {
+        try {
+            return ResponseEntity.ok(authService.bestaetigen(token));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         // JWT ist stateless — das Token wird clientseitig gelöscht

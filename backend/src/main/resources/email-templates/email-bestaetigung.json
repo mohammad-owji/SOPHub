@@ -1,0 +1,4 @@
+{
+    "subject": "Bitte bestätigen Sie Ihre E-Mail-Adresse für SOPhub",
+    "body": "Hallo ${vorname} ${name},\n\nvielen Dank für Ihre Registrierung bei SOPhub.\n\nBitte bestätigen Sie Ihre E-Mail-Adresse, indem Sie auf den folgenden Link klicken:\n\n${link}\n\nDer Link ist 24 Stunden gültig. Erst nach der Bestätigung können Sie sich mit Ihrem Benutzernamen \"${benutzername}\" anmelden.\n\nFalls Sie sich nicht bei SOPhub registriert haben, können Sie diese E-Mail einfach ignorieren.\n\nViele Grüße\nIhr SOPhub-Team"
+}

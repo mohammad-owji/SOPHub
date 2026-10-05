@@ -47,6 +47,23 @@ public class User {
     @Column(name = "konto_aktiviert")
     private Boolean kontoAktiviert;
 
+    // E-Mail-Bestaetigung:
+    // false = Bestaetigungslink wurde verschickt, aber noch nicht angeklickt -> Login gesperrt.
+    // true  = E-Mail-Adresse bestaetigt.
+    // null  = aeltere Konten von vor dieser Spalte -> gelten als bestaetigt.
+    @Column(name = "email_bestaetigt")
+    private Boolean emailBestaetigt;
+
+    // Zufaelliger Code im Bestaetigungslink. @JsonIgnore: darf NIE ans Frontend gehen.
+    @JsonIgnore
+    @Column(name = "bestaetigungs_token", unique = true)
+    private String bestaetigungsToken;
+
+    // Bis wann der Bestaetigungslink gueltig ist
+    @JsonIgnore
+    @Column(name = "token_gueltig_bis")
+    private LocalDateTime tokenGueltigBis;
+
     @PrePersist
     protected void onCreate() {
         erstelltAm = LocalDateTime.now();
@@ -70,9 +87,15 @@ public class User {
     public LocalDateTime getBearbeitetAm() { return bearbeitetAm; }
     public LocalDateTime getLastLogin() { return lastLogin; }
     public Boolean getKontoAktiviert() { return kontoAktiviert; }
+    public Boolean getEmailBestaetigt() { return emailBestaetigt; }
+    public String getBestaetigungsToken() { return bestaetigungsToken; }
+    public LocalDateTime getTokenGueltigBis() { return tokenGueltigBis; }
 
     // Hilfsmethode: null (alte Konten) zaehlt als aktiviert
     public boolean istKontoAktiviert() { return kontoAktiviert == null || kontoAktiviert; }
+
+    // Hilfsmethode: null (alte Konten) zaehlt als bestaetigt
+    public boolean istEmailBestaetigt() { return emailBestaetigt == null || emailBestaetigt; }
 
     // setter
     public void setId(Long id) { this.id = id; }
@@ -86,4 +109,7 @@ public class User {
     public void setBearbeitetAm(LocalDateTime bearbeitetAm) { this.bearbeitetAm = bearbeitetAm; }
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
     public void setKontoAktiviert(Boolean kontoAktiviert) { this.kontoAktiviert = kontoAktiviert; }
+    public void setEmailBestaetigt(Boolean emailBestaetigt) { this.emailBestaetigt = emailBestaetigt; }
+    public void setBestaetigungsToken(String bestaetigungsToken) { this.bestaetigungsToken = bestaetigungsToken; }
+    public void setTokenGueltigBis(LocalDateTime tokenGueltigBis) { this.tokenGueltigBis = tokenGueltigBis; }
 }
