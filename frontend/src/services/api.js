@@ -90,11 +90,39 @@ export async function getProjektById(id) {
     return parseOrThrow(response);
 }
 
+export async function getProjektDetails(id) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}/details`, {
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
+export async function aktualisiereProjekt(id, daten) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(daten),
+    });
+    return parseOrThrow(response);
+}
+
 export async function getDokumenteFuerProjekt(projektId) {
     const response = await fetch(`${API_BASE_URL}/dokumente/projekt/${projektId}`, {
         headers: authHeaders(),
     });
     return parseOrThrow(response);
+}
+
+export async function loescheDokument(dokumentId) {
+    const response = await fetch(`${API_BASE_URL}/dokumente/${dokumentId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Dokument konnte nicht gelöscht werden.");
+    }
+    return true;
 }
 
 export async function getStudenten() {
