@@ -33,6 +33,24 @@ public class MitgliedschaftService {
         return projektMitgliedRepository.findByProjektId(projektId);
     }
 
+    public boolean istErsteller(Long projektId, String benutzername) {
+        Projekt projekt = projektRepository.findById(projektId)
+                .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+        User benutzer = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+        return projekt.getStudent() != null && projekt.getStudent().getId().equals(benutzer.getId());
+    }
+
+    public boolean istTeammitglied(Long projektId, String benutzername) {
+        User benutzer = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+        return projektMitgliedRepository.existsByProjektIdAndStudentId(projektId, benutzer.getId());
+    }
+
+    public boolean darfProjektVerwalten(Long projektId, String benutzername) {
+        return istErsteller(projektId, benutzername) || istTeammitglied(projektId, benutzername);
+    }
+
     public ProjektMitglied hinzufuegen(Long projektId, Long studentId) {
         Projekt projekt = projektRepository.findById(projektId)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
