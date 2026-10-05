@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,10 +28,14 @@ public class DokumentController {
             @RequestParam("datei") MultipartFile datei,
             @RequestParam("benutzerId") Long benutzerId,
             @RequestParam(value = "projektId", required = false) Long projektId,
-            @RequestParam("typ") String typ) {
+            @RequestParam("typ") String typ,
+            Authentication authentication) {
         try {
-            Dokument gespeichert = dokumentService.hochladen(datei, benutzerId, projektId, typ);
+            Dokument gespeichert = dokumentService.hochladen(
+                    datei, benutzerId, projektId, typ, authentication.getName());
             return ResponseEntity.ok(gespeichert);
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }
@@ -74,7 +79,10 @@ public class DokumentController {
     }
 
     @GetMapping("/projekt/{projektId}")
-    public ResponseEntity<List<Dokument>> nachProjekt(@PathVariable Long projektId) {
+    public ResponseEntity<?> nachProjekt(@PathVariable Long projektId, Authentication authentication) {
+        if (!dokumentService.darfProjektVerwalten(projektId, authentication.getName())) {
+            return ResponseEntity.status(403).body("Projektdateien sind nur für Ersteller und Teammitglieder sichtbar.");
+        }
         return ResponseEntity.ok(dokumentService.nachProjekt(projektId));
     }
 
@@ -122,10 +130,12 @@ public class DokumentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> loeschen(@PathVariable Long id) {
+    public ResponseEntity<?> loeschen(@PathVariable Long id, Authentication authentication) {
         try {
-            dokumentService.loeschen(id);
+            dokumentService.loeschen(id, authentication.getName());
             return ResponseEntity.ok("Dokument gelöscht.");
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(404).body(e.getMessage());
         }
