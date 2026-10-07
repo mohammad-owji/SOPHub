@@ -90,3 +90,17 @@
     text-align: right;
     word-break: break-word;
 }
+
+/* Formulare zum Aendern von Benutzername und Passwort */
+.profil-formular {
+    margin-top: 0.75rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: #fafcfc;
+}
+
+.profil-formular-titel {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}

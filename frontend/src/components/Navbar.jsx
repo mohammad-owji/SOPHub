@@ -10,6 +10,8 @@ const ROLLEN_NAME = {
 };
 
 // Hauptmenue (Reihenfolge = Reihenfolge in der Navbar)
+// "Projekt erstellen" steht bewusst NICHT hier, sondern als Button auf
+// Dashboard, "Meine Projekte" und "Alle Projekte" (keine doppelten Buttons).
 const MENUE = [
     { ziel: "/dashboard", text: "Dashboard" },
     { ziel: "/my-projects", text: "Meine Projekte" },
@@ -68,10 +70,6 @@ function Navbar() {
                     </div>
 
                     <div className="d-flex align-items-center gap-3">
-                        <Link className="btn btn-sm sop-btn-neu" to="/create-project">
-                            + Projekt erstellen
-                        </Link>
-
                         <div className="dropdown">
                             <button
                                 className="btn sop-benutzer dropdown-toggle d-flex align-items-center gap-2"
@@ -90,7 +88,7 @@ function Navbar() {
                             <ul className="dropdown-menu dropdown-menu-end">
                                 <li>
                                     <Link className="dropdown-item" to="/profile">
-                                        Profil bearbeiten
+                                        Mein Profil
                                     </Link>
                                 </li>
 

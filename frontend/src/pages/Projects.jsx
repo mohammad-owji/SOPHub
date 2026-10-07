@@ -17,16 +17,8 @@ function Projects({ scope = "alle" }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("alle");
     const [semesterFilter, setSemesterFilter] = useState("alle");
-    const [schlagwortFilter, setSchlagwortFilter] = useState("alle");
 
     const istMeine = scope === "meine";
-
-    const mitSchlagwoerterArray = (project) => ({
-        ...project,
-        schlagwoerterListe: project.schlagwoerter
-            ? project.schlagwoerter.split(",").map((s) => s.trim()).filter(Boolean)
-            : [],
-    });
 
     useEffect(() => {
         setError("");
@@ -35,7 +27,6 @@ function Projects({ scope = "alle" }) {
         setSearchTerm("");
         setStatusFilter("alle");
         setSemesterFilter("alle");
-        setSchlagwortFilter("alle");
 
         const auth = getAuth();
         if (istMeine && !auth?.id) {
@@ -50,7 +41,7 @@ function Projects({ scope = "alle" }) {
         ladeProjekte
             .then((data) => {
                 // Neueste zuerst
-                const liste = (data || []).map(mitSchlagwoerterArray).sort((a, b) => b.id - a.id);
+                const liste = (data || []).slice().sort((a, b) => b.id - a.id);
                 setProjects(liste);
             })
             .catch((err) => {
@@ -63,7 +54,6 @@ function Projects({ scope = "alle" }) {
 
     // Auswahllisten fuer die Filter aus den vorhandenen Projekten bilden
     const alleSemester = [...new Set(projects.map((p) => p.semester).filter(Boolean))].sort().reverse();
-    const alleSchlagwoerter = [...new Set(projects.flatMap((p) => p.schlagwoerterListe || []))];
 
     const suche = searchTerm.trim().toLowerCase();
 
@@ -79,21 +69,16 @@ function Projects({ scope = "alle" }) {
         const matchesSemester =
             semesterFilter === "alle" || project.semester === semesterFilter;
 
-        const matchesSchlagwort =
-            schlagwortFilter === "alle" ||
-            project.schlagwoerterListe?.includes(schlagwortFilter);
-
-        return matchesSearch && matchesStatus && matchesSemester && matchesSchlagwort;
+        return matchesSearch && matchesStatus && matchesSemester;
     });
 
     const filterAktiv =
-        suche || statusFilter !== "alle" || semesterFilter !== "alle" || schlagwortFilter !== "alle";
+        suche || statusFilter !== "alle" || semesterFilter !== "alle";
 
     const filterZuruecksetzen = () => {
         setSearchTerm("");
         setStatusFilter("alle");
         setSemesterFilter("alle");
-        setSchlagwortFilter("alle");
     };
 
     return (
@@ -122,7 +107,7 @@ function Projects({ scope = "alle" }) {
                 <div className="card mb-4">
                     <div className="card-body">
                         <div className="row g-3 align-items-end">
-                            <div className={alleSchlagwoerter.length > 0 ? "col-lg-5" : "col-lg-6"}>
+                            <div className="col-lg-6">
                                 <label className="form-label" htmlFor="proj-suche">Suche</label>
                                 <input
                                     id="proj-suche"
@@ -149,7 +134,7 @@ function Projects({ scope = "alle" }) {
                                 </select>
                             </div>
 
-                            <div className={alleSchlagwoerter.length > 0 ? "col-sm-6 col-lg-2" : "col-sm-6 col-lg-3"}>
+                            <div className="col-sm-6 col-lg-3">
                                 <label className="form-label" htmlFor="proj-semester">Semester</label>
                                 <select
                                     id="proj-semester"
@@ -164,23 +149,6 @@ function Projects({ scope = "alle" }) {
                                 </select>
                             </div>
 
-                            {/* Schlagwort-Filter nur, wenn aeltere Projekte noch Schlagwoerter haben */}
-                            {alleSchlagwoerter.length > 0 && (
-                                <div className="col-sm-6 col-lg-2">
-                                    <label className="form-label" htmlFor="proj-schlagwort">Schlagwort</label>
-                                    <select
-                                        id="proj-schlagwort"
-                                        className="form-select"
-                                        value={schlagwortFilter}
-                                        onChange={(e) => setSchlagwortFilter(e.target.value)}
-                                    >
-                                        <option value="alle">Alle</option>
-                                        {alleSchlagwoerter.map((wort) => (
-                                            <option value={wort} key={wort}>{wort}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -231,14 +199,10 @@ function Projects({ scope = "alle" }) {
                                             </span>
                                         </div>
 
-                                        {(project.schlagwoerterListe?.length > 0 || project.tags?.length > 0) && (
+                                        {/* KI-Tags (werden automatisch aus den Dokumenten erzeugt) */}
+                                        {project.tags?.length > 0 && (
                                             <div>
-                                                {project.schlagwoerterListe?.map((wort) => (
-                                                    <span className="badge bg-primary me-1 mb-1" key={wort}>
-                                                        {wort}
-                                                    </span>
-                                                ))}
-                                                {project.tags?.map((tag) => (
+                                                {project.tags.map((tag) => (
                                                     <span className="badge bg-info me-1 mb-1" key={tag.id}>
                                                         {tag.name}
                                                     </span>

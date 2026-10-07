@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
 /**
@@ -29,7 +31,8 @@ import java.util.stream.Collectors;
  *     <li>Reduce: {@code extract_keywords} → kategorisierte Stichwörter (JSON)</li>
  * </ol>
  * Die Ergebnisse werden am Projekt bzw. am Dokument gecacht, sodass beim Öffnen
- * des Projekts nur gelesen und nicht erneut die KI aufgerufen wird. Der
+ * des Projekts nur gelesen und nicht erneut die KI aufgerufen wird.
+ * Schritt 2 und 3 laufen gleichzeitig, weil sie unabhängig voneinander sind. Der
  * Dokumenttext wird vor jedem KI-Aufruf über den {@link AnonymizerService}
  * anonymisiert.
  */
@@ -71,7 +74,9 @@ public class ProjektKiService {
      * andernfalls wird sie neu erzeugt und gespeichert.
      *
      * @param projektId Projekt-PK
-     * @param neu       {@code true} erzwingt eine Neuerzeugung (auch der Einzelzusammenfassungen)
+     * @param neu       {@code true} erzwingt eine Neuerzeugung der Projektzusammenfassung und
+     *                  der Stichwörter. Die Einzelzusammenfassungen der Dokumente werden
+     *                  wiederverwendet, weil sich ein bereits hochgeladenes Dokument nicht ändert.
      */
     public KiUebersicht uebersicht(Long projektId, boolean neu) {
         Projekt projekt = projektRepository.findById(projektId)
@@ -96,11 +101,11 @@ public class ProjektKiService {
             throw new RuntimeException("Für dieses Projekt liegen keine auswertbaren Dokumente vor.");
         }
 
-        // 1. Map: Einzelzusammenfassung je Dokument. Bereits vorhandene werden
-        // wiederverwendet - neu erzeugt wird nur für neue Dokumente (bei neu=true alle).
+        // 1. Map: Einzelzusammenfassung je Dokument. Bereits vorhandene werden immer
+        // wiederverwendet - neu erzeugt wird nur für neue Dokumente.
         ArrayNode material = objectMapper.createArrayNode();
         for (Dokument dokument : dokumente) {
-            JsonNode analyse = leseJson(einzelZusammenfassung(projekt, dokument, neu));
+            JsonNode analyse = leseJson(einzelZusammenfassung(projekt, dokument));
             ObjectNode eintrag = objectMapper.createObjectNode();
             eintrag.put("datei", dokument.getDateiName());
             eintrag.put("typ", dokument.getTyp());
@@ -120,7 +125,7 @@ public class ProjektKiService {
         projektWerte.put("PROJEKT_KURZBESCHREIBUNG", wertOderLeer(projekt.getBeschreibung()));
         projektWerte.put("SICHTBARKEIT", SICHTBARKEIT);
         projektWerte.put("DOKUMENT_ZUSAMMENFASSUNGEN", dokumentZusammenfassungen);
-        String zusammenfassungJson = rufeSkriptAuf("summarize_project", projektWerte, projektId);
+        String zusammenfassungsPrompt = bereiteSkriptVor("summarize_project", projektWerte, projektId);
 
         // 3. Reduce: kategorisierte Stichwörter.
         Map<String, String> stichwortWerte = new HashMap<>();
@@ -129,7 +134,15 @@ public class ProjektKiService {
         stichwortWerte.put("DOKUMENT_LISTE", dokumentListe);
         stichwortWerte.put("DOKUMENT_ZUSAMMENFASSUNGEN", dokumentZusammenfassungen);
         stichwortWerte.put("BEKANNTE_TAGS", bekannteTags());
-        String stichwoerterJson = rufeSkriptAuf("extract_keywords", stichwortWerte, projektId);
+        String stichwortPrompt = bereiteSkriptVor("extract_keywords", stichwortWerte, projektId);
+
+        // Beide KI-Aufrufe gleichzeitig starten und auf beide Ergebnisse warten.
+        CompletableFuture<String> zusammenfassungAufruf =
+                CompletableFuture.supplyAsync(() -> frageKi(zusammenfassungsPrompt));
+        CompletableFuture<String> stichwortAufruf =
+                CompletableFuture.supplyAsync(() -> frageKi(stichwortPrompt));
+        String zusammenfassungJson = warteAuf(zusammenfassungAufruf);
+        String stichwoerterJson = warteAuf(stichwortAufruf);
 
         projekt.setKiZusammenfassungJson(zusammenfassungJson);
         projekt.setKiStichwoerterJson(stichwoerterJson);
@@ -142,8 +155,8 @@ public class ProjektKiService {
     }
 
     /** Erzeugt (oder liest aus dem Cache) die Einzelzusammenfassung eines Dokuments. */
-    private String einzelZusammenfassung(Projekt projekt, Dokument dokument, boolean neu) {
-        if (!neu && dokument.getKiZusammenfassungJson() != null && !dokument.getKiZusammenfassungJson().isBlank()) {
+    private String einzelZusammenfassung(Projekt projekt, Dokument dokument) {
+        if (dokument.getKiZusammenfassungJson() != null && !dokument.getKiZusammenfassungJson().isBlank()) {
             return dokument.getKiZusammenfassungJson();
         }
         Map<String, String> werte = new HashMap<>();
@@ -158,15 +171,37 @@ public class ProjektKiService {
         return json;
     }
 
-    /**
-     * Lädt das Prompt-Skript, befüllt die Platzhalter, anonymisiert den
-     * (potenziell personenbezogenen) USER-Teil und ruft die KI im JSON-Modus auf.
-     */
+    /** Bereitet das Prompt-Skript vor und ruft die KI direkt auf (für die Einzelzusammenfassungen). */
     private String rufeSkriptAuf(String skriptId, Map<String, String> werte, Long projektId) {
+        return frageKi(bereiteSkriptVor(skriptId, werte, projektId));
+    }
+
+    /**
+     * Lädt das Prompt-Skript, befüllt die Platzhalter und anonymisiert den
+     * (potenziell personenbezogenen) USER-Teil. Läuft bewusst im normalen
+     * Thread, weil hier die Datenbank gelesen wird.
+     */
+    private String bereiteSkriptVor(String skriptId, Map<String, String> werte, Long projektId) {
         PromptLoader.RenderedPrompt prompt = promptLoader.lade(skriptId, werte);
         String user = anonymizerService.anonymisiere(prompt.user(), projektId);
-        String antwort = aiService.generiereAntwort(prompt.system() + "\n\n" + user, true);
-        return bereinigeJson(antwort);
+        return prompt.system() + "\n\n" + user;
+    }
+
+    /** Ruft die KI im JSON-Modus auf (ohne Datenbankzugriff, darf parallel laufen). */
+    private String frageKi(String fertigerPrompt) {
+        return bereinigeJson(aiService.generiereAntwort(fertigerPrompt, true));
+    }
+
+    /** Wartet auf einen parallelen KI-Aufruf und gibt dessen Fehlermeldung unverändert weiter. */
+    private String warteAuf(CompletableFuture<String> aufruf) {
+        try {
+            return aufruf.join();
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof RuntimeException fehler) {
+                throw fehler;
+            }
+            throw new RuntimeException("Die KI-Anfrage ist fehlgeschlagen.", e.getCause());
+        }
     }
 
     /** Stabile Kennung des aktuellen Dokumentsatzes (sortierte IDs), zur Änderungserkennung. */

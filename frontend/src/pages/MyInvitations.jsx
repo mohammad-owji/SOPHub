@@ -43,6 +43,8 @@ function MyInvitations() {
 
     const einladungsKarte = (projekt) => {
         const istOffen = projekt.status === "OFFEN";
+        // Nach der Annahme kann die Betreuung die Mitteilungen des Projekts lesen und beantworten
+        const istAngenommen = ["ANGENOMMEN", "ABGESCHLOSSEN"].includes((projekt.status || "").toUpperCase());
 
         return (
             <div className="col-md-6 col-xl-4" key={projekt.id}>
@@ -69,7 +71,15 @@ function MyInvitations() {
                             <span><strong>Semester:</strong> {projekt.semester || "–"}</span>
                         </div>
 
-                        <div className="mt-auto pt-2">
+                        <div className="mt-auto pt-2 d-flex flex-column gap-2">
+                            {istAngenommen && (
+                                <button
+                                    className="btn btn-primary w-100"
+                                    onClick={() => navigate(`/projectdetails/${projekt.id}?reiter=mitteilungen`)}
+                                >
+                                    Mitteilungen öffnen
+                                </button>
+                            )}
                             <button
                                 className={`btn w-100 ${istOffen ? "btn-primary" : "btn-outline-secondary"}`}
                                 onClick={() => navigate(`/project-invitation/${projekt.id}`)}

@@ -229,7 +229,14 @@ function ProjectInvitation() {
                             </div>
                         )}
 
-                        <div className="text-center mt-4">
+                        <div className="d-flex flex-wrap justify-content-center gap-2 mt-4">
+                            {/* Nach der Annahme: direkt zu den Mitteilungen des Projekts */}
+                            {istEingeladenerBetreuer && (decision === "accepted"
+                                || ["ANGENOMMEN", "ABGESCHLOSSEN"].includes((projekt.status || "").toUpperCase())) && (
+                                    <Link to={`/projectdetails/${projekt.id}?reiter=mitteilungen`} className="btn btn-primary">
+                                        Mitteilungen öffnen
+                                    </Link>
+                                )}
                             <Link to={`/projectdetails/${projekt.id}`} className="btn btn-outline-secondary">
                                 Zur Projektseite
                             </Link>

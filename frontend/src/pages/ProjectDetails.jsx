@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import AuswahlFeld from "../components/AuswahlFeld";
+import DokumentAnsicht from "../components/DokumentAnsicht";
+import ProjektMitteilungen from "../components/ProjektMitteilungen";
 import ProjektStatusBadge from "../components/ProjektStatus";
 import {
     getAuth,
@@ -16,6 +19,7 @@ import {
     mitgliedEntfernen,
 } from "../services/api";
 import { getKiUebersicht } from "../services/aiService";
+import { SEMESTER, FACHBEREICHE, PROJEKTARTEN, GRUPPENGROESSEN } from "../components/ProjektOptionen";
 import "./ProjectDetails.css";
 
 // Systemkonto der Beispielprojekte (siehe BeispielprojekteInitializer im Backend)
@@ -62,6 +66,16 @@ const TECH_LABEL = {
     sonstige: "Sonstige",
 };
 
+// Formularwerte aus einem Projekt bilden (fuer "Bearbeiten" und "Abbrechen")
+const formularAusProjekt = (p) => ({
+    titel: p?.titel || "",
+    beschreibung: p?.beschreibung || "",
+    semester: p?.semester || "",
+    fachbereich: p?.fachbereich || "",
+    projektart: p?.projektart || "",
+    gruppenanzahl: p?.gruppenanzahl != null ? String(p.gruppenanzahl) : "",
+});
+
 function StichwortBadges({ items }) {
     if (!Array.isArray(items) || items.length === 0) return null;
     return (
@@ -77,6 +91,7 @@ function StichwortBadges({ items }) {
 
 function ProjectDetails() {
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
 
     const auth = getAuth();
 
@@ -92,12 +107,18 @@ function ProjectDetails() {
     const [kiUebersicht, setKiUebersicht] = useState(null);
     const [bearbeitung, setBearbeitung] = useState(false);
     const [speichertProjekt, setSpeichertProjekt] = useState(false);
-    const [projektForm, setProjektForm] = useState({ titel: "", beschreibung: "" });
+    const [projektForm, setProjektForm] = useState(formularAusProjekt(null));
     const [projektFehler, setProjektFehler] = useState("");
     const [datei, setDatei] = useState(null);
     const [dateiTyp, setDateiTyp] = useState("DOKUMENTATION");
     const [dokumentFehler, setDokumentFehler] = useState("");
     const [dokumentLaedt, setDokumentLaedt] = useState(false);
+    const [ansichtDokument, setAnsichtDokument] = useState(null);
+
+    // Reiter: "uebersicht" oder "mitteilungen" (?reiter=mitteilungen oeffnet direkt die Mitteilungen)
+    const [reiter, setReiter] = useState(searchParams.get("reiter") === "mitteilungen" ? "mitteilungen" : "uebersicht");
+    const [mitteilungZugriff, setMitteilungZugriff] = useState(false);
+    const [mitteilungAnzahl, setMitteilungAnzahl] = useState(0);
 
     const ladeMitglieder = () => {
         getProjektMitglieder(id)
@@ -113,7 +134,7 @@ function ProjectDetails() {
         getProjektDetails(id)
             .then((daten) => {
                 setProjekt(daten);
-                setProjektForm({ titel: daten.titel || "", beschreibung: daten.beschreibung || "" });
+                setProjektForm(formularAusProjekt(daten));
 
                 if (daten.istOwner || daten.istTeammitglied) {
                     getDokumenteFuerProjekt(id)
@@ -202,8 +223,16 @@ function ProjectDetails() {
         event.preventDefault();
         setProjektFehler("");
         setSpeichertProjekt(true);
+        if (!projektForm.titel.trim()) {
+            setProjektFehler("Bitte einen Projekttitel angeben.");
+            setSpeichertProjekt(false);
+            return;
+        }
         try {
-            const aktualisiert = await aktualisiereProjekt(id, projektForm);
+            const aktualisiert = await aktualisiereProjekt(id, {
+                ...projektForm,
+                gruppenanzahl: projektForm.gruppenanzahl ? Number(projektForm.gruppenanzahl) : null,
+            });
             setProjekt((vorher) => ({ ...vorher, ...aktualisiert }));
             setBearbeitung(false);
             if (dokumente.length > 0) {
@@ -284,9 +313,6 @@ function ProjectDetails() {
         }
     };
 
-    const schlagwoerterListe = projekt?.schlagwoerter
-        ? projekt.schlagwoerter.split(",").map((s) => s.trim()).filter(Boolean)
-        : [];
     const kategorien = kiUebersicht?.stichwoerter?.kategorien || {};
     const kategorienEintraege = Object.entries(kategorien).filter(([, wert]) => {
         if (Array.isArray(wert)) return wert.length > 0;
@@ -330,13 +356,15 @@ function ProjectDetails() {
     }
 
     const istBeispiel = projekt.student?.benutzername === BEISPIEL_KONTO;
-    const hatSchlagwoerterOderTags = kategorienEintraege.length > 0
-        || schlagwoerterListe.length > 0
-        || projekt.tags?.length > 0;
+    // KI-Stichwoerter (nach Kategorien) und KI-Tags; alte, selbst eingetippte Schlagwoerter werden nicht mehr angezeigt
+    const hatKiStichwoerter = kategorienEintraege.length > 0 || projekt.tags?.length > 0;
 
     return (
         <div>
             <Navbar />
+
+            {/* PDF-Ansicht als Fenster ueber der Seite (nur fuer Mitglieder erreichbar) */}
+            <DokumentAnsicht dokument={ansichtDokument} onSchliessen={() => setAnsichtDokument(null)} />
 
             <div className="container py-4">
 
@@ -382,7 +410,45 @@ function ProjectDetails() {
                     </div>
                 </section>
 
-                <div className="row g-4">
+                {/* Reiter nur fuer Personen mit Zugriff auf die Mitteilungen (Team und Betreuung) */}
+                {mitteilungZugriff && (
+                    <div className="pd-reiter" role="tablist">
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={reiter === "uebersicht"}
+                            className={`pd-reiter-knopf ${reiter === "uebersicht" ? "pd-reiter-aktiv" : ""}`}
+                            onClick={() => setReiter("uebersicht")}
+                        >
+                            Übersicht
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={reiter === "mitteilungen"}
+                            className={`pd-reiter-knopf ${reiter === "mitteilungen" ? "pd-reiter-aktiv" : ""}`}
+                            onClick={() => setReiter("mitteilungen")}
+                        >
+                            Mitteilungen
+                            <span className="pd-reiter-zahl">{mitteilungAnzahl}</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Mitteilungsbrett: bleibt immer geladen (fuer die Anzahl im Reiter), wird aber nur im Reiter angezeigt */}
+                <div className={mitteilungZugriff && reiter === "mitteilungen" ? "" : "d-none"}>
+                    <ProjektMitteilungen
+                        projektId={id}
+                        istTeam={darfBearbeiten}
+                        onGeladen={(anzahl) => {
+                            setMitteilungZugriff(true);
+                            setMitteilungAnzahl(anzahl);
+                        }}
+                        onKeinZugriff={() => setMitteilungZugriff(false)}
+                    />
+                </div>
+
+                <div className={`row g-4 ${mitteilungZugriff && reiter === "mitteilungen" ? "d-none" : ""}`}>
 
                     {/* Linke Spalte */}
                     <div className="col-lg-8 d-flex flex-column gap-4">
@@ -390,10 +456,12 @@ function ProjectDetails() {
                         <div className="card">
                             <div className="card-body">
                                 <div className="d-flex justify-content-between align-items-center gap-2 mb-3">
-                                    <h4 className="pd-abschnitt mb-0">Projektbeschreibung</h4>
+                                    <h4 className="pd-abschnitt mb-0">
+                                        {bearbeitung ? "Projekt bearbeiten" : "Projektbeschreibung"}
+                                    </h4>
                                     {darfBearbeiten && !bearbeitung && (
                                         <button className="btn btn-sm btn-outline-primary" onClick={() => setBearbeitung(true)}>
-                                            Bearbeiten
+                                            Projekt bearbeiten
                                         </button>
                                     )}
                                 </div>
@@ -416,12 +484,61 @@ function ProjectDetails() {
                                             value={projektForm.beschreibung}
                                             onChange={(event) => setProjektForm({ ...projektForm, beschreibung: event.target.value })}
                                         />
+
+                                        <div className="row g-3 mb-3">
+                                            <div className="col-md-6">
+                                                <label className="form-label">Semester</label>
+                                                <AuswahlFeld
+                                                    value={projektForm.semester}
+                                                    onChange={(wert) => setProjektForm({ ...projektForm, semester: wert })}
+                                                    optionen={SEMESTER}
+                                                    placeholder="Auswählen oder eintippen"
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label">Fachbereich</label>
+                                                <AuswahlFeld
+                                                    value={projektForm.fachbereich}
+                                                    onChange={(wert) => setProjektForm({ ...projektForm, fachbereich: wert })}
+                                                    optionen={FACHBEREICHE}
+                                                    placeholder="Auswählen oder eintippen"
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label">Projektart</label>
+                                                <AuswahlFeld
+                                                    value={projektForm.projektart}
+                                                    onChange={(wert) => setProjektForm({ ...projektForm, projektart: wert })}
+                                                    optionen={PROJEKTARTEN}
+                                                    placeholder="Auswählen oder eintippen"
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label" htmlFor="pd-projekt-gruppe">Gruppengröße</label>
+                                                <select
+                                                    id="pd-projekt-gruppe"
+                                                    className="form-select"
+                                                    value={projektForm.gruppenanzahl}
+                                                    onChange={(event) => setProjektForm({ ...projektForm, gruppenanzahl: event.target.value })}
+                                                >
+                                                    {projektForm.gruppenanzahl === "" && <option value="">– nicht festgelegt –</option>}
+                                                    {GRUPPENGROESSEN.map((anzahl) => (
+                                                        <option key={anzahl} value={String(anzahl)} disabled={anzahl < aktuelleGroesse}>
+                                                            {anzahl} {anzahl === 1 ? "Person" : "Personen"}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <div className="form-text">
+                                                    Mindestens {aktuelleGroesse} (aktuelle Teamgröße).
+                                                </div>
+                                            </div>
+                                        </div>
                                         <div className="d-flex gap-2">
                                             <button className="btn btn-primary" type="submit" disabled={speichertProjekt}>
                                                 {speichertProjekt ? "Speichert..." : "Speichern"}
                                             </button>
                                             <button className="btn btn-outline-secondary" type="button" onClick={() => {
-                                                setProjektForm({ titel: projekt.titel || "", beschreibung: projekt.beschreibung || "" });
+                                                setProjektForm(formularAusProjekt(projekt));
                                                 setBearbeitung(false);
                                                 setProjektFehler("");
                                             }}>
@@ -508,9 +625,21 @@ function ProjectDetails() {
                                                         </span>
                                                     </div>
 
+                                                    {dok.dateiName?.toLowerCase().endsWith(".pdf") && (
+                                                        <button
+                                                            className="btn btn-sm btn-primary flex-shrink-0"
+                                                            onClick={() => setAnsichtDokument(dok)}
+                                                        >
+                                                            Ansehen
+                                                        </button>
+                                                    )}
                                                     <button
                                                         className="btn btn-sm btn-outline-primary flex-shrink-0"
-                                                        onClick={() => downloadDokument(dok.id, dok.dateiName)}
+                                                        onClick={() =>
+                                                            downloadDokument(dok.id, dok.dateiName).catch(() =>
+                                                                setDokumentFehler("Das Dokument konnte nicht heruntergeladen werden.")
+                                                            )
+                                                        }
                                                     >
                                                         Herunterladen
                                                     </button>
@@ -567,11 +696,11 @@ function ProjectDetails() {
                             </div>
                         )}
 
-                        {/* Schlagwoerter/Tags nur anzeigen, wenn vorhanden */}
-                        {hatSchlagwoerterOderTags && (
+                        {/* KI-Stichwoerter und KI-Tags nur anzeigen, wenn vorhanden */}
+                        {hatKiStichwoerter && (
                             <div className={`card ${kiLaedt ? "pd-ki-laedt" : ""}`}>
                                 <div className="card-body">
-                                    <h4 className="pd-abschnitt">Schlagwörter & Tags</h4>
+                                    <h4 className="pd-abschnitt">KI-Stichwörter & Tags</h4>
                                     {kategorienEintraege.length > 0 && (
                                         <>
                                             {schwierigkeitsstufe && (
@@ -602,14 +731,9 @@ function ProjectDetails() {
                                             ))}
                                         </>
                                     )}
-                                    {(schlagwoerterListe.length > 0 || projekt.tags?.length > 0) && (
+                                    {projekt.tags?.length > 0 && (
                                         <div className={kategorienEintraege.length > 0 ? "mt-3 pt-3 border-top" : ""}>
                                             {kategorienEintraege.length > 0 && <h5 className="h6 fw-bold">Projekt-Tags</h5>}
-                                            {schlagwoerterListe.map((wort) => (
-                                                <span className="badge bg-info me-2 mb-1" key={wort}>
-                                                    {wort}
-                                                </span>
-                                            ))}
                                             {projekt.tags?.map((tag) => (
                                                 <span className="badge bg-info me-2 mb-1" key={tag.id}>
                                                     {tag.name}
@@ -626,144 +750,144 @@ function ProjectDetails() {
                     <div className="col-lg-4 d-flex flex-column gap-4">
                         {darfBearbeiten && (
                             <>
-                        <div className="card">
-                            <div className="card-body">
-                                <h5 className="pd-abschnitt">Projektinformationen</h5>
+                                <div className="card">
+                                    <div className="card-body">
+                                        <h5 className="pd-abschnitt">Projektinformationen</h5>
 
-                                <dl className="pd-infos mb-0">
-                                    <dt>Status</dt>
-                                    <dd><ProjektStatusBadge status={projekt.status} /></dd>
+                                        <dl className="pd-infos mb-0">
+                                            <dt>Status</dt>
+                                            <dd><ProjektStatusBadge status={projekt.status} /></dd>
 
-                                    <dt>Semester</dt>
-                                    <dd>{projekt.semester || "–"}</dd>
+                                            <dt>Semester</dt>
+                                            <dd>{projekt.semester || "–"}</dd>
 
-                                    <dt>Fachbereich</dt>
-                                    <dd>{projekt.fachbereich || "–"}</dd>
+                                            <dt>Fachbereich</dt>
+                                            <dd>{projekt.fachbereich || "–"}</dd>
 
-                                    <dt>Projektart</dt>
-                                    <dd>{projekt.projektart || "–"}</dd>
+                                            <dt>Projektart</dt>
+                                            <dd>{projekt.projektart || "–"}</dd>
 
-                                    <dt>Gruppengröße</dt>
-                                    <dd>{projekt.gruppenanzahl != null ? `${projekt.gruppenanzahl} Personen` : "–"}</dd>
-                                </dl>
-                            </div>
-                        </div>
-
-                        <div className="card">
-                            <div className="card-body">
-                                <div className="d-flex justify-content-between align-items-center mb-3">
-                                    <h5 className="pd-abschnitt mb-0">Team</h5>
-
-                                    {projekt.gruppenanzahl != null && (
-                                        <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
-                                            {aktuelleGroesse} / {projekt.gruppenanzahl}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="pd-person">
-                                    <span className="pd-avatar">
-                                        {initialen(projekt.student?.vorname, projekt.student?.name)}
-                                    </span>
-                                    <div>
-                                        <div className="pd-person-name">
-                                            {projekt.student
-                                                ? `${projekt.student.vorname} ${projekt.student.name}`
-                                                : "–"}
-                                        </div>
-                                        <div className="pd-person-rolle">Ersteller:in</div>
+                                            <dt>Gruppengröße</dt>
+                                            <dd>{projekt.gruppenanzahl != null ? `${projekt.gruppenanzahl} Personen` : "–"}</dd>
+                                        </dl>
                                     </div>
                                 </div>
 
-                                <div className="pd-person">
-                                    <span className={`pd-avatar ${projekt.betreuer ? "pd-avatar-betreuer" : "pd-avatar-leer"}`}>
-                                        {projekt.betreuer
-                                            ? initialen(projekt.betreuer.vorname, projekt.betreuer.name)
-                                            : "?"}
-                                    </span>
-                                    <div>
-                                        <div className="pd-person-name">
-                                            {projekt.betreuer
-                                                ? `${projekt.betreuer.vorname} ${projekt.betreuer.name}`
-                                                : "Noch nicht zugewiesen"}
-                                        </div>
-                                        <div className="pd-person-rolle">Betreuer:in</div>
-                                    </div>
-                                </div>
+                                <div className="card">
+                                    <div className="card-body">
+                                        <div className="d-flex justify-content-between align-items-center mb-3">
+                                            <h5 className="pd-abschnitt mb-0">Team</h5>
 
-                                {mitglieder.map((m) => (
-                                    <div className="pd-person" key={m.studentId}>
-                                        <span className="pd-avatar">{initialen(m.vorname, m.name)}</span>
-                                        <div className="flex-grow-1">
-                                            <div className="pd-person-name">{m.vorname} {m.name}</div>
-                                            <div className="pd-person-rolle">Teammitglied</div>
+                                            {projekt.gruppenanzahl != null && (
+                                                <span className={`badge ${maxErreicht ? "bg-secondary" : "bg-primary"}`}>
+                                                    {aktuelleGroesse} / {projekt.gruppenanzahl}
+                                                </span>
+                                            )}
                                         </div>
+
+                                        <div className="pd-person">
+                                            <span className="pd-avatar">
+                                                {initialen(projekt.student?.vorname, projekt.student?.name)}
+                                            </span>
+                                            <div>
+                                                <div className="pd-person-name">
+                                                    {projekt.student
+                                                        ? `${projekt.student.vorname} ${projekt.student.name}`
+                                                        : "–"}
+                                                </div>
+                                                <div className="pd-person-rolle">Ersteller:in</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pd-person">
+                                            <span className={`pd-avatar ${projekt.betreuer ? "pd-avatar-betreuer" : "pd-avatar-leer"}`}>
+                                                {projekt.betreuer
+                                                    ? initialen(projekt.betreuer.vorname, projekt.betreuer.name)
+                                                    : "?"}
+                                            </span>
+                                            <div>
+                                                <div className="pd-person-name">
+                                                    {projekt.betreuer
+                                                        ? `${projekt.betreuer.vorname} ${projekt.betreuer.name}`
+                                                        : "Noch nicht zugewiesen"}
+                                                </div>
+                                                <div className="pd-person-rolle">Betreuer:in</div>
+                                            </div>
+                                        </div>
+
+                                        {mitglieder.map((m) => (
+                                            <div className="pd-person" key={m.studentId}>
+                                                <span className="pd-avatar">{initialen(m.vorname, m.name)}</span>
+                                                <div className="flex-grow-1">
+                                                    <div className="pd-person-name">{m.vorname} {m.name}</div>
+                                                    <div className="pd-person-rolle">Teammitglied</div>
+                                                </div>
+
+                                                {istErsteller && (
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger"
+                                                        onClick={() => handleEntfernen(m.studentId)}
+                                                        title="Aus dem Team entfernen"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {mitglieder.length === 0 && (
+                                            <p className="text-muted small mt-2 mb-0">Noch keine weiteren Teammitglieder.</p>
+                                        )}
 
                                         {istErsteller && (
-                                            <button
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() => handleEntfernen(m.studentId)}
-                                                title="Aus dem Team entfernen"
-                                            >
-                                                ✕
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-
-                                {mitglieder.length === 0 && (
-                                    <p className="text-muted small mt-2 mb-0">Noch keine weiteren Teammitglieder.</p>
-                                )}
-
-                                {istErsteller && (
-                                    <div className="mt-3 pt-3 border-top">
-                                        {mitgliedFehler && (
-                                            <div className="alert alert-danger py-2">{mitgliedFehler}</div>
-                                        )}
-
-                                        {maxErreicht ? (
-                                            <p className="text-muted small mb-0">
-                                                Maximale Gruppengröße erreicht ({aktuelleGroesse}/{projekt.gruppenanzahl}).
-                                            </p>
-                                        ) : (
-                                            <>
-                                                <label className="form-label" htmlFor="pd-team-suche">
-                                                    Studierende hinzufügen
-                                                </label>
-                                                <input
-                                                    id="pd-team-suche"
-                                                    type="text"
-                                                    className="form-control mb-2"
-                                                    placeholder="Name suchen..."
-                                                    value={suche}
-                                                    onChange={(e) => setSuche(e.target.value)}
-                                                />
-
-                                                {gefilterteStudenten.length > 0 && (
-                                                    <ul className="list-group">
-                                                        {gefilterteStudenten.map((s) => (
-                                                            <li
-                                                                className="list-group-item d-flex justify-content-between align-items-center"
-                                                                key={s.id}
-                                                            >
-                                                                {s.vorname} {s.name}
-
-                                                                <button
-                                                                    className="btn btn-sm btn-outline-primary"
-                                                                    onClick={() => handleHinzufuegen(s.id)}
-                                                                >
-                                                                    + Hinzufügen
-                                                                </button>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
+                                            <div className="mt-3 pt-3 border-top">
+                                                {mitgliedFehler && (
+                                                    <div className="alert alert-danger py-2">{mitgliedFehler}</div>
                                                 )}
-                                            </>
+
+                                                {maxErreicht ? (
+                                                    <p className="text-muted small mb-0">
+                                                        Maximale Gruppengröße erreicht ({aktuelleGroesse}/{projekt.gruppenanzahl}).
+                                                    </p>
+                                                ) : (
+                                                    <>
+                                                        <label className="form-label" htmlFor="pd-team-suche">
+                                                            Studierende hinzufügen
+                                                        </label>
+                                                        <input
+                                                            id="pd-team-suche"
+                                                            type="text"
+                                                            className="form-control mb-2"
+                                                            placeholder="Name suchen..."
+                                                            value={suche}
+                                                            onChange={(e) => setSuche(e.target.value)}
+                                                        />
+
+                                                        {gefilterteStudenten.length > 0 && (
+                                                            <ul className="list-group">
+                                                                {gefilterteStudenten.map((s) => (
+                                                                    <li
+                                                                        className="list-group-item d-flex justify-content-between align-items-center"
+                                                                        key={s.id}
+                                                                    >
+                                                                        {s.vorname} {s.name}
+
+                                                                        <button
+                                                                            className="btn btn-sm btn-outline-primary"
+                                                                            onClick={() => handleHinzufuegen(s.id)}
+                                                                        >
+                                                                            + Hinzufügen
+                                                                        </button>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
+                                </div>
                             </>
                         )}
                     </div>

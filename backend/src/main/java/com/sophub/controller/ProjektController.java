@@ -116,9 +116,34 @@ public class ProjektController {
             return ResponseEntity.status(403).body("Nur Projekt-Ersteller und Teammitglieder können das Projekt bearbeiten.");
         }
         try {
+            // Titel darf nicht leer sein (null = "nicht aendern" ist erlaubt)
+            String titel = getrimmt(projekt.getTitel());
+            if (titel != null && titel.isEmpty()) {
+                return ResponseEntity.status(400).body("Der Projekttitel darf nicht leer sein.");
+            }
+
+            // Gruppengroesse: 1 bis 10 und nicht kleiner als das aktuelle Team
+            Integer gruppenanzahl = projekt.getGruppenanzahl();
+            if (gruppenanzahl != null) {
+                if (gruppenanzahl < 1 || gruppenanzahl > 10) {
+                    return ResponseEntity.status(400).body("Die Gruppengröße muss zwischen 1 und 10 liegen.");
+                }
+                int aktuelleTeamgroesse = 1 + mitgliedschaftService.mitglieder(id).size();
+                if (gruppenanzahl < aktuelleTeamgroesse) {
+                    return ResponseEntity.status(400).body("Die Gruppengröße kann nicht kleiner sein als das aktuelle Team ("
+                            + aktuelleTeamgroesse + " Personen). Bitte zuerst Teammitglieder entfernen.");
+                }
+            }
+
+            // Nur diese Felder duerfen ueber "Bearbeiten" geaendert werden.
+            // Status und Betreuer laufen bewusst NICHT hierueber (dafuer gibt es den Einladungs-Ablauf).
             Projekt aenderung = new Projekt();
-            aenderung.setTitel(projekt.getTitel());
+            aenderung.setTitel(titel);
             aenderung.setBeschreibung(projekt.getBeschreibung());
+            aenderung.setSemester(getrimmt(projekt.getSemester()));
+            aenderung.setFachbereich(getrimmt(projekt.getFachbereich()));
+            aenderung.setProjektart(getrimmt(projekt.getProjektart()));
+            aenderung.setGruppenanzahl(gruppenanzahl);
             return ResponseEntity.ok(projektService.aktualisieren(id, aenderung));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
@@ -201,6 +226,11 @@ public class ProjektController {
         TagAnsicht(Tag tag) {
             this(tag.getId(), tag.getName());
         }
+    }
+
+    // Leerzeichen am Anfang/Ende entfernen; null bleibt null ("Feld nicht aendern")
+    private String getrimmt(String text) {
+        return text == null ? null : text.trim();
     }
 
     private OeffentlicheProjektansicht oeffentlicheAnsicht(Projekt projekt) {
