@@ -1,0 +1,216 @@
+/* Reiter "Abgaben" auf der Projektseite (Dokument-Anforderungen) */
+
+.pa-hinweis {
+    color: var(--sop-text-leise);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.pa-formular {
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: #fafcfc;
+}
+
+.pa-zusammenfassung {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Eine Anforderung; der farbige linke Rand zeigt den Status */
+.pa-anforderung {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-left: 4px solid #94a3b8;
+    border-radius: var(--sop-radius-klein);
+    background: var(--sop-flaeche);
+}
+
+.pa-rand-angefordert {
+    border-left-color: #0284c7;
+}
+
+.pa-rand-eingereicht {
+    border-left-color: #d97706;
+}
+
+.pa-rand-ueberarbeiten {
+    border-left-color: #dc2626;
+}
+
+.pa-rand-akzeptiert {
+    border-left-color: #16a34a;
+}
+
+.pa-kopf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.pa-titel {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.pa-status {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.2em 0.7em;
+    white-space: nowrap;
+}
+
+.pa-status-angefordert {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+.pa-status-eingereicht {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.pa-status-ueberarbeiten {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.pa-status-akzeptiert {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.pa-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--sop-text-leise);
+    margin: 0.35rem 0 0.5rem;
+}
+
+.pa-frist {
+    font-weight: 600;
+    color: var(--sop-navy);
+}
+
+.pa-frist-ueberfaellig {
+    color: #b42318;
+}
+
+.pa-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 0.5rem;
+}
+
+/* Verlauf: Einreichungen und Rueckmeldungen untereinander */
+.pa-verlauf {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0 0 0 1rem;
+    border-left: 3px solid var(--sop-tuerkis-flaeche);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pa-eintrag {
+    position: relative;
+    font-size: 0.9rem;
+}
+
+/* Punkt auf der Verlaufslinie */
+.pa-eintrag::before {
+    content: "";
+    position: absolute;
+    left: calc(-1rem - 7px);
+    top: 0.35rem;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: 2px solid var(--sop-flaeche);
+    background: #94a3b8;
+}
+
+.pa-eintrag-eingereicht::before {
+    background: #d97706;
+}
+
+.pa-eintrag-ueberarbeiten::before {
+    background: #dc2626;
+}
+
+.pa-eintrag-akzeptiert::before {
+    background: #16a34a;
+}
+
+.pa-eintrag-kopf {
+    margin-bottom: 0.3rem;
+}
+
+.pa-datei {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+    padding: 0.3rem 0.65rem 0.3rem 0.3rem;
+    margin-bottom: 0.3rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: #fafcfc;
+    color: var(--sop-text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.pa-datei:hover {
+    border-color: var(--sop-tuerkis);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+.pa-datei-endung {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.25rem 0.4rem;
+    border-radius: 4px;
+    background: var(--sop-navy);
+    color: #ffffff;
+}
+
+.pa-aktion {
+    margin-top: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: #fafcfc;
+}
+
+.pa-loeschen {
+    color: #b42318;
+    padding: 0;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Reiterleiste auf schmalen Bildschirmen seitlich scrollbar */
+.pd-reiter {
+    overflow-x: auto;
+}
+
+.pd-reiter-knopf {
+    white-space: nowrap;
+}

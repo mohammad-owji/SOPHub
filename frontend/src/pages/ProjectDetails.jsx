@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import AuswahlFeld from "../components/AuswahlFeld";
 import DokumentAnsicht from "../components/DokumentAnsicht";
 import ProjektMitteilungen from "../components/ProjektMitteilungen";
+import ProjektAnforderungen from "../components/ProjektAnforderungen";
 import ProjektStatusBadge from "../components/ProjektStatus";
 import {
     getAuth,
@@ -34,6 +35,8 @@ const DOKUMENT_TYP_LABEL = {
     LASTENHEFT: "Lastenheft",
     DATENBANKMODELL: "Datenbankmodell",
     DOKUMENTATION: "Dokumentation",
+    TESTKONZEPT: "Testkonzept",
+    PRAESENTATION: "Präsentation",
     SONSTIGES: "Sonstiges",
 };
 
@@ -115,15 +118,27 @@ function ProjectDetails() {
     const [dokumentLaedt, setDokumentLaedt] = useState(false);
     const [ansichtDokument, setAnsichtDokument] = useState(null);
 
-    // Reiter: "uebersicht" oder "mitteilungen" (?reiter=mitteilungen oeffnet direkt die Mitteilungen)
-    const [reiter, setReiter] = useState(searchParams.get("reiter") === "mitteilungen" ? "mitteilungen" : "uebersicht");
+    // Reiter: "uebersicht", "abgaben" oder "mitteilungen"
+    // (?reiter=abgaben bzw. ?reiter=mitteilungen oeffnet direkt den Reiter, z.B. aus einer E-Mail)
+    const [reiter, setReiter] = useState(
+        ["abgaben", "mitteilungen"].includes(searchParams.get("reiter")) ? searchParams.get("reiter") : "uebersicht"
+    );
     const [mitteilungZugriff, setMitteilungZugriff] = useState(false);
     const [mitteilungAnzahl, setMitteilungAnzahl] = useState(0);
+    const [anforderungZugriff, setAnforderungZugriff] = useState(false);
+    const [offeneAbgaben, setOffeneAbgaben] = useState(0);
 
     const ladeMitglieder = () => {
         getProjektMitglieder(id)
             .then((data) => setMitglieder(data || []))
             .catch(() => setMitglieder([]));
+    };
+
+    // Nach einer Einreichung im Reiter "Abgaben" steht die Datei auch in der Dokumentenliste
+    const ladeDokumente = () => {
+        getDokumenteFuerProjekt(id)
+            .then((liste) => setDokumente(liste || []))
+            .catch(() => { });
     };
 
     useEffect(() => {
@@ -359,6 +374,13 @@ function ProjectDetails() {
     // KI-Stichwoerter (nach Kategorien) und KI-Tags; alte, selbst eingetippte Schlagwoerter werden nicht mehr angezeigt
     const hatKiStichwoerter = kategorienEintraege.length > 0 || projekt.tags?.length > 0;
 
+    // Welcher Reiter ist wirklich sichtbar? Ohne Zugriff auf einen Reiter bleibt es bei der Uebersicht.
+    const zeigeReiter = mitteilungZugriff || anforderungZugriff;
+    const aktiverReiter =
+        (reiter === "abgaben" && anforderungZugriff) || (reiter === "mitteilungen" && mitteilungZugriff)
+            ? reiter
+            : "uebersicht";
+
     return (
         <div>
             <Navbar />
@@ -410,33 +432,61 @@ function ProjectDetails() {
                     </div>
                 </section>
 
-                {/* Reiter nur fuer Personen mit Zugriff auf die Mitteilungen (Team und Betreuung) */}
-                {mitteilungZugriff && (
+                {/* Reiter nur fuer Personen mit Zugriff (Team und Betreuung) */}
+                {zeigeReiter && (
                     <div className="pd-reiter" role="tablist">
                         <button
                             type="button"
                             role="tab"
-                            aria-selected={reiter === "uebersicht"}
-                            className={`pd-reiter-knopf ${reiter === "uebersicht" ? "pd-reiter-aktiv" : ""}`}
+                            aria-selected={aktiverReiter === "uebersicht"}
+                            className={`pd-reiter-knopf ${aktiverReiter === "uebersicht" ? "pd-reiter-aktiv" : ""}`}
                             onClick={() => setReiter("uebersicht")}
                         >
                             Übersicht
                         </button>
-                        <button
-                            type="button"
-                            role="tab"
-                            aria-selected={reiter === "mitteilungen"}
-                            className={`pd-reiter-knopf ${reiter === "mitteilungen" ? "pd-reiter-aktiv" : ""}`}
-                            onClick={() => setReiter("mitteilungen")}
-                        >
-                            Mitteilungen
-                            <span className="pd-reiter-zahl">{mitteilungAnzahl}</span>
-                        </button>
+                        {anforderungZugriff && (
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={aktiverReiter === "abgaben"}
+                                className={`pd-reiter-knopf ${aktiverReiter === "abgaben" ? "pd-reiter-aktiv" : ""}`}
+                                onClick={() => setReiter("abgaben")}
+                                title="Zahl = Abgaben, bei denen Sie gerade etwas tun müssen"
+                            >
+                                Abgaben
+                                {offeneAbgaben > 0 && <span className="pd-reiter-zahl">{offeneAbgaben} offen</span>}
+                            </button>
+                        )}
+                        {mitteilungZugriff && (
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={aktiverReiter === "mitteilungen"}
+                                className={`pd-reiter-knopf ${aktiverReiter === "mitteilungen" ? "pd-reiter-aktiv" : ""}`}
+                                onClick={() => setReiter("mitteilungen")}
+                            >
+                                Mitteilungen
+                                <span className="pd-reiter-zahl">{mitteilungAnzahl}</span>
+                            </button>
+                        )}
                     </div>
                 )}
 
-                {/* Mitteilungsbrett: bleibt immer geladen (fuer die Anzahl im Reiter), wird aber nur im Reiter angezeigt */}
-                <div className={mitteilungZugriff && reiter === "mitteilungen" ? "" : "d-none"}>
+                {/* Abgaben: bleibt immer geladen (fuer die Zahl im Reiter), wird aber nur im Reiter angezeigt */}
+                <div className={aktiverReiter === "abgaben" ? "" : "d-none"}>
+                    <ProjektAnforderungen
+                        projektId={id}
+                        onGeladen={(anzahl) => {
+                            setAnforderungZugriff(true);
+                            setOffeneAbgaben(anzahl);
+                        }}
+                        onKeinZugriff={() => setAnforderungZugriff(false)}
+                        onEingereicht={ladeDokumente}
+                    />
+                </div>
+
+                {/* Mitteilungsbrett: ebenso immer geladen, aber nur im Reiter sichtbar */}
+                <div className={aktiverReiter === "mitteilungen" ? "" : "d-none"}>
                     <ProjektMitteilungen
                         projektId={id}
                         istTeam={darfBearbeiten}
@@ -448,7 +498,7 @@ function ProjectDetails() {
                     />
                 </div>
 
-                <div className={`row g-4 ${mitteilungZugriff && reiter === "mitteilungen" ? "d-none" : ""}`}>
+                <div className={`row g-4 ${aktiverReiter === "uebersicht" ? "" : "d-none"}`}>
 
                     {/* Linke Spalte */}
                     <div className="col-lg-8 d-flex flex-column gap-4">

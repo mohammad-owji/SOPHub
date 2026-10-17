@@ -16,25 +16,21 @@ public class AuthController {
         this.authService = authService;
     }
 
+    // Login mit E-Mail-Adresse und Passwort
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            return ResponseEntity.ok(authService.login(request.getBenutzername(), request.getPasswort()));
+            return ResponseEntity.ok(authService.login(request.getEmail(), request.getPasswort()));
         } catch (Exception e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
     }
 
+    // Registrierung nur mit E-Mail-Adresse und Passwort (Namen werden aus der E-Mail abgeleitet)
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
-            return ResponseEntity.ok(authService.register(
-                request.getBenutzername(),
-                request.getPasswort(),
-                request.getEmail(),
-                request.getName(),
-                request.getVorname()
-            ));
+            return ResponseEntity.ok(authService.register(request.getEmail(), request.getPasswort()));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }

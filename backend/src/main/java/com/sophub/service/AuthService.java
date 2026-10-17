@@ -10,9 +10,20 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Registrierung, E-Mail-Bestaetigung und Login.
+ * <ul>
+ *     <li>Registrierung nur mit E-Mail-Adresse und Passwort. Vorname, Nachname und der
+ *         interne Benutzername werden aus der E-Mail-Adresse abgeleitet
+ *         (z.B. lena.test@stud.hs-bochum.de -> "Lena" "Test", Benutzername "lena.test").</li>
+ *     <li>Nach der Registrierung muss die E-Mail-Adresse ueber einen Link bestaetigt werden.</li>
+ *     <li>Login mit E-Mail-Adresse und Passwort.</li>
+ * </ul>
+ */
 @Service
 public class AuthService {
 
@@ -21,9 +32,11 @@ public class AuthService {
     // So lange ist ein Bestaetigungslink gueltig
     private static final int TOKEN_GUELTIG_STUNDEN = 24;
 
+    private static final int PASSWORT_MINDESTLAENGE = 8;
+
     private static final String HINWEIS_BESTAETIGUNG =
             "Fast geschafft! Wir haben Ihnen eine E-Mail mit einem Bestätigungslink geschickt. "
-            + "Bitte klicken Sie auf den Link, danach können Sie sich anmelden.";
+            + "Bitte klicken Sie auf den Link, danach können Sie sich mit Ihrer E-Mail-Adresse anmelden.";
 
     private final UserRepository userRepository;
     private final RolleRepository rolleRepository;
@@ -41,22 +54,11 @@ public class AuthService {
         this.emailService = emailService;
     }
 
-    public String register(String benutzername, String passwort, String email, String name, String vorname) {
-        if (benutzername == null || benutzername.isBlank()) {
-            throw new RuntimeException("Benutzername darf nicht leer sein.");
+    public String register(String email, String passwort) {
+        String bereinigteEmail = bereinigeEmail(email);
+        if (passwort == null || passwort.length() < PASSWORT_MINDESTLAENGE) {
+            throw new RuntimeException("Das Passwort muss mindestens " + PASSWORT_MINDESTLAENGE + " Zeichen lang sein.");
         }
-        if (passwort == null || passwort.isBlank()) {
-            throw new RuntimeException("Passwort darf nicht leer sein.");
-        }
-        if (email == null || email.isBlank()) {
-            throw new RuntimeException("E-Mail darf nicht leer sein.");
-        }
-        if (name == null || name.isBlank() || vorname == null || vorname.isBlank()) {
-            throw new RuntimeException("Name und Vorname dürfen nicht leer sein.");
-        }
-
-        // E-Mail einheitlich speichern (ohne Leerzeichen, klein geschrieben)
-        String bereinigteEmail = email.trim().toLowerCase();
 
         Optional<User> vorhandenesKonto = userRepository.findByEmail(bereinigteEmail);
 
@@ -69,14 +71,13 @@ public class AuthService {
             }
 
             // Vorbereitetes Konto (z.B. Betreuer) ODER Registrierung, die noch nicht bestaetigt wurde:
-            // Daten uebernehmen und einen NEUEN Bestaetigungslink schicken.
+            // Passwort setzen, vorhandene Namen behalten und einen NEUEN Bestaetigungslink schicken.
             // Freigeschaltet wird das Konto erst, wenn der Link angeklickt wurde.
-            pruefeBenutzernameFrei(benutzername, konto.getId());
-
-            konto.setBenutzername(benutzername);
             konto.setPasswort(passwordEncoder.encode(passwort));
-            konto.setName(name);
-            konto.setVorname(vorname);
+            ergaenzeNamen(konto, bereinigteEmail);
+            if (konto.getBenutzername() == null || konto.getBenutzername().isBlank()) {
+                konto.setBenutzername(erzeugeBenutzername(bereinigteEmail));
+            }
             String token = neuerBestaetigungsToken(konto);
             userRepository.save(konto);
 
@@ -85,17 +86,13 @@ public class AuthService {
         }
 
         // Ganz neues Konto
-        pruefeBenutzernameFrei(benutzername, null);
-
-        String rollenName = bestimmeRolle(bereinigteEmail);
-        Rolle rolle = findOrCreateRolle(rollenName);
+        Rolle rolle = findOrCreateRolle(bestimmeRolle(bereinigteEmail));
 
         User user = new User();
-        user.setBenutzername(benutzername);
+        user.setBenutzername(erzeugeBenutzername(bereinigteEmail));
         user.setPasswort(passwordEncoder.encode(passwort));
         user.setEmail(bereinigteEmail);
-        user.setName(name);
-        user.setVorname(vorname);
+        ergaenzeNamen(user, bereinigteEmail);
         user.setRolle(rolle);
         user.setKontoAktiviert(true);
         String token = neuerBestaetigungsToken(user);
@@ -136,31 +133,13 @@ public class AuthService {
         return "Ihre E-Mail-Adresse wurde bestätigt. Sie können sich jetzt anmelden.";
     }
 
-    // Erzeugt einen zufaelligen, nicht erratbaren Token und setzt das Konto auf "nicht bestaetigt"
-    private String neuerBestaetigungsToken(User user) {
-        String token = UUID.randomUUID().toString();
-        user.setEmailBestaetigt(false);
-        user.setBestaetigungsToken(token);
-        user.setTokenGueltigBis(LocalDateTime.now().plusHours(TOKEN_GUELTIG_STUNDEN));
-        return token;
-    }
-
-    // Benutzername darf nicht von einem ANDEREN Konto belegt sein
-    private void pruefeBenutzernameFrei(String benutzername, Long eigeneId) {
-        userRepository.findByBenutzername(benutzername).ifPresent(anderer -> {
-            if (eigeneId == null || !anderer.getId().equals(eigeneId)) {
-                throw new RuntimeException("Dieser Benutzername ist bereits vergeben.");
-            }
-        });
-    }
-
-    public LoginResponse login(String benutzername, String passwort) {
-        if (benutzername == null || benutzername.isBlank() || passwort == null || passwort.isBlank()) {
-            throw new RuntimeException("Benutzername und Passwort dürfen nicht leer sein.");
+    public LoginResponse login(String email, String passwort) {
+        if (email == null || email.isBlank() || passwort == null || passwort.isBlank()) {
+            throw new RuntimeException("E-Mail-Adresse und Passwort dürfen nicht leer sein.");
         }
 
-        User user = userRepository.findByBenutzername(benutzername)
-                .orElseThrow(() -> new RuntimeException("Benutzername oder Passwort falsch."));
+        User user = userRepository.findByEmail(email.trim().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new RuntimeException("E-Mail-Adresse oder Passwort falsch."));
 
         // Vorbereitetes Konto (z.B. Betreuer), das noch nicht aktiviert wurde
         if (!user.istKontoAktiviert()) {
@@ -169,7 +148,7 @@ public class AuthService {
         }
 
         if (!passwordEncoder.matches(passwort, user.getPasswort())) {
-            throw new RuntimeException("Benutzername oder Passwort falsch.");
+            throw new RuntimeException("E-Mail-Adresse oder Passwort falsch.");
         }
 
         // Erst nach dem Passwort pruefen, damit Fremde nicht herausfinden, welche Konten es gibt
@@ -183,6 +162,73 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getBenutzername(), user.getRolle().getName());
         return new LoginResponse(token, user.getId(), user.getBenutzername(), user.getVorname(), user.getName(), user.getRolle().getName());
+    }
+
+    // ------------------------------------------------------------------ Hilfsmethoden
+
+    // E-Mail einheitlich speichern (ohne Leerzeichen, klein geschrieben) und grob pruefen
+    private String bereinigeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Bitte geben Sie Ihre E-Mail-Adresse ein.");
+        }
+        String bereinigt = email.trim().toLowerCase(Locale.ROOT);
+        if (!bereinigt.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new RuntimeException("Bitte geben Sie eine gültige E-Mail-Adresse ein.");
+        }
+        return bereinigt;
+    }
+
+    /**
+     * Vorname/Nachname aus der E-Mail-Adresse ableiten, falls (noch) keine gesetzt sind.
+     * "lena.test@stud.hs-bochum.de" -> Vorname "Lena", Nachname "Test".
+     * Vorbereitete Konten (z.B. Betreuer) behalten ihre richtigen Namen.
+     */
+    private void ergaenzeNamen(User user, String email) {
+        boolean ohneVorname = user.getVorname() == null || user.getVorname().isBlank();
+        boolean ohneName = user.getName() == null || user.getName().isBlank();
+        if (!ohneVorname && !ohneName) {
+            return;
+        }
+        String lokal = email.substring(0, email.indexOf('@'));
+        String[] teile = lokal.split("[._-]+");
+        String vorname = teile.length > 0 ? grossAnfang(teile[0]) : lokal;
+        String name = teile.length > 1 ? grossAnfang(teile[teile.length - 1]) : "";
+        if (ohneVorname) user.setVorname(vorname);
+        if (ohneName) user.setName(name);
+    }
+
+    private String grossAnfang(String text) {
+        if (text == null || text.isEmpty()) return "";
+        return text.substring(0, 1).toUpperCase(Locale.ROOT) + text.substring(1);
+    }
+
+    /**
+     * Interner, eindeutiger Benutzername (wird fuer den Login-Token gebraucht, aber nicht mehr eingegeben).
+     * Basis ist der Teil vor dem @, bei Bedarf mit Zahl: "lena.test", "lena.test2", ...
+     */
+    private String erzeugeBenutzername(String email) {
+        String basis = email.substring(0, email.indexOf('@')).replaceAll("[^a-z0-9._-]", "");
+        if (basis.length() < 3) {
+            basis = "nutzer." + basis;
+        }
+        if (basis.length() > 25) {
+            basis = basis.substring(0, 25);
+        }
+        String kandidat = basis;
+        int zahl = 2;
+        while (userRepository.findByBenutzername(kandidat).isPresent()) {
+            kandidat = basis + zahl++;
+        }
+        return kandidat;
+    }
+
+    // Erzeugt einen zufaelligen, nicht erratbaren Token und setzt das Konto auf "nicht bestaetigt"
+    private String neuerBestaetigungsToken(User user) {
+        String token = UUID.randomUUID().toString();
+        user.setEmailBestaetigt(false);
+        user.setBestaetigungsToken(token);
+        user.setTokenGueltigBis(LocalDateTime.now().plusHours(TOKEN_GUELTIG_STUNDEN));
+        return token;
     }
 
     private String bestimmeRolle(String email) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { getAuth, getProfil, getMeineProjekte, getMeineEinladungen } from "../services/api";
-import { aendereBenutzername, aenderePasswort } from "../services/profilService";
+import { aenderePasswort } from "../services/profilService";
 import "./Profile.css";
 
 // Lesbare Bezeichnung fuer die Rolle aus der Datenbank
@@ -31,14 +31,6 @@ function Profile() {
     const [fehler, setFehler] = useState("");
     const [anzahlProjekte, setAnzahlProjekte] = useState(null);
     const [anzahlOffen, setAnzahlOffen] = useState(null);
-
-    // Benutzername aendern
-    const [nameOffen, setNameOffen] = useState(false);
-    const [neuerName, setNeuerName] = useState("");
-    const [namePasswort, setNamePasswort] = useState("");
-    const [nameFehler, setNameFehler] = useState("");
-    const [nameErfolg, setNameErfolg] = useState("");
-    const [nameSpeichert, setNameSpeichert] = useState(false);
 
     // Passwort aendern
     const [passwortOffen, setPasswortOffen] = useState(false);
@@ -80,45 +72,12 @@ function Profile() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const nameFormularSchliessen = () => {
-        setNameOffen(false);
-        setNeuerName("");
-        setNamePasswort("");
-        setNameFehler("");
-    };
-
     const passwortFormularSchliessen = () => {
         setPasswortOffen(false);
         setAltesPasswort("");
         setNeuesPasswort("");
         setPasswortWiederholung("");
         setPasswortFehler("");
-    };
-
-    const benutzernameSpeichern = async (event) => {
-        event.preventDefault();
-        setNameFehler("");
-        setNameErfolg("");
-        if (!neuerName.trim()) {
-            setNameFehler("Bitte geben Sie einen neuen Benutzernamen ein.");
-            return;
-        }
-        setNameSpeichert(true);
-        try {
-            const daten = await aendereBenutzername(neuerName.trim(), namePasswort);
-            // Neuer Token: der alte enthaelt noch den alten Benutzernamen
-            localStorage.setItem(
-                "sophub_auth",
-                JSON.stringify({ ...getAuth(), token: daten.token, benutzername: daten.benutzername })
-            );
-            setProfil((vorher) => (vorher ? { ...vorher, benutzername: daten.benutzername } : vorher));
-            nameFormularSchliessen();
-            setNameErfolg(`Ihr Benutzername lautet jetzt „${daten.benutzername}“. Bitte melden Sie sich künftig damit an.`);
-        } catch (error) {
-            setNameFehler(error.message || "Der Benutzername konnte nicht geändert werden.");
-        } finally {
-            setNameSpeichert(false);
-        }
     };
 
     const passwortSpeichern = async (event) => {
@@ -163,7 +122,7 @@ function Profile() {
 
                 <div className="mb-4">
                     <h2 className="mb-1">Mein Profil</h2>
-                    <p className="text-muted mb-0">Ihre persönlichen Daten und Ihr SOPhub-Konto. Benutzername und Passwort können Sie hier ändern.</p>
+                    <p className="text-muted mb-0">Ihre persönlichen Daten und Ihr SOPhub-Konto. Sie melden sich mit Ihrer E-Mail-Adresse an; Ihr Passwort können Sie hier ändern.</p>
                 </div>
 
                 {fehler && <div className="alert alert-warning">{fehler}</div>}
@@ -227,27 +186,7 @@ function Profile() {
                             <div className="card-body">
                                 <h4 className="mb-2">Konto</h4>
 
-                                {nameErfolg && <div className="alert alert-success py-2">{nameErfolg}</div>}
-
                                 <dl className="profil-daten">
-                                    <div>
-                                        <dt>Benutzername</dt>
-                                        <dd className="d-flex align-items-center justify-content-end gap-2">
-                                            <span>{profil?.benutzername || auth?.benutzername || "–"}</span>
-                                            {!nameOffen && (
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-sm btn-outline-primary"
-                                                    onClick={() => {
-                                                        setNameErfolg("");
-                                                        setNameOffen(true);
-                                                    }}
-                                                >
-                                                    Ändern
-                                                </button>
-                                            )}
-                                        </dd>
-                                    </div>
                                     <div>
                                         <dt>Rolle</dt>
                                         <dd>{ROLLEN_NAME[rolle] || rolle || "–"}</dd>
@@ -261,50 +200,6 @@ function Profile() {
                                         <dd>{formatDatum(profil?.lastLogin, true)}</dd>
                                     </div>
                                 </dl>
-
-                                {nameOffen && (
-                                    <form className="profil-formular" onSubmit={benutzernameSpeichern}>
-                                        <h5 className="profil-formular-titel">Benutzername ändern</h5>
-                                        {nameFehler && <div className="alert alert-danger py-2">{nameFehler}</div>}
-                                        <div className="row g-3">
-                                            <div className="col-md-6">
-                                                <label className="form-label" htmlFor="profil-neuer-name">Neuer Benutzername</label>
-                                                <input
-                                                    id="profil-neuer-name"
-                                                    className="form-control"
-                                                    value={neuerName}
-                                                    onChange={(e) => setNeuerName(e.target.value)}
-                                                    autoComplete="username"
-                                                    maxLength={30}
-                                                    autoFocus
-                                                />
-                                                <div className="form-text">
-                                                    3–30 Zeichen: Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich.
-                                                </div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <label className="form-label" htmlFor="profil-name-passwort">Aktuelles Passwort</label>
-                                                <input
-                                                    id="profil-name-passwort"
-                                                    type="password"
-                                                    className="form-control"
-                                                    value={namePasswort}
-                                                    onChange={(e) => setNamePasswort(e.target.value)}
-                                                    autoComplete="current-password"
-                                                />
-                                                <div className="form-text">Zur Bestätigung, dass Sie es sind.</div>
-                                            </div>
-                                        </div>
-                                        <div className="d-flex gap-2 mt-3">
-                                            <button className="btn btn-primary" type="submit" disabled={nameSpeichert}>
-                                                {nameSpeichert ? "Speichert..." : "Speichern"}
-                                            </button>
-                                            <button className="btn btn-outline-secondary" type="button" onClick={nameFormularSchliessen}>
-                                                Abbrechen
-                                            </button>
-                                        </div>
-                                    </form>
-                                )}
 
                                 <div className="form-text mt-2">
                                     Die Rolle wird automatisch über die E-Mail-Adresse vergeben
