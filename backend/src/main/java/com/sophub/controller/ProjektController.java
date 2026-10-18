@@ -69,7 +69,7 @@ public class ProjektController {
 
         return ResponseEntity.ok(new ProjektDetailansicht(
             projekt.getId(), projekt.getTitel(), projekt.getBeschreibung(), projekt.getSemester(),
-            projekt.getFachbereich(), projekt.getProjektart(), projekt.getStatus(),
+            projekt.getFachbereich(), projekt.getStudiengang(), projekt.getProjektart(), projekt.getStatus(),
             projekt.getGruppenanzahl(), projekt.getSchlagwoerter(),
             projekt.getStudent() == null ? null : new PersonAnsicht(projekt.getStudent()),
             projekt.getBetreuer() == null ? null : new PersonAnsicht(projekt.getBetreuer()),
@@ -142,6 +142,7 @@ public class ProjektController {
             aenderung.setBeschreibung(projekt.getBeschreibung());
             aenderung.setSemester(getrimmt(projekt.getSemester()));
             aenderung.setFachbereich(getrimmt(projekt.getFachbereich()));
+            aenderung.setStudiengang(getrimmt(projekt.getStudiengang()));
             aenderung.setProjektart(getrimmt(projekt.getProjektart()));
             aenderung.setGruppenanzahl(gruppenanzahl);
             return ResponseEntity.ok(projektService.aktualisieren(id, aenderung));
@@ -212,7 +213,7 @@ public class ProjektController {
                                       boolean istOwner, boolean istTeammitglied) {}
 
     record ProjektDetailansicht(Long id, String titel, String beschreibung, String semester,
-                                String fachbereich, String projektart, String status, Integer gruppenanzahl,
+                                String fachbereich, String studiengang, String projektart, String status, Integer gruppenanzahl,
                                 String schlagwoerter, PersonAnsicht student, PersonAnsicht betreuer,
                                 List<TagAnsicht> tags, boolean istOwner, boolean istTeammitglied) {}
 

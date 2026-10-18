@@ -10,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,8 +18,8 @@ import java.util.UUID;
 /**
  * Registrierung, E-Mail-Bestaetigung und Login.
  * <ul>
- *     <li>Registrierung nur mit E-Mail-Adresse und Passwort. Vorname, Nachname und der
- *         interne Benutzername werden aus der E-Mail-Adresse abgeleitet
+ *     <li>Registrierung nur mit Hochschul-E-Mail-Adresse (@stud.hs-bochum.de oder @hs-bochum.de) und Passwort.
+ *         Vorname, Nachname und der interne Benutzername werden aus der E-Mail-Adresse abgeleitet
  *         (z.B. lena.test@stud.hs-bochum.de -> "Lena" "Test", Benutzername "lena.test").</li>
  *     <li>Nach der Registrierung muss die E-Mail-Adresse ueber einen Link bestaetigt werden.</li>
  *     <li>Login mit E-Mail-Adresse und Passwort.</li>
@@ -28,6 +29,10 @@ import java.util.UUID;
 public class AuthService {
 
     private static final String DOMAIN_PROFESSOR = "@hs-bochum.de";
+    private static final String DOMAIN_STUDENT = "@stud.hs-bochum.de";
+
+    // Nur mit diesen Adressen darf man sich registrieren
+    private static final List<String> ERLAUBTE_DOMAINS = List.of(DOMAIN_STUDENT, DOMAIN_PROFESSOR);
 
     // So lange ist ein Bestaetigungslink gueltig
     private static final int TOKEN_GUELTIG_STUNDEN = 24;
@@ -56,6 +61,7 @@ public class AuthService {
 
     public String register(String email, String passwort) {
         String bereinigteEmail = bereinigeEmail(email);
+        pruefeHochschulAdresse(bereinigteEmail);
         if (passwort == null || passwort.length() < PASSWORT_MINDESTLAENGE) {
             throw new RuntimeException("Das Passwort muss mindestens " + PASSWORT_MINDESTLAENGE + " Zeichen lang sein.");
         }
@@ -176,6 +182,16 @@ public class AuthService {
             throw new RuntimeException("Bitte geben Sie eine gültige E-Mail-Adresse ein.");
         }
         return bereinigt;
+    }
+
+    // Registrierung nur mit Hochschul-Adresse. Das "@" gehoert zur Pruefung,
+    // damit z.B. "max@fake-hs-bochum.de" NICHT durchgeht.
+    private void pruefeHochschulAdresse(String email) {
+        boolean erlaubt = ERLAUBTE_DOMAINS.stream().anyMatch(email::endsWith);
+        if (!erlaubt) {
+            throw new RuntimeException("Bitte registrieren Sie sich mit Ihrer Hochschul-E-Mail-Adresse "
+                    + "(" + DOMAIN_STUDENT + " für Studierende oder " + DOMAIN_PROFESSOR + " für Lehrende).");
+        }
     }
 
     /**

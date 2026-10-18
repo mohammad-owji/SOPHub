@@ -135,6 +135,7 @@ public class ProjektService {
         if (aktuell.getBeschreibung() != null) vorhandenes.setBeschreibung(aktuell.getBeschreibung());
         if (aktuell.getSemester() != null) vorhandenes.setSemester(aktuell.getSemester());
         if (aktuell.getFachbereich() != null) vorhandenes.setFachbereich(aktuell.getFachbereich());
+        if (aktuell.getStudiengang() != null) vorhandenes.setStudiengang(aktuell.getStudiengang());
         if (aktuell.getProjektart() != null) vorhandenes.setProjektart(aktuell.getProjektart());
         if (aktuell.getSprache() != null) vorhandenes.setSprache(aktuell.getSprache());
         if (aktuell.getSchlagwoerter() != null) vorhandenes.setSchlagwoerter(aktuell.getSchlagwoerter());

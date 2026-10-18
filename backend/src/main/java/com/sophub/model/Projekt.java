@@ -22,6 +22,9 @@ public class Projekt {
 
     private String fachbereich;
 
+    // z.B. "Informatik (B.Sc.)"; Auswahl im Frontend haengt vom Fachbereich ab
+    private String studiengang;
+
     private String projektart;
 
     private String sprache;
@@ -107,6 +110,7 @@ public class Projekt {
     public String getBeschreibung() { return beschreibung; }
     public String getSemester() { return semester; }
     public String getFachbereich() { return fachbereich; }
+    public String getStudiengang() { return studiengang; }
     public String getProjektart() { return projektart; }
     public String getSprache() { return sprache; }
     public String getSchlagwoerter() { return schlagwoerter; }
@@ -134,6 +138,7 @@ public class Projekt {
     public void setBeschreibung(String beschreibung) { this.beschreibung = beschreibung; }
     public void setSemester(String semester) { this.semester = semester; }
     public void setFachbereich(String fachbereich) { this.fachbereich = fachbereich; }
+    public void setStudiengang(String studiengang) { this.studiengang = studiengang; }
     public void setProjektart(String projektart) { this.projektart = projektart; }
     public void setSprache(String sprache) { this.sprache = sprache; }
     public void setSchlagwoerter(String schlagwoerter) { this.schlagwoerter = schlagwoerter; }

@@ -115,3 +115,36 @@
         box-shadow: inset 3px 0 0 var(--sop-tuerkis-hell);
     }
 }
+
+/* Zahl offener Einladungen neben "Einladungen" (nur Betreuer:innen) */
+.sop-nav-zahl {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.4rem;
+    margin-left: 0.4rem;
+    border-radius: 999px;
+    background: #f59e0b;
+    color: var(--sop-navy);
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.sop-avatar {
+    position: relative;
+}
+
+.sop-avatar-punkt {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #f59e0b;
+    border: 2px solid var(--sop-navy);
+}

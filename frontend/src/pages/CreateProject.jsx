@@ -3,6 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import AuswahlFeld from "../components/AuswahlFeld";
 import {
+    SEMESTER,
+    STANDARD_SEMESTER,
+    FACHBEREICHE,
+    studiengaengeFuer,
+    projektartenFuer,
+    nachFachbereichWechsel,
+    nachStudiengangWechsel,
+} from "../components/ProjektOptionen";
+import {
     getAuth,
     createProjekt,
     uploadDokument,
@@ -20,42 +29,8 @@ const DOKUMENT_TYPEN = [
     { value: "SONSTIGES", label: "Sonstiges" },
 ];
 
-// Vorschlaege fuer die Auswahlfelder. Man kann auswaehlen, danach suchen
-// (einfach lostippen) oder einen eigenen Wert eintragen, falls etwas fehlt.
-const SEMESTER = [
-    "SoSe 2027",
-    "WiSe 2026/27",
-    "SoSe 2026",
-    "WiSe 2025/26",
-    "SoSe 2025",
-];
-
-// Aktuelles Semester als Vorauswahl
-const STANDARD_SEMESTER = "WiSe 2026/27";
-
-const FACHBEREICHE = [
-    "Informatik",
-    "Wirtschaftsinformatik",
-    "Medieninformatik",
-    "Elektrotechnik",
-    "Mechatronik",
-    "Maschinenbau",
-    "Bauingenieurwesen",
-    "Architektur",
-    "Wirtschaft",
-    "Geodäsie",
-];
-
-const PROJEKTARTEN = [
-    "Softwareprojekt",
-    "Studienprojekt",
-    "Praxisprojekt",
-    "Forschungsprojekt",
-    "Bachelorarbeit",
-    "Masterarbeit",
-    "Seminararbeit",
-    "Hackathon",
-];
+// Vorschlaege fuer Semester, Fachbereich, Studiengang und Projektart kommen aus ProjektOptionen.js.
+// Studiengaenge haengen vom Fachbereich ab, Projektarten vom Studiengang.
 
 const HOCHSCHUL_DOMAIN = "@hs-bochum.de";
 
@@ -86,6 +61,7 @@ function CreateProject() {
     const [beschreibung, setBeschreibung] = useState("");
     const [semester, setSemester] = useState(STANDARD_SEMESTER);
     const [fachbereich, setFachbereich] = useState("");
+    const [studiengang, setStudiengang] = useState("");
     const [projektart, setProjektart] = useState("");
     const [gruppenanzahl, setGruppenanzahl] = useState("3");
     // Betreuer: Text im Auswahlfeld (Name aus der Liste oder selbst eingetippt)
@@ -112,6 +88,14 @@ function CreateProject() {
             .then((data) => setAlleStudenten(data || []))
             .catch(() => setAlleStudenten([]));
     }, []);
+
+    // Fachbereich, Studiengang und Projektart haengen voneinander ab
+    const studienAuswahl = { fachbereich, studiengang, projektart };
+    const uebernehmeStudienAuswahl = (neu) => {
+        setFachbereich(neu.fachbereich);
+        setStudiengang(neu.studiengang);
+        setProjektart(neu.projektart);
+    };
 
     // Betreuer-Liste fuer das Auswahlfeld, z.B. "Anja Tenberge"
     const betreuerNamen = professoren.map((prof) => `${prof.vorname} ${prof.name}`);
@@ -155,6 +139,7 @@ function CreateProject() {
         setBeschreibung("");
         setSemester(STANDARD_SEMESTER);
         setFachbereich("");
+        setStudiengang("");
         setProjektart("");
         setGruppenanzahl("3");
         setBetreuerText("");
@@ -226,6 +211,7 @@ function CreateProject() {
                     beschreibung,
                     semester,
                     fachbereich,
+                    studiengang,
                     projektart,
                     gruppenanzahl: gruppenanzahl ? Number(gruppenanzahl) : null,
                 },
@@ -313,33 +299,43 @@ function CreateProject() {
                                 ></textarea>
                             </div>
 
-                            <div className="row">
-                                <div className="col-md-4 mb-3 mb-md-0">
-                                    <label className="form-label">Semester</label>
-                                    <AuswahlFeld
-                                        value={semester}
-                                        onChange={setSemester}
-                                        optionen={SEMESTER}
-                                        placeholder="Auswählen oder eintippen"
-                                    />
-                                </div>
-
-                                <div className="col-md-4 mb-3 mb-md-0">
+                            <div className="row g-3">
+                                <div className="col-md-6">
                                     <label className="form-label">Fachbereich</label>
                                     <AuswahlFeld
                                         value={fachbereich}
-                                        onChange={setFachbereich}
+                                        onChange={(wert) => uebernehmeStudienAuswahl(nachFachbereichWechsel(studienAuswahl, wert))}
                                         optionen={FACHBEREICHE}
                                         placeholder="Auswählen oder eintippen"
                                     />
                                 </div>
 
-                                <div className="col-md-4">
+                                <div className="col-md-6">
+                                    <label className="form-label">Studiengang</label>
+                                    <AuswahlFeld
+                                        value={studiengang}
+                                        onChange={(wert) => uebernehmeStudienAuswahl(nachStudiengangWechsel(studienAuswahl, wert))}
+                                        optionen={studiengaengeFuer(fachbereich)}
+                                        placeholder="Auswählen oder eintippen"
+                                    />
+                                </div>
+
+                                <div className="col-md-6">
                                     <label className="form-label">Projektart</label>
                                     <AuswahlFeld
                                         value={projektart}
                                         onChange={setProjektart}
-                                        optionen={PROJEKTARTEN}
+                                        optionen={projektartenFuer(fachbereich, studiengang)}
+                                        placeholder="Auswählen oder eintippen"
+                                    />
+                                </div>
+
+                                <div className="col-md-6">
+                                    <label className="form-label">Semester</label>
+                                    <AuswahlFeld
+                                        value={semester}
+                                        onChange={setSemester}
+                                        optionen={SEMESTER}
                                         placeholder="Auswählen oder eintippen"
                                     />
                                 </div>

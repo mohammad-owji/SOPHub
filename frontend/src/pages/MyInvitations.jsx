@@ -67,6 +67,9 @@ function MyInvitations() {
 
                         <div className="einl-meta">
                             <span><strong>Fachbereich:</strong> {projekt.fachbereich || "–"}</span>
+                            {projekt.studiengang && (
+                                <span><strong>Studiengang:</strong> {projekt.studiengang}</span>
+                            )}
                             <span><strong>Projektart:</strong> {projekt.projektart || "–"}</span>
                             <span><strong>Semester:</strong> {projekt.semester || "–"}</span>
                         </div>
