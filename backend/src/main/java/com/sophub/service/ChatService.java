@@ -11,6 +11,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -50,17 +52,20 @@ public class ChatService {
     private final UserRepository userRepository;
     private final AIService aiService;
     private final SopAssistentPrompt sopAssistentPrompt;
+    private final ChatTitelService chatTitelService;
 
     public ChatService(ChatConversationRepository conversationRepository,
                        ChatMessageRepository messageRepository,
                        UserRepository userRepository,
                        AIService aiService,
-                       SopAssistentPrompt sopAssistentPrompt) {
+                       SopAssistentPrompt sopAssistentPrompt,
+                       ChatTitelService chatTitelService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.aiService = aiService;
         this.sopAssistentPrompt = sopAssistentPrompt;
+        this.chatTitelService = chatTitelService;
     }
 
     private User nutzer(String benutzername) {
@@ -186,7 +191,28 @@ public class ChatService {
         chat.setAktualisiertAm(jetzt);
         chat = conversationRepository.save(chat);
 
+        // Nach der ersten KI-Antwort einmalig einen Titel erzeugen - asynchron und
+        // erst NACH dem Commit, damit die KI-Antwort nicht verzögert wird und die
+        // Nachrichten für die Titelgenerierung bereits persistiert sind.
+        if (chat.getTitel() == null || chat.getTitel().isBlank()) {
+            titelErzeugenNachCommit(chat.getId());
+        }
+
         return new NachrichtErgebnis(chat, antwort);
+    }
+
+    private void titelErzeugenNachCommit(UUID chatId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    chatTitelService.titelGenerieren(chatId);
+                }
+            });
+        } else {
+            // Kein aktiver Transaktionskontext (z.B. im Unit-Test) -> direkt aufrufen.
+            chatTitelService.titelGenerieren(chatId);
+        }
     }
 
     /** Legt einen neuen Chat an und setzt dabei das Chat-Limit pro Nutzer durch. */

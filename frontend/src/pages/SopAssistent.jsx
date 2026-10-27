@@ -162,6 +162,10 @@ function SopAssistent() {
                 }
             }
             ladeChats();
+            if (!zielId) {
+                // Der Titel wird serverseitig asynchron erzeugt -> Liste kurz danach erneut laden.
+                setTimeout(ladeChats, 1800);
+            }
         } catch (err) {
             const nochAktiv = zielId ? aktivRef.current === zielId : aktivRef.current === null;
             if (nochAktiv) {

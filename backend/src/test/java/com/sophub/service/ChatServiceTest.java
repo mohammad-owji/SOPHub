@@ -37,6 +37,7 @@ class ChatServiceTest {
     @Mock UserRepository userRepository;
     @Mock AIService aiService;
     @Mock SopAssistentPrompt sopAssistentPrompt;
+    @Mock ChatTitelService chatTitelService;
     @InjectMocks ChatService chatService;
 
     private User nutzer(String benutzername, long id) {
@@ -153,6 +154,31 @@ class ChatServiceTest {
         assertThat(verlauf).isNotEmpty();
         assertThat(verlauf.get(verlauf.size() - 1).rolle()).isEqualTo("user");
         assertThat(verlauf.get(verlauf.size() - 1).inhalt()).isEqualTo("Hallo KI");
+
+        // Nach der ersten Antwort wird (einmalig) die Titelgenerierung angestoßen.
+        verify(chatTitelService).titelGenerieren(any());
+    }
+
+    @Test
+    void bestehenderChatMitTitelLoestKeineTitelgenerierungAus() {
+        User user = nutzer("stud", 1L);
+        UUID chatId = UUID.randomUUID();
+        ChatConversation chat = new ChatConversation();
+        chat.setId(chatId);
+        chat.setUser(user);
+        chat.setTitel("Schon betitelt");
+        when(userRepository.findByBenutzername("stud")).thenReturn(Optional.of(user));
+        when(conversationRepository.findByIdAndUserId(chatId, 1L)).thenReturn(Optional.of(chat));
+        when(messageRepository.countByConversationId(chatId)).thenReturn(4L);
+        when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(chatId)).thenReturn(List.of());
+        when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
+        when(aiService.chat(any(), any())).thenReturn("Antwort");
+        when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        chatService.nachrichtSenden("stud", chatId, "Noch eine Frage");
+
+        verifyNoInteractions(chatTitelService);
     }
 
     @Test
