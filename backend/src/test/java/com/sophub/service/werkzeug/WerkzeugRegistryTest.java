@@ -46,4 +46,19 @@ class WerkzeugRegistryTest {
         String ergebnis = kasten.ausfuehren("gibtsnicht", null);
         assertThat(ergebnis).contains("fehler");
     }
+
+    @Test
+    void sammeltAusgabeBloeckeEin() {
+        WerkzeugRegistry registry = new WerkzeugRegistry(List.of(new IdeenkartenTool(om)), om);
+        Werkzeugkasten kasten = registry.fuer("stud");
+
+        var args = om.createObjectNode();
+        args.putArray("karten").addObject().put("titel", "Idee A");
+
+        String beleg = kasten.ausfuehren("zeige_ideenkarten", args);
+
+        assertThat(beleg).contains("gespeicherte_bloecke");
+        assertThat(kasten.gesammelteBloecke()).hasSize(1);
+        assertThat(kasten.gesammelteBloecke().get(0).get("titel").asText()).isEqualTo("Idee A");
+    }
 }

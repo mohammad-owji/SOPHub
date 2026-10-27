@@ -39,6 +39,7 @@ class ChatServiceTest {
     @Mock SopAssistentPrompt sopAssistentPrompt;
     @Mock ChatTitelService chatTitelService;
     @Mock com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry;
+    @Mock tools.jackson.databind.ObjectMapper objectMapper;
     @InjectMocks ChatService chatService;
 
     private User nutzer(String benutzername, long id) {

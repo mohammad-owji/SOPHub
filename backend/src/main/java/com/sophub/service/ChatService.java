@@ -54,6 +54,7 @@ public class ChatService {
     private final SopAssistentPrompt sopAssistentPrompt;
     private final ChatTitelService chatTitelService;
     private final com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry;
+    private final tools.jackson.databind.ObjectMapper objectMapper;
 
     public ChatService(ChatConversationRepository conversationRepository,
                        ChatMessageRepository messageRepository,
@@ -61,7 +62,8 @@ public class ChatService {
                        AIService aiService,
                        SopAssistentPrompt sopAssistentPrompt,
                        ChatTitelService chatTitelService,
-                       com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry) {
+                       com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry,
+                       tools.jackson.databind.ObjectMapper objectMapper) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
@@ -69,6 +71,7 @@ public class ChatService {
         this.sopAssistentPrompt = sopAssistentPrompt;
         this.chatTitelService = chatTitelService;
         this.werkzeugRegistry = werkzeugRegistry;
+        this.objectMapper = objectMapper;
     }
 
     private User nutzer(String benutzername) {
@@ -183,13 +186,15 @@ public class ChatService {
 
         // KI-Aufruf zuerst - wirft bei Fehler, bevor etwas gespeichert wird.
         // Mit Werkzeugen (Tool-Calling) im Kontext des eingeloggten Nutzers.
-        String antwortText = aiService.chatMitWerkzeugen(
-                sopAssistentPrompt.systemPrompt(), verlauf, werkzeugRegistry.fuer(benutzername));
+        com.sophub.service.werkzeug.Werkzeugkasten kasten = werkzeugRegistry.fuer(benutzername);
+        String antwortText = aiService.chatMitWerkzeugen(sopAssistentPrompt.systemPrompt(), verlauf, kasten);
+        String bloeckeJson = serialisiereBloecke(kasten == null ? List.of() : kasten.gesammelteBloecke());
 
         LocalDateTime jetzt = LocalDateTime.now();
         ChatMessage nutzerNachricht = neueNachricht(chat, ChatRolle.USER, text, jetzt);
         // 1 ms später, damit die zeitliche Reihenfolge auch bei grober Zeitauflösung stabil ist.
         ChatMessage antwort = neueNachricht(chat, ChatRolle.ASSISTANT, antwortText, jetzt.plusNanos(1_000_000));
+        antwort.setBloecke(bloeckeJson);
         messageRepository.save(nutzerNachricht);
         antwort = messageRepository.save(antwort);
 
@@ -247,6 +252,18 @@ public class ChatService {
 
     private String rolleFuerKi(ChatRolle rolle) {
         return rolle == ChatRolle.USER ? "user" : "assistant";
+    }
+
+    /** Serialisiert die gesammelten Karten-Blöcke als JSON-Array (null, wenn keine). */
+    private String serialisiereBloecke(List<tools.jackson.databind.JsonNode> bloecke) {
+        if (bloecke == null || bloecke.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(bloecke);
+        } catch (Exception e) {
+            return null; // defekte Blöcke werden ignoriert; der Fließtext bleibt erhalten
+        }
     }
 
     private String kuerzeTitel(String titel) {

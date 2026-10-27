@@ -43,6 +43,7 @@ public class WerkzeugRegistry {
 
     private final class GebundenerKasten implements Werkzeugkasten {
         private final String benutzername;
+        private final List<JsonNode> bloecke = new java.util.ArrayList<>();
 
         private GebundenerKasten(String benutzername) {
             this.benutzername = benutzername;
@@ -65,10 +66,23 @@ public class WerkzeugRegistry {
                 JsonNode args = (argumente == null || argumente.isNull())
                         ? objectMapper.createObjectNode() : argumente;
                 Object ergebnis = tool.ausfuehren(args, benutzername);
+                // Ausgabe-Werkzeuge liefern Blöcke zum Rendern: einsammeln + kurzen Beleg zurückgeben.
+                if (ergebnis instanceof Werkzeugkasten.AusgabeBloecke ausgabe) {
+                    bloecke.addAll(ausgabe.bloecke());
+                    ObjectNode beleg = objectMapper.createObjectNode();
+                    beleg.put("ok", true);
+                    beleg.put("gespeicherte_bloecke", ausgabe.bloecke().size());
+                    return objectMapper.writeValueAsString(beleg);
+                }
                 return objectMapper.writeValueAsString(ergebnis);
             } catch (Exception e) {
                 return fehlerJson("Werkzeug '" + name + "' fehlgeschlagen: " + e.getMessage());
             }
+        }
+
+        @Override
+        public List<JsonNode> gesammelteBloecke() {
+            return bloecke;
         }
     }
 }
