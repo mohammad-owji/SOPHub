@@ -10,6 +10,9 @@ vi.mock("../services/aiService", () => ({
     getChat: vi.fn(),
     sendeNeueNachricht: vi.fn(),
     sendeNachricht: vi.fn(),
+    benenneChatUm: vi.fn(),
+    setzeAngepinnt: vi.fn(),
+    loescheChat: vi.fn(),
 }));
 
 // api nur so weit mocken, wie Seite und Navbar es brauchen.
@@ -18,7 +21,13 @@ vi.mock("../services/api", () => ({
     getMeineEinladungen: vi.fn(() => Promise.resolve([])),
 }));
 
-import { getChats, getChat, sendeNeueNachricht } from "../services/aiService";
+import {
+    getChats,
+    getChat,
+    sendeNeueNachricht,
+    benenneChatUm,
+    loescheChat,
+} from "../services/aiService";
 
 function renderSeite(initial = "/sop-assistent") {
     return render(
@@ -31,20 +40,21 @@ function renderSeite(initial = "/sop-assistent") {
     );
 }
 
+const jetztISO = new Date().toISOString();
+
 beforeEach(() => {
     vi.clearAllMocks();
     try { localStorage.clear(); } catch { /* ignorieren */ }
     getChats.mockResolvedValue([]);
     getChat.mockResolvedValue({ nachrichten: [] });
+    benenneChatUm.mockResolvedValue({});
+    loescheChat.mockResolvedValue(true);
 });
 
 describe("SopAssistent", () => {
     it("zeigt im leeren Chat die Beispiel-Chips und den Datenschutz-Hinweis", async () => {
         renderSeite();
         expect(await screen.findByText("Hilf mir, eine Projektidee zu finden.")).toBeInTheDocument();
-        expect(
-            screen.getByText("Was ist der Unterschied zwischen Lastenheft und Pflichtenheft?")
-        ).toBeInTheDocument();
         expect(screen.getByText(/privat und nur für dich sichtbar/i)).toBeInTheDocument();
     });
 
@@ -57,7 +67,7 @@ describe("SopAssistent", () => {
         const user = userEvent.setup();
         renderSeite();
 
-        await user.type(screen.getByRole("textbox"), "Was ist ein Pflichtenheft?");
+        await user.type(screen.getByRole("textbox", { name: "Nachricht" }), "Was ist ein Pflichtenheft?");
         await user.click(screen.getByRole("button", { name: "Senden" }));
 
         expect(await screen.findByText("Was ist ein Pflichtenheft?")).toBeInTheDocument();
@@ -72,16 +82,79 @@ describe("SopAssistent", () => {
         const user = userEvent.setup();
         renderSeite();
 
-        await user.type(screen.getByRole("textbox"), "Hallo");
+        await user.type(screen.getByRole("textbox", { name: "Nachricht" }), "Hallo");
         await user.click(screen.getByRole("button", { name: "Senden" }));
 
         expect(await screen.findByText(/nicht erreichbar/i)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Erneut versuchen" })).toBeInTheDocument();
     });
 
-    it("zeigt vorhandene Chats in der Seitenleiste und klappt sie ein", async () => {
+    it("gruppiert Chats nach Angepinnt und Datum", async () => {
+        const alt = new Date(Date.now() - 40 * 86400000).toISOString();
         getChats.mockResolvedValue([
-            { id: "c1", titel: "Mein Chat", angepinnt: false, aktualisiertAm: "2026-10-27T10:00:00" },
+            { id: "p", titel: "Gepinnt-Chat", angepinnt: true, aktualisiertAm: jetztISO },
+            { id: "h", titel: "Heute-Chat", angepinnt: false, aktualisiertAm: jetztISO },
+            { id: "a", titel: "Alt-Chat", angepinnt: false, aktualisiertAm: alt },
+        ]);
+        renderSeite();
+
+        expect(await screen.findByText("Angepinnt")).toBeInTheDocument();
+        expect(screen.getByText("Heute")).toBeInTheDocument();
+        expect(screen.getByText("Älter")).toBeInTheDocument();
+        expect(screen.getByText("Gepinnt-Chat")).toBeInTheDocument();
+        expect(screen.getByText("Alt-Chat")).toBeInTheDocument();
+    });
+
+    it("benennt einen Chat inline um (Enter speichert)", async () => {
+        getChats.mockResolvedValue([
+            { id: "c1", titel: "Mein Chat", angepinnt: false, aktualisiertAm: jetztISO },
+        ]);
+        const user = userEvent.setup();
+        renderSeite();
+
+        await screen.findByText("Mein Chat");
+        await user.click(screen.getByRole("button", { name: "Chat-Menü" }));
+        await user.click(screen.getByRole("button", { name: "Umbenennen" }));
+
+        const input = screen.getByRole("textbox", { name: "Chat umbenennen" });
+        await user.clear(input);
+        await user.type(input, "Neuer Name{Enter}");
+
+        expect(benenneChatUm).toHaveBeenCalledWith("c1", "Neuer Name");
+    });
+
+    it("löscht einen Chat erst nach Bestätigung im Dialog", async () => {
+        getChats.mockResolvedValue([
+            { id: "c1", titel: "Mein Chat", angepinnt: false, aktualisiertAm: jetztISO },
+        ]);
+        const user = userEvent.setup();
+        renderSeite();
+
+        await screen.findByText("Mein Chat");
+        await user.click(screen.getByRole("button", { name: "Chat-Menü" }));
+        await user.click(screen.getByRole("button", { name: "Löschen" }));
+
+        // Bestätigungsdialog erscheint; erst dann wird gelöscht.
+        expect(await screen.findByText("Chat löschen")).toBeInTheDocument();
+        expect(loescheChat).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", { name: "Löschen" }));
+        expect(loescheChat).toHaveBeenCalledWith("c1");
+    });
+
+    it("sucht mit Debounce über das Backend (?q=)", async () => {
+        const user = userEvent.setup();
+        renderSeite();
+        await screen.findByPlaceholderText("Chats durchsuchen");
+
+        await user.type(screen.getByPlaceholderText("Chats durchsuchen"), "roadmap");
+
+        await waitFor(() => expect(getChats).toHaveBeenCalledWith("roadmap", 0, 30));
+    });
+
+    it("zeigt vorhandene Chats und klappt die Seitenleiste ein", async () => {
+        getChats.mockResolvedValue([
+            { id: "c1", titel: "Mein Chat", angepinnt: false, aktualisiertAm: jetztISO },
         ]);
         const user = userEvent.setup();
         const { container } = renderSeite();

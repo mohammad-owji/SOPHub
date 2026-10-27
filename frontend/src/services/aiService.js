@@ -34,13 +34,50 @@ async function parseChatAntwort(response) {
     return text ? JSON.parse(text) : null;
 }
 
-// Liste der eigenen Chats (id, titel, angepinnt, aktualisiertAm).
-export async function getChats(q = "") {
-    const query = q && q.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
-    const response = await fetch(`${API_BASE_URL}/ai/chats${query}`, {
+// Liste der eigenen Chats (id, titel, angepinnt, aktualisiertAm) mit Suche + Pagination.
+export async function getChats(q = "", page = 0, size = 30) {
+    const params = new URLSearchParams();
+    if (q && q.trim()) params.append("q", q.trim());
+    params.append("page", String(page));
+    params.append("size", String(size));
+    const response = await fetch(`${API_BASE_URL}/ai/chats?${params.toString()}`, {
         headers: authHeaders(),
     });
     return parseChatAntwort(response);
+}
+
+// Chat umbenennen.
+export async function benenneChatUm(chatId, titel) {
+    const response = await fetch(`${API_BASE_URL}/ai/chats/${chatId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ titel }),
+    });
+    return parseChatAntwort(response);
+}
+
+// Chat anpinnen / lösen.
+export async function setzeAngepinnt(chatId, angepinnt) {
+    const response = await fetch(`${API_BASE_URL}/ai/chats/${chatId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ angepinnt }),
+    });
+    return parseChatAntwort(response);
+}
+
+// Chat endgültig löschen.
+export async function loescheChat(chatId) {
+    const response = await fetch(`${API_BASE_URL}/ai/chats/${chatId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+    });
+    if (!response.ok) {
+        const fehler = new Error("Chat konnte nicht gelöscht werden.");
+        fehler.status = response.status;
+        throw fehler;
+    }
+    return true;
 }
 
 // Ein Chat mit allen Nachrichten.

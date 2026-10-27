@@ -50,19 +50,28 @@
     font-size: 0.9rem;
 }
 
+.sop-suche {
+    padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.sop-gruppe {
+    margin-bottom: 0.5rem;
+}
+
+.sop-gruppe-titel {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6c757d;
+    padding: 0.4rem 0.6rem 0.2rem;
+}
+
 .sop-chat-eintrag {
-    display: block;
-    width: 100%;
-    text-align: left;
-    border: 0;
-    background: transparent;
-    padding: 0.5rem 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     border-radius: 0.5rem;
-    font-size: 0.92rem;
-    color: #212529;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 0.1rem 0.15rem 0.1rem 0;
 }
 
 .sop-chat-eintrag:hover {
@@ -71,7 +80,100 @@
 
 .sop-chat-eintrag.aktiv {
     background: #e2e6ea;
+}
+
+.sop-chat-titel {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.92rem;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sop-chat-eintrag.aktiv .sop-chat-titel {
     font-weight: 600;
+}
+
+.sop-umbenennen {
+    margin: 0.1rem 0.3rem;
+}
+
+/* "..."-Menü */
+.sop-menu-anker {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.sop-menu-btn {
+    border: 0;
+    background: transparent;
+    color: #6c757d;
+    padding: 0.2rem 0.45rem;
+    border-radius: 0.4rem;
+    line-height: 1;
+    opacity: 0;
+}
+
+.sop-chat-eintrag:hover .sop-menu-btn,
+.sop-chat-eintrag.aktiv .sop-menu-btn,
+.sop-menu-btn[aria-expanded="true"] {
+    opacity: 1;
+}
+
+.sop-menu-btn:hover {
+    background: #dee2e6;
+}
+
+.sop-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 1050;
+    min-width: 160px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    padding: 0.25rem;
+}
+
+.sop-menu-eintrag {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.sop-menu-eintrag:hover {
+    background: #f1f3f5;
+}
+
+/* Fängt Klicks außerhalb des offenen Menüs ab. */
+.sop-menu-fang {
+    position: fixed;
+    inset: 0;
+    z-index: 1045;
+}
+
+/* Animierter Titel (kurzer Fade, wenn der generierte Titel erscheint). */
+.sop-titel-fade {
+    display: inline-block;
+    animation: sop-titel-ein 0.4s ease;
+}
+
+@keyframes sop-titel-ein {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .sop-datenschutz {
@@ -235,10 +337,57 @@
     margin-top: 0.25rem;
 }
 
+.sop-chat-topbar {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sop-mobile-backdrop {
+    display: none;
+}
+
+/* Modal etwas abheben (Bootstrap-Klassen liefern den Rest). */
+.sop-modal {
+    z-index: 1055;
+}
+
 @media (max-width: 767.98px) {
-    /* Vollwertiges Overlay/Hamburger folgt in Schritt 6; vorerst schmale Leiste. */
+    /* Seitenleiste wird zum Overlay mit Hamburger-Button. */
     .sop-seitenleiste {
-        width: 220px;
-        flex-basis: 220px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 280px;
+        flex-basis: 280px;
+        z-index: 1040;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        box-shadow: 0 0 1rem rgba(0, 0, 0, 0.2);
+    }
+
+    .sop-seitenleiste.zu {
+        /* Einklappen spielt mobil keine Rolle; es zählt das Overlay. */
+        width: 280px;
+        flex-basis: 280px;
+    }
+
+    .sop-seitenleiste.offen {
+        transform: translateX(0);
+    }
+
+    .sop-mobile-backdrop {
+        display: block;
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1035;
+    }
+}
+
+@media (min-width: 768px) {
+    /* Topbar mit Hamburger nur mobil (zusätzlich zu Bootstraps d-md-none). */
+    .sop-chat-topbar {
+        display: none;
     }
 }

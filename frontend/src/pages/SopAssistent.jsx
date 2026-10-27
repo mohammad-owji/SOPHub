@@ -4,13 +4,22 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Navbar from "../components/Navbar";
 import { getAuth } from "../services/api";
-import { getChats, getChat, sendeNeueNachricht, sendeNachricht } from "../services/aiService";
+import {
+    getChats,
+    getChat,
+    sendeNeueNachricht,
+    sendeNachricht,
+    benenneChatUm,
+    setzeAngepinnt,
+    loescheChat,
+} from "../services/aiService";
 import "./SopAssistent.css";
 
 const MAX_ZEICHEN = 2000;
+const SEITE_GROESSE = 30;
 const SIDEBAR_KEY = "sophub_sop_sidebar_ein";
+const PLATZHALTER_TITEL = "Neuer Chat";
 
-// Beispiel-Chips im leeren Chat (klick = direkt senden).
 const BEISPIELE = [
     "Was ist der Unterschied zwischen Lastenheft und Pflichtenheft?",
     "Erstelle mir eine Roadmap für mein SOP über zwei Semester.",
@@ -36,31 +45,100 @@ function sidebarStartwert() {
     }
 }
 
+// Chats in Datumsgruppen einteilen (Backend liefert bereits sortiert: angepinnt, dann neueste zuerst).
+function tagesStart(datum) {
+    const d = new Date(datum);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+function gruppiere(chats) {
+    const heute = tagesStart(new Date());
+    const tag = 86400000;
+    const eimer = { angepinnt: [], heute: [], gestern: [], woche: [], monat: [], aelter: [] };
+
+    for (const c of chats) {
+        if (c.angepinnt) {
+            eimer.angepinnt.push(c);
+            continue;
+        }
+        const diff = Math.round((heute - tagesStart(c.aktualisiertAm)) / tag);
+        if (diff <= 0) eimer.heute.push(c);
+        else if (diff === 1) eimer.gestern.push(c);
+        else if (diff <= 7) eimer.woche.push(c);
+        else if (diff <= 30) eimer.monat.push(c);
+        else eimer.aelter.push(c);
+    }
+
+    return [
+        ["angepinnt", "Angepinnt"],
+        ["heute", "Heute"],
+        ["gestern", "Gestern"],
+        ["woche", "Letzte 7 Tage"],
+        ["monat", "Letzte 30 Tage"],
+        ["aelter", "Älter"],
+    ]
+        .filter(([key]) => eimer[key].length > 0)
+        .map(([key, label]) => ({ label, items: eimer[key] }));
+}
+
 function SopAssistent() {
     const { chatId } = useParams();
     const navigate = useNavigate();
 
     const [chats, setChats] = useState([]);
+    const [seite, setSeite] = useState(0);
+    const [hatMehr, setHatMehr] = useState(false);
+    const [mehrLaedt, setMehrLaedt] = useState(false);
+    const [suche, setSuche] = useState("");
+    const [sucheAktiv, setSucheAktiv] = useState("");
+
     const [nachrichten, setNachrichten] = useState([]);
     const [eingabe, setEingabe] = useState("");
     const [senden, setSenden] = useState(false);
     const [ladeChat, setLadeChat] = useState(false);
     const [fehler, setFehler] = useState(null);
+
     const [sidebarEin, setSidebarEin] = useState(sidebarStartwert);
+    const [mobileOffen, setMobileOffen] = useState(false);
+    const [menuId, setMenuId] = useState(null);
+    const [umbenennenId, setUmbenennenId] = useState(null);
+    const [umbenennenWert, setUmbenennenWert] = useState("");
+    const [loeschenChat, setLoeschenChat] = useState(null);
 
-    const aktivRef = useRef(chatId || null);        // welcher Chat gerade sichtbar ist
-    const schonGeladenRef = useRef(null);           // Chat, dessen Nachrichten bereits im State sind
-    const letzteEingabeRef = useRef("");            // für "Erneut versuchen"
+    const aktivRef = useRef(chatId || null);
+    const schonGeladenRef = useRef(null);
+    const letzteEingabeRef = useRef("");
     const verlaufEndeRef = useRef(null);
+    const titelTimerRef = useRef(null);
 
-    const ladeChats = () => {
-        getChats()
-            .then((liste) => setChats(Array.isArray(liste) ? liste : []))
-            .catch(() => { /* Liste ist nebensächlich; Fehler still ignorieren */ });
+    const angemeldet = Boolean(getAuth()?.token);
+
+    const ladeListe = async (q, seiteNr, append) => {
+        try {
+            const liste = await getChats(q, seiteNr, SEITE_GROESSE);
+            const arr = Array.isArray(liste) ? liste : [];
+            setChats((prev) => (append ? [...prev, ...arr] : arr));
+            setHatMehr(arr.length === SEITE_GROESSE);
+            setSeite(seiteNr);
+        } catch { /* Liste ist nebensächlich */ }
     };
 
+    // Suche entprellen.
     useEffect(() => {
-        if (getAuth()?.token) ladeChats();
+        const t = setTimeout(() => setSucheAktiv(suche.trim()), 300);
+        return () => clearTimeout(t);
+    }, [suche]);
+
+    // Liste bei Suche (und initial) neu laden.
+    useEffect(() => {
+        if (angemeldet) ladeListe(sucheAktiv, 0, false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sucheAktiv]);
+
+    // Timer beim Verlassen aufräumen.
+    useEffect(() => () => {
+        if (titelTimerRef.current) clearTimeout(titelTimerRef.current);
     }, []);
 
     // Aktiven Chat aus der URL laden.
@@ -72,7 +150,6 @@ function SopAssistent() {
             return;
         }
         if (schonGeladenRef.current === chatId) {
-            // Gerade selbst erstellt -> State ist aktuell, kein Nachladen (kein Flackern).
             schonGeladenRef.current = null;
             return;
         }
@@ -86,10 +163,7 @@ function SopAssistent() {
             .catch((err) => {
                 if (!aktiv) return;
                 setFehler({ status: err.status, text: fehlerText(err) });
-                if (err.status === 404) {
-                    // Ungültige/fremde ID -> zurück auf neuen Chat.
-                    navigate("/sop-assistent", { replace: true });
-                }
+                if (err.status === 404) navigate("/sop-assistent", { replace: true });
             })
             .finally(() => {
                 if (aktiv) setLadeChat(false);
@@ -100,9 +174,7 @@ function SopAssistent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chatId]);
 
-    // Immer ans Ende scrollen.
     useEffect(() => {
-        // scrollIntoView fehlt in Testumgebungen (jsdom) -> optional aufrufen.
         verlaufEndeRef.current?.scrollIntoView?.({ behavior: "smooth" });
     }, [nachrichten, senden]);
 
@@ -116,10 +188,39 @@ function SopAssistent() {
         });
     };
 
+    const chatOeffnen = (id) => {
+        setMobileOffen(false);
+        navigate(`/sop-assistent/${id}`);
+    };
+
     const neuerChat = () => {
         setFehler(null);
         setEingabe("");
+        setMobileOffen(false);
         navigate("/sop-assistent");
+    };
+
+    // Nach dem ersten Senden den asynchron erzeugten Titel nachladen:
+    // bis zu 3 Versuche im Abstand von ~2 s, Abbruch sobald ein Titel gesetzt ist.
+    const titelNachladen = (neueChatId) => {
+        if (titelTimerRef.current) clearTimeout(titelTimerRef.current);
+        let versuche = 0;
+        const tick = async () => {
+            versuche += 1;
+            let arr = [];
+            try {
+                const liste = await getChats(sucheAktiv, 0, SEITE_GROESSE);
+                arr = Array.isArray(liste) ? liste : [];
+            } catch { /* ignorieren */ }
+            setChats(arr);
+            setHatMehr(arr.length === SEITE_GROESSE);
+            setSeite(0);
+            const chat = arr.find((c) => c.id === neueChatId);
+            if (!(chat && chat.titel) && versuche < 3) {
+                titelTimerRef.current = setTimeout(tick, 2000);
+            }
+        };
+        titelTimerRef.current = setTimeout(tick, 2000);
     };
 
     const absenden = async (text) => {
@@ -127,11 +228,10 @@ function SopAssistent() {
         if (!inhalt || senden) return;
         if (inhalt.length > MAX_ZEICHEN) return;
 
-        const zielId = aktivRef.current; // null = neuer Chat
+        const zielId = aktivRef.current;
         const tempId = `tmp-${Date.now()}`;
         letzteEingabeRef.current = inhalt;
 
-        // Optimistic UI: Nutzernachricht sofort anzeigen.
         setFehler(null);
         setEingabe("");
         setNachrichten((prev) => [...prev, { id: tempId, rolle: "USER", inhalt }]);
@@ -149,32 +249,23 @@ function SopAssistent() {
                 bloecke: antwort.nachricht.bloecke,
             };
 
-            // Nur in die Ansicht übernehmen, wenn der Nutzer noch denselben Chat sieht.
-            // Sonst ist die Antwort trotzdem serverseitig gespeichert (kein Verlust, keine Vermischung).
             const nochAktiv = zielId ? aktivRef.current === zielId : aktivRef.current === null;
             if (nochAktiv) {
                 setNachrichten((prev) => [...prev, antwortNachricht]);
                 if (!zielId) {
-                    // Neuer Chat: URL per Router wechseln, ohne die Seite neu zu laden und ohne Nachladen.
                     schonGeladenRef.current = antwort.chatId;
                     aktivRef.current = antwort.chatId;
                     navigate(`/sop-assistent/${antwort.chatId}`);
                 }
             }
-            ladeChats();
-            if (!zielId) {
-                // Der Titel wird serverseitig asynchron erzeugt -> Liste kurz danach erneut laden.
-                setTimeout(ladeChats, 1800);
-            }
+            ladeListe(sucheAktiv, 0, false);
+            if (!zielId) titelNachladen(antwort.chatId);
         } catch (err) {
             const nochAktiv = zielId ? aktivRef.current === zielId : aktivRef.current === null;
             if (nochAktiv) {
-                setNachrichten((prev) =>
-                    prev.map((m) => (m.id === tempId ? { ...m, fehler: true } : m)));
+                setNachrichten((prev) => prev.map((m) => (m.id === tempId ? { ...m, fehler: true } : m)));
                 setFehler({ status: err.status, text: fehlerText(err) });
-                if (err.status === 404) {
-                    navigate("/sop-assistent", { replace: true });
-                }
+                if (err.status === 404) navigate("/sop-assistent", { replace: true });
             }
         } finally {
             setSenden(false);
@@ -197,18 +288,134 @@ function SopAssistent() {
         }
     };
 
+    // --- Seitenleisten-Aktionen ---
+    const umbenennenStarten = (c) => {
+        setMenuId(null);
+        setUmbenennenId(c.id);
+        setUmbenennenWert(c.titel || "");
+    };
+
+    const umbenennenSpeichern = async () => {
+        const neu = umbenennenWert.trim();
+        const id = umbenennenId;
+        setUmbenennenId(null);
+        if (!id || !neu) return;
+        try {
+            await benenneChatUm(id, neu);
+        } catch { /* ignorieren */ }
+        ladeListe(sucheAktiv, 0, false);
+    };
+
+    const umbenennenTaste = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            umbenennenSpeichern();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            setUmbenennenId(null);
+        }
+    };
+
+    const anpinnenUmschalten = async (c) => {
+        setMenuId(null);
+        try {
+            await setzeAngepinnt(c.id, !c.angepinnt);
+        } catch { /* ignorieren */ }
+        ladeListe(sucheAktiv, 0, false);
+    };
+
+    const loeschenBestaetigen = async () => {
+        const ziel = loeschenChat;
+        setLoeschenChat(null);
+        if (!ziel) return;
+        try {
+            await loescheChat(ziel.id);
+        } catch { /* ignorieren */ }
+        if (ziel.id === chatId) navigate("/sop-assistent");
+        ladeListe(sucheAktiv, 0, false);
+    };
+
+    const gruppen = gruppiere(chats);
     const leer = nachrichten.length === 0 && !ladeChat;
     const zuLang = eingabe.length > MAX_ZEICHEN;
+
+    const chatEintrag = (c) => {
+        if (umbenennenId === c.id) {
+            return (
+                <input
+                    type="text"
+                    className="form-control form-control-sm sop-umbenennen"
+                    value={umbenennenWert}
+                    autoFocus
+                    onChange={(e) => setUmbenennenWert(e.target.value)}
+                    onKeyDown={umbenennenTaste}
+                    onBlur={() => setUmbenennenId(null)}
+                    aria-label="Chat umbenennen"
+                />
+            );
+        }
+        return (
+            <div className={`sop-chat-eintrag${c.id === chatId ? " aktiv" : ""}`}>
+                <button
+                    type="button"
+                    className="sop-chat-titel"
+                    onClick={() => chatOeffnen(c.id)}
+                    title={c.titel || PLATZHALTER_TITEL}
+                >
+                    <span key={c.titel || "neu"} className="sop-titel-fade">
+                        {c.titel || PLATZHALTER_TITEL}
+                    </span>
+                </button>
+                <div className="sop-menu-anker">
+                    <button
+                        type="button"
+                        className="sop-menu-btn"
+                        onClick={() => setMenuId(menuId === c.id ? null : c.id)}
+                        aria-label="Chat-Menü"
+                        aria-haspopup="true"
+                        aria-expanded={menuId === c.id}
+                    >
+                        ⋯
+                    </button>
+                    {menuId === c.id && (
+                        <div className="sop-menu">
+                            <button type="button" className="sop-menu-eintrag" onClick={() => umbenennenStarten(c)}>
+                                Umbenennen
+                            </button>
+                            <button type="button" className="sop-menu-eintrag" onClick={() => anpinnenUmschalten(c)}>
+                                {c.angepinnt ? "Anpinnen lösen" : "Anpinnen"}
+                            </button>
+                            <button
+                                type="button"
+                                className="sop-menu-eintrag text-danger"
+                                onClick={() => {
+                                    setMenuId(null);
+                                    setLoeschenChat({ id: c.id, titel: c.titel || PLATZHALTER_TITEL });
+                                }}
+                            >
+                                Löschen
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="sop-assistent-seite">
             <Navbar />
             <div className="sop-assistent-layout">
-                <aside className={`sop-seitenleiste${sidebarEin ? "" : " zu"}`} aria-label="Chat-Verlauf">
+                {mobileOffen && <div className="sop-mobile-backdrop" onClick={() => setMobileOffen(false)} />}
+
+                <aside
+                    className={`sop-seitenleiste${sidebarEin ? "" : " zu"}${mobileOffen ? " offen" : ""}`}
+                    aria-label="Chat-Verlauf"
+                >
                     <div className="sop-seitenleiste-kopf">
                         <button
                             type="button"
-                            className="btn btn-sm btn-outline-secondary sop-icon-btn"
+                            className="btn btn-sm btn-outline-secondary sop-icon-btn d-none d-md-inline-block"
                             onClick={sidebarUmschalten}
                             title={sidebarEin ? "Einklappen" : "Ausklappen"}
                             aria-label={sidebarEin ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
@@ -234,27 +441,50 @@ function SopAssistent() {
 
                     {sidebarEin && (
                         <>
-                            <ul className="sop-chatliste">
+                            <div className="sop-suche">
+                                <input
+                                    type="search"
+                                    className="form-control form-control-sm"
+                                    placeholder="Chats durchsuchen"
+                                    value={suche}
+                                    onChange={(e) => setSuche(e.target.value)}
+                                    aria-label="Chats durchsuchen"
+                                />
+                            </div>
+
+                            <div className="sop-chatliste">
                                 {chats.length === 0 ? (
-                                    <li className="sop-chatliste-leer text-muted">
-                                        Noch keine Chats. Stell deine erste Frage.
-                                    </li>
+                                    <p className="sop-chatliste-leer text-muted">
+                                        {sucheAktiv ? "Keine Treffer." : "Noch keine Chats. Stell deine erste Frage."}
+                                    </p>
                                 ) : (
-                                    chats.map((c) => (
-                                        <li key={c.id}>
+                                    <>
+                                        {gruppen.map((gruppe) => (
+                                            <div className="sop-gruppe" key={gruppe.label}>
+                                                <div className="sop-gruppe-titel">{gruppe.label}</div>
+                                                {gruppe.items.map((c) => (
+                                                    <div key={c.id}>{chatEintrag(c)}</div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                        {hatMehr && (
                                             <button
                                                 type="button"
-                                                className={`sop-chat-eintrag${c.id === chatId ? " aktiv" : ""}`}
-                                                onClick={() => navigate(`/sop-assistent/${c.id}`)}
-                                                title={c.titel || "Neuer Chat"}
+                                                className="btn btn-sm btn-outline-secondary w-100 mt-2"
+                                                onClick={async () => {
+                                                    setMehrLaedt(true);
+                                                    await ladeListe(sucheAktiv, seite + 1, true);
+                                                    setMehrLaedt(false);
+                                                }}
+                                                disabled={mehrLaedt}
                                             >
-                                                {c.angepinnt && <span className="sop-pin" aria-hidden="true">📌 </span>}
-                                                {c.titel || "Neuer Chat"}
+                                                {mehrLaedt ? "Lädt..." : "Mehr laden"}
                                             </button>
-                                        </li>
-                                    ))
+                                        )}
+                                    </>
                                 )}
-                            </ul>
+                            </div>
+
                             <p className="sop-datenschutz text-muted">
                                 Deine Chats sind privat und nur für dich sichtbar.
                             </p>
@@ -263,6 +493,17 @@ function SopAssistent() {
                 </aside>
 
                 <main className="sop-chat">
+                    <div className="sop-chat-topbar d-md-none">
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => setMobileOffen(true)}
+                            aria-label="Chats anzeigen"
+                        >
+                            ☰ Chats
+                        </button>
+                    </div>
+
                     <div className="sop-verlauf">
                         {ladeChat && <p className="text-muted">Chat wird geladen...</p>}
 
@@ -362,6 +603,40 @@ function SopAssistent() {
                     </div>
                 </main>
             </div>
+
+            {/* Klick-Fänger: schließt ein offenes "..."-Menü. */}
+            {menuId && <div className="sop-menu-fang" onClick={() => setMenuId(null)} />}
+
+            {/* Löschen-Bestätigung im Bootstrap-Dialogstil. */}
+            {loeschenChat && (
+                <>
+                    <div className="modal-backdrop fade show" />
+                    <div className="modal fade show sop-modal" style={{ display: "block" }} role="dialog" aria-modal="true">
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Chat löschen</h5>
+                                    <button type="button" className="btn-close" aria-label="Schließen" onClick={() => setLoeschenChat(null)} />
+                                </div>
+                                <div className="modal-body">
+                                    <p className="mb-0">
+                                        Chat „{loeschenChat.titel}" wirklich endgültig löschen?
+                                        Das kann nicht rückgängig gemacht werden.
+                                    </p>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-outline-secondary" onClick={() => setLoeschenChat(null)}>
+                                        Abbrechen
+                                    </button>
+                                    <button type="button" className="btn btn-danger" onClick={loeschenBestaetigen}>
+                                        Löschen
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
