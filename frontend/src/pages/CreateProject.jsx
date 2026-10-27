@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import AuswahlFeld from "../components/AuswahlFeld";
 import {
@@ -55,10 +55,14 @@ function teileNamen(text) {
 
 function CreateProject() {
     const navigate = useNavigate();
+    const location = useLocation();
     const auth = getAuth();
 
-    const [titel, setTitel] = useState("");
-    const [beschreibung, setBeschreibung] = useState("");
+    // Vorbefüllung aus dem SOP-Assistenten ("Als Projektidee speichern").
+    const vorlage = location.state?.vorlage || null;
+
+    const [titel, setTitel] = useState(vorlage?.titel || "");
+    const [beschreibung, setBeschreibung] = useState(vorlage?.beschreibung || "");
     const [semester, setSemester] = useState(STANDARD_SEMESTER);
     const [fachbereich, setFachbereich] = useState("");
     const [studiengang, setStudiengang] = useState("");

@@ -25,6 +25,7 @@ import {
     getChats,
     getChat,
     sendeNeueNachricht,
+    sendeNachricht,
     benenneChatUm,
     loescheChat,
 } from "../services/aiService";
@@ -35,6 +36,8 @@ function renderSeite(initial = "/sop-assistent") {
             <Routes>
                 <Route path="/sop-assistent" element={<SopAssistent />} />
                 <Route path="/sop-assistent/:chatId" element={<SopAssistent />} />
+                <Route path="/create-project" element={<div>CREATE-SEITE</div>} />
+                <Route path="/projectdetails/:id" element={<div>DETAILS-SEITE</div>} />
             </Routes>
         </MemoryRouter>
     );
@@ -150,6 +153,65 @@ describe("SopAssistent", () => {
         await user.type(screen.getByPlaceholderText("Chats durchsuchen"), "roadmap");
 
         await waitFor(() => expect(getChats).toHaveBeenCalledWith("roadmap", 0, 30));
+    });
+
+    it("rendert eine Ideenkarte mit Speichern-Button und Chips", async () => {
+        getChat.mockResolvedValue({
+            nachrichten: [
+                { id: "m1", rolle: "USER", inhalt: "Ich brauche eine Idee" },
+                {
+                    id: "m2", rolle: "ASSISTANT", inhalt: "Hier ein Vorschlag:",
+                    bloecke: [{
+                        typ: "idea_card", titel: "Lern-App", problem: "Lernen im Team",
+                        mvp: ["Login", "Kurse"], technologien: ["React"], aufwand: "mittel", machbarkeit: "gruen",
+                    }],
+                },
+            ],
+        });
+        sendeNachricht.mockResolvedValue({
+            chatId: "abc", titel: "x",
+            nachricht: { id: "m3", rolle: "ASSISTANT", inhalt: "Kleinere Variante", bloecke: null },
+        });
+        const user = userEvent.setup();
+        renderSeite("/sop-assistent/abc");
+
+        expect(await screen.findByText("Lern-App")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Als Projektidee speichern" })).toBeInTheDocument();
+
+        // Chip "Kleiner" sendet eine Folgenachricht in den aktiven Chat.
+        await user.click(screen.getByRole("button", { name: "Kleiner" }));
+        await waitFor(() => expect(sendeNachricht).toHaveBeenCalled());
+        expect(sendeNachricht.mock.calls[0][0]).toBe("abc");
+        expect(sendeNachricht.mock.calls[0][1]).toMatch(/kleiner/i);
+    });
+
+    it("führt 'Als Projektidee speichern' zum Projektformular", async () => {
+        getChat.mockResolvedValue({
+            nachrichten: [
+                { id: "m2", rolle: "ASSISTANT", inhalt: "Vorschlag", bloecke: [{ typ: "idea_card", titel: "Lern-App" }] },
+            ],
+        });
+        const user = userEvent.setup();
+        renderSeite("/sop-assistent/abc");
+
+        await user.click(await screen.findByRole("button", { name: "Als Projektidee speichern" }));
+        expect(await screen.findByText("CREATE-SEITE")).toBeInTheDocument();
+    });
+
+    it("rendert einen Projektverweis als Link zur Detailseite", async () => {
+        getChat.mockResolvedValue({
+            nachrichten: [
+                {
+                    id: "m2", rolle: "ASSISTANT", inhalt: "Ähnliche Projekte:",
+                    bloecke: [{ typ: "project_ref", id: 5, titel: "Projekt X", aehnlichkeit: "hoch", begruendung: "Gleiches Thema" }],
+                },
+            ],
+        });
+        renderSeite("/sop-assistent/abc");
+
+        const link = await screen.findByRole("link", { name: "Projekt X" });
+        expect(link).toHaveAttribute("href", "/projectdetails/5");
+        expect(screen.getByText(/Ähnlichkeit: hoch/)).toBeInTheDocument();
     });
 
     it("zeigt vorhandene Chats und klappt die Seitenleiste ein", async () => {

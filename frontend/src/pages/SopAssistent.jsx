@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Navbar from "../components/Navbar";
@@ -336,6 +336,92 @@ function SopAssistent() {
     };
 
     const gruppen = gruppiere(chats);
+    // "Als Projektidee speichern": Formular mit Werten aus der Ideenkarte vorbefüllen.
+    const ideeSpeichern = (karte) => {
+        const beschreibung = [
+            karte.problem && `Problem: ${karte.problem}`,
+            karte.zielgruppe && `Zielgruppe: ${karte.zielgruppe}`,
+            Array.isArray(karte.mvp) && karte.mvp.length ? `MVP: ${karte.mvp.join(", ")}` : null,
+            Array.isArray(karte.technologien) && karte.technologien.length
+                ? `Technologien: ${karte.technologien.join(", ")}` : null,
+        ].filter(Boolean).join("\n");
+        navigate("/create-project", { state: { vorlage: { titel: karte.titel || "", beschreibung } } });
+    };
+
+    const chipSenden = (titel, art) => {
+        const name = titel || "diese Idee";
+        const texte = {
+            kleiner: `Mach die Idee „${name}" kleiner – weniger Umfang, kleineres MVP.`,
+            groesser: `Mach die Idee „${name}" größer – mehr Funktionen und Anspruch.`,
+            tech: `Schlage für die Idee „${name}" andere Technologien vor.`,
+            fokus: `Gib der Idee „${name}" einen anderen fachlichen Fokus.`,
+        };
+        absenden(texte[art]);
+    };
+
+    const renderBlock = (block, index) => {
+        if (!block || typeof block !== "object") return null;
+        if (block.typ === "idea_card") {
+            return (
+                <div className="card sop-ideenkarte" key={index}>
+                    <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-start gap-2">
+                            <h3 className="h6 mb-1">{block.titel}</h3>
+                            <div className="d-flex gap-1 flex-shrink-0">
+                                {block.aufwand && <span className="badge bg-secondary">Aufwand: {block.aufwand}</span>}
+                                {block.machbarkeit && (
+                                    <span className={`badge sop-ampel-${block.machbarkeit}`}>Machbarkeit</span>
+                                )}
+                            </div>
+                        </div>
+                        {block.problem && <p className="mb-1"><strong>Problem:</strong> {block.problem}</p>}
+                        {block.zielgruppe && <p className="mb-1"><strong>Zielgruppe:</strong> {block.zielgruppe}</p>}
+                        {Array.isArray(block.mvp) && block.mvp.length > 0 && (
+                            <p className="mb-1"><strong>MVP:</strong> {block.mvp.join(", ")}</p>
+                        )}
+                        {Array.isArray(block.technologien) && block.technologien.length > 0 && (
+                            <div className="mb-1">
+                                {block.technologien.map((t, i) => (
+                                    <span className="badge bg-info me-1 mb-1" key={i}>{t}</span>
+                                ))}
+                            </div>
+                        )}
+                        {Array.isArray(block.risiken) && block.risiken.length > 0 && (
+                            <p className="mb-1 text-muted"><strong>Risiken:</strong> {block.risiken.join(", ")}</p>
+                        )}
+                        {Array.isArray(block.teamrollen) && block.teamrollen.length > 0 && (
+                            <p className="mb-2 text-muted"><strong>Teamrollen:</strong> {block.teamrollen.join(", ")}</p>
+                        )}
+                        <div className="d-flex flex-wrap gap-1 mb-2">
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => chipSenden(block.titel, "kleiner")}>Kleiner</button>
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => chipSenden(block.titel, "groesser")}>Größer</button>
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => chipSenden(block.titel, "tech")}>Andere Technologie</button>
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => chipSenden(block.titel, "fokus")}>Anderer Fokus</button>
+                        </div>
+                        <button type="button" className="btn btn-sm btn-primary" onClick={() => ideeSpeichern(block)}>
+                            Als Projektidee speichern
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        if (block.typ === "project_ref") {
+            const grad = block.aehnlichkeit || "mittel";
+            return (
+                <div className="card sop-projektref" key={index}>
+                    <div className="card-body py-2">
+                        <div className="d-flex justify-content-between align-items-center gap-2">
+                            <Link to={`/projectdetails/${block.id}`} className="fw-semibold">{block.titel}</Link>
+                            <span className={`badge sop-grad-${grad}`}>Ähnlichkeit: {grad}</span>
+                        </div>
+                        {block.begruendung && <p className="mb-0 small text-muted mt-1">{block.begruendung}</p>}
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
     const leer = nachrichten.length === 0 && !ladeChat;
     const zuLang = eingabe.length > MAX_ZEICHEN;
 
@@ -530,24 +616,32 @@ function SopAssistent() {
                             </div>
                         )}
 
-                        {nachrichten.map((m) => (
-                            <div
-                                key={m.id}
-                                className={`sop-bubble-zeile ${m.rolle === "USER" ? "user" : "assistant"}`}
-                            >
-                                <div
-                                    className={`sop-bubble ${m.rolle === "USER" ? "user" : "assistant"}${m.fehler ? " fehler" : ""}`}
-                                >
-                                    {m.rolle === "USER" ? (
-                                        <span className="sop-text">{m.inhalt}</span>
-                                    ) : (
-                                        <div className="sop-markdown">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.inhalt}</ReactMarkdown>
-                                        </div>
-                                    )}
+                        {nachrichten.map((m) => {
+                            const istUser = m.rolle === "USER";
+                            const bloecke = Array.isArray(m.bloecke) ? m.bloecke : [];
+                            return (
+                                <div key={m.id} className={`sop-bubble-zeile ${istUser ? "user" : "assistant"}`}>
+                                    <div className="sop-bubble-spalte">
+                                        {(istUser || (m.inhalt && m.inhalt.trim())) && (
+                                            <div className={`sop-bubble ${istUser ? "user" : "assistant"}${m.fehler ? " fehler" : ""}`}>
+                                                {istUser ? (
+                                                    <span className="sop-text">{m.inhalt}</span>
+                                                ) : (
+                                                    <div className="sop-markdown">
+                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.inhalt}</ReactMarkdown>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {!istUser && bloecke.length > 0 && (
+                                            <div className="sop-bloecke">
+                                                {bloecke.map((b, i) => renderBlock(b, i))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {senden && (
                             <div className="sop-bubble-zeile assistant">

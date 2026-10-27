@@ -228,12 +228,49 @@
     justify-content: flex-start;
 }
 
-.sop-bubble {
+.sop-bubble-spalte {
+    display: flex;
+    flex-direction: column;
     max-width: 80%;
+}
+
+.sop-bubble-zeile.user .sop-bubble-spalte {
+    align-items: flex-end;
+}
+
+.sop-bubble-zeile.assistant .sop-bubble-spalte {
+    max-width: 88%;
+}
+
+.sop-bubble {
+    max-width: 100%;
     padding: 0.6rem 0.9rem;
     border-radius: 1rem;
     line-height: 1.45;
 }
+
+/* Karten-Blöcke (Ideenkarten / Projektverweise) */
+.sop-bloecke {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.sop-ideenkarte,
+.sop-projektref {
+    border: 1px solid #e9ecef;
+}
+
+.sop-ampel-gruen,
+.sop-grad-hoch { background: #198754; color: #fff; }
+
+.sop-ampel-gelb,
+.sop-grad-mittel { background: #ffc107; color: #000; }
+
+.sop-ampel-rot { background: #dc3545; color: #fff; }
+
+.sop-grad-gering { background: #6c757d; color: #fff; }
 
 .sop-bubble.user {
     background: var(--bs-primary, #0d6efd);
