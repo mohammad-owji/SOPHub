@@ -1,6 +1,7 @@
 package com.sophub.service;
 
 import com.sophub.model.Dokument;
+import com.sophub.model.Dokumenttyp;
 import com.sophub.model.Projekt;
 import com.sophub.model.User;
 import com.sophub.repository.DokumentRepository;
@@ -96,7 +97,9 @@ public class DokumentService {
         Dokument dokument = new Dokument();
         dokument.setDateiName(originName);
         dokument.setDateiPfad(zielPfad.toString());
-        dokument.setTyp(typ.toUpperCase());
+        // Typ auf einen kanonischen Dokumenttyp normalisieren; ist die Angabe
+        // unbekannt/SONSTIGES, per Dateiname-Heuristik verfeinern (vorbelegen).
+        dokument.setTyp(Dokumenttyp.bestimme(typ, originName).name());
         dokument.setHochgeladenVon(benutzer);
         dokument.setProjekt(projekt);
 
