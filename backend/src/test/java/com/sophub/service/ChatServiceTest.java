@@ -38,6 +38,7 @@ class ChatServiceTest {
     @Mock AIService aiService;
     @Mock SopAssistentPrompt sopAssistentPrompt;
     @Mock ChatTitelService chatTitelService;
+    @Mock com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry;
     @InjectMocks ChatService chatService;
 
     private User nutzer(String benutzername, long id) {
@@ -136,7 +137,7 @@ class ChatServiceTest {
         when(messageRepository.countByConversationId(any())).thenReturn(0L);
         when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(any())).thenReturn(List.of());
         when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
-        when(aiService.chat(eq("SYS"), any())).thenReturn("KI-Antwort");
+        when(aiService.chatMitWerkzeugen(eq("SYS"), any(), any())).thenReturn("KI-Antwort");
         when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         ChatService.NachrichtErgebnis ergebnis = chatService.nachrichtSenden("stud", null, "Hallo KI");
@@ -149,7 +150,7 @@ class ChatServiceTest {
         // Die aktuelle Frage steht als letzte user-Nachricht im KI-Verlauf.
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<AIService.Nachricht>> captor = ArgumentCaptor.forClass(List.class);
-        verify(aiService).chat(eq("SYS"), captor.capture());
+        verify(aiService).chatMitWerkzeugen(eq("SYS"), captor.capture(), any());
         List<AIService.Nachricht> verlauf = captor.getValue();
         assertThat(verlauf).isNotEmpty();
         assertThat(verlauf.get(verlauf.size() - 1).rolle()).isEqualTo("user");
@@ -172,7 +173,7 @@ class ChatServiceTest {
         when(messageRepository.countByConversationId(chatId)).thenReturn(4L);
         when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(chatId)).thenReturn(List.of());
         when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
-        when(aiService.chat(any(), any())).thenReturn("Antwort");
+        when(aiService.chatMitWerkzeugen(any(), any(), any())).thenReturn("Antwort");
         when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -243,7 +244,7 @@ class ChatServiceTest {
         when(messageRepository.countByConversationId(any())).thenReturn(0L);
         when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(any())).thenReturn(List.of());
         when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
-        when(aiService.chat(any(), any())).thenReturn("Antwort");
+        when(aiService.chatMitWerkzeugen(any(), any(), any())).thenReturn("Antwort");
         when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         chatService.nachrichtSenden("stud", null, "Erste Frage im neuen Chat");

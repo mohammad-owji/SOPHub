@@ -1,5 +1,7 @@
 package com.sophub.service;
 
+import com.sophub.service.werkzeug.Werkzeugkasten;
+
 import java.util.List;
 
 public interface AIService {
@@ -21,6 +23,14 @@ public interface AIService {
      * @param verlauf      chronologischer Verlauf, mindestens eine Nachricht
      */
     String chat(String systemPrompt, List<Nachricht> verlauf);
+
+    /**
+     * Wie {@link #chat(String, List)}, bietet der KI aber Werkzeuge an (Function-/Tool-Calling).
+     * Fordert die KI ein Werkzeug an, wird es ausgeführt und das Ergebnis zurückgegeben,
+     * bis die KI eine finale Textantwort liefert (begrenzte Anzahl Durchläufe). Unterstützt
+     * das Modell keine Werkzeuge, verhält es sich wie ein normaler Chat.
+     */
+    String chatMitWerkzeugen(String systemPrompt, List<Nachricht> verlauf, Werkzeugkasten werkzeuge);
 
     /** Eine Chat-Nachricht für die KI-Schnittstelle. {@code rolle} ist {@code user} oder {@code assistant}. */
     record Nachricht(String rolle, String inhalt) {}

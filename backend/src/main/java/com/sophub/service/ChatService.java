@@ -53,19 +53,22 @@ public class ChatService {
     private final AIService aiService;
     private final SopAssistentPrompt sopAssistentPrompt;
     private final ChatTitelService chatTitelService;
+    private final com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry;
 
     public ChatService(ChatConversationRepository conversationRepository,
                        ChatMessageRepository messageRepository,
                        UserRepository userRepository,
                        AIService aiService,
                        SopAssistentPrompt sopAssistentPrompt,
-                       ChatTitelService chatTitelService) {
+                       ChatTitelService chatTitelService,
+                       com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.aiService = aiService;
         this.sopAssistentPrompt = sopAssistentPrompt;
         this.chatTitelService = chatTitelService;
+        this.werkzeugRegistry = werkzeugRegistry;
     }
 
     private User nutzer(String benutzername) {
@@ -179,7 +182,9 @@ public class ChatService {
         verlauf.add(new AIService.Nachricht("user", text));
 
         // KI-Aufruf zuerst - wirft bei Fehler, bevor etwas gespeichert wird.
-        String antwortText = aiService.chat(sopAssistentPrompt.systemPrompt(), verlauf);
+        // Mit Werkzeugen (Tool-Calling) im Kontext des eingeloggten Nutzers.
+        String antwortText = aiService.chatMitWerkzeugen(
+                sopAssistentPrompt.systemPrompt(), verlauf, werkzeugRegistry.fuer(benutzername));
 
         LocalDateTime jetzt = LocalDateTime.now();
         ChatMessage nutzerNachricht = neueNachricht(chat, ChatRolle.USER, text, jetzt);
