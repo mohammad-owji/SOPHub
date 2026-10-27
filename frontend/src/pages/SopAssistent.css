@@ -1,0 +1,244 @@
+/* SOP-Assistent: zweispaltiges Layout (Seitenleiste + Chat) im bestehenden App-Stil. */
+
+.sop-assistent-layout {
+    display: flex;
+    height: calc(100vh - 62px); /* Platz unter der Navbar */
+    overflow: hidden;
+}
+
+/* --- Seitenleiste --- */
+.sop-seitenleiste {
+    width: 280px;
+    flex: 0 0 280px;
+    border-right: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #f8f9fa;
+    transition: width 0.15s ease, flex-basis 0.15s ease;
+}
+
+.sop-seitenleiste.zu {
+    width: 56px;
+    flex-basis: 56px;
+}
+
+.sop-seitenleiste-kopf {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sop-icon-btn {
+    width: 34px;
+    flex: 0 0 34px;
+    padding: 0.25rem 0;
+}
+
+.sop-chatliste {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.sop-chatliste-leer {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+}
+
+.sop-chat-eintrag {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.5rem;
+    font-size: 0.92rem;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sop-chat-eintrag:hover {
+    background: #e9ecef;
+}
+
+.sop-chat-eintrag.aktiv {
+    background: #e2e6ea;
+    font-weight: 600;
+}
+
+.sop-datenschutz {
+    padding: 0.6rem 0.75rem;
+    margin: 0;
+    font-size: 0.78rem;
+    border-top: 1px solid #dee2e6;
+}
+
+/* --- Chat --- */
+.sop-chat {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sop-verlauf {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+}
+
+.sop-leerzustand {
+    max-width: 720px;
+    margin: 2rem auto;
+    text-align: center;
+}
+
+.sop-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.sop-chip {
+    text-align: left;
+}
+
+/* Nachrichten-Blasen */
+.sop-bubble-zeile {
+    display: flex;
+    margin-bottom: 0.75rem;
+}
+
+.sop-bubble-zeile.user {
+    justify-content: flex-end;
+}
+
+.sop-bubble-zeile.assistant {
+    justify-content: flex-start;
+}
+
+.sop-bubble {
+    max-width: 80%;
+    padding: 0.6rem 0.9rem;
+    border-radius: 1rem;
+    line-height: 1.45;
+}
+
+.sop-bubble.user {
+    background: var(--bs-primary, #0d6efd);
+    color: #fff;
+    border-bottom-right-radius: 0.25rem;
+}
+
+.sop-bubble.assistant {
+    background: #f1f3f5;
+    border: 1px solid #e9ecef;
+    color: #212529;
+    border-bottom-left-radius: 0.25rem;
+}
+
+.sop-bubble.fehler {
+    outline: 1px solid var(--bs-warning, #ffc107);
+}
+
+.sop-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Markdown-Inhalt der KI */
+.sop-markdown :last-child {
+    margin-bottom: 0;
+}
+
+.sop-markdown pre {
+    background: #272822;
+    color: #f8f8f2;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+.sop-markdown code {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+}
+
+.sop-markdown pre code {
+    background: transparent;
+    padding: 0;
+}
+
+/* Tipp-Indikator */
+.sop-typing {
+    display: inline-flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.sop-typing span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #adb5bd;
+    display: inline-block;
+    animation: sop-typing-blink 1.2s infinite ease-in-out;
+}
+
+.sop-typing span:nth-child(2) { animation-delay: 0.2s; }
+.sop-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes sop-typing-blink {
+    0%, 80%, 100% { opacity: 0.3; }
+    40% { opacity: 1; }
+}
+
+.sop-fehler {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* --- Eingabe --- */
+.sop-eingabe {
+    border-top: 1px solid #dee2e6;
+    padding: 0.75rem 1.25rem;
+    background: #fff;
+}
+
+.sop-eingabe-feld {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.sop-eingabe-feld textarea {
+    resize: vertical;
+    max-height: 160px;
+}
+
+.sop-zaehler {
+    text-align: right;
+    font-size: 0.78rem;
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 767.98px) {
+    /* Vollwertiges Overlay/Hamburger folgt in Schritt 6; vorerst schmale Leiste. */
+    .sop-seitenleiste {
+        width: 220px;
+        flex-basis: 220px;
+    }
+}

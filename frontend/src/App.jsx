@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectInvitation from "./pages/ProjectInvitation";
 import KI from "./pages/KI";
+import SopAssistent from "./pages/SopAssistent";
 
 function App() {
   return (
@@ -29,6 +30,8 @@ function App() {
         <Route path="/einladungen" element={<MyInvitations />} />
         <Route path="/project-invitation/:projektId" element={<ProjectInvitation />} />
         <Route path="/ai" element={<KI />} />
+        <Route path="/sop-assistent" element={<SopAssistent />} />
+        <Route path="/sop-assistent/:chatId" element={<SopAssistent />} />
       </Routes>
     </BrowserRouter>
   );
