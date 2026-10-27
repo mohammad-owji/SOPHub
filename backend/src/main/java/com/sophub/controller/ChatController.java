@@ -74,6 +74,39 @@ public class ChatController {
         return geloescht ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
+    /** Nachricht an einen bestehenden Chat (404, wenn er dem Nutzer nicht gehört). */
+    @PostMapping("/{id}/messages")
+    public ResponseEntity<?> nachrichtAnChat(Authentication authentication, @PathVariable UUID id,
+                                             @RequestBody(required = false) NachrichtRequest body) {
+        return verarbeiteNachricht(authentication.getName(), id, body);
+    }
+
+    /** Erste Nachricht eines neuen Chats - der Chat wird dabei lazy angelegt (keine leeren Chats). */
+    @PostMapping("/messages")
+    public ResponseEntity<?> neueNachricht(Authentication authentication,
+                                           @RequestBody(required = false) NachrichtRequest body) {
+        return verarbeiteNachricht(authentication.getName(), null, body);
+    }
+
+    private ResponseEntity<?> verarbeiteNachricht(String benutzername, UUID chatId, NachrichtRequest body) {
+        try {
+            ChatService.NachrichtErgebnis ergebnis = chatService.nachrichtSenden(
+                    benutzername, chatId, body == null ? null : body.inhalt());
+            ChatConversation chat = ergebnis.chat();
+            return ResponseEntity.ok(new NachrichtAntwort(
+                    chat.getId(), chat.getTitel(), nachricht(ergebnis.antwort())));
+        } catch (ChatService.ChatNichtGefundenException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (ChatService.ChatLimitException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            // KI nicht erreichbar / überlastet / fehlgeschlagen -> verständliche Meldung, kein Stacktrace.
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
+        }
+    }
+
     /** Baut die Detail-Ansicht eines Chats inkl. seiner Nachrichten. */
     private ChatDetail detail(ChatConversation chat) {
         List<ChatNachricht> nachrichten = chatService.nachrichten(chat.getId())
@@ -99,6 +132,10 @@ public class ChatController {
     record ChatErstellenRequest(String titel) {}
 
     record ChatPatchRequest(String titel, Boolean angepinnt) {}
+
+    record NachrichtRequest(String inhalt) {}
+
+    record NachrichtAntwort(UUID chatId, String titel, ChatNachricht nachricht) {}
 
     record ChatZusammenfassung(UUID id, String titel, boolean angepinnt, LocalDateTime aktualisiertAm) {
         ChatZusammenfassung(ChatConversation c) {

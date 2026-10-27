@@ -2,6 +2,7 @@ package com.sophub.service;
 
 import com.sophub.model.ChatConversation;
 import com.sophub.model.ChatMessage;
+import com.sophub.model.ChatRolle;
 import com.sophub.model.User;
 import com.sophub.repository.ChatConversationRepository;
 import com.sophub.repository.ChatMessageRepository;
@@ -11,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,17 +36,31 @@ public class ChatService {
     public static final int MAX_TITEL_LAENGE = 120;
     /** Standard-Seitengröße für die Chat-Liste. */
     public static final int STANDARD_SEITENGROESSE = 30;
+    /** Maximale Länge einer Nutzernachricht (Token-/Missbrauchsschutz). */
+    public static final int MAX_NACHRICHT_LAENGE = 2000;
+    /** Maximale Anzahl gespeicherter Chats pro Nutzer. */
+    public static final int MAX_CHATS_PRO_NUTZER = 200;
+    /** Maximale Anzahl Nachrichten pro Chat. */
+    public static final int MAX_NACHRICHTEN_PRO_CHAT = 100;
+    /** Wie viele vergangene Nachrichten als KI-Kontext geladen werden. */
+    public static final int KONTEXT_NACHRICHTEN = 10;
 
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final AIService aiService;
+    private final SopAssistentPrompt sopAssistentPrompt;
 
     public ChatService(ChatConversationRepository conversationRepository,
                        ChatMessageRepository messageRepository,
-                       UserRepository userRepository) {
+                       UserRepository userRepository,
+                       AIService aiService,
+                       SopAssistentPrompt sopAssistentPrompt) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
+        this.aiService = aiService;
+        this.sopAssistentPrompt = sopAssistentPrompt;
     }
 
     private User nutzer(String benutzername) {
@@ -108,6 +125,99 @@ public class ChatService {
         return chat.isPresent();
     }
 
+    /**
+     * Verarbeitet eine Nutzernachricht: lädt die letzten {@value #KONTEXT_NACHRICHTEN}
+     * Nachrichten als KI-Kontext (das Frontend schickt keinen Verlauf mehr mit),
+     * ruft die KI auf und speichert anschließend Nutzer- UND KI-Nachricht.
+     * <p>
+     * {@code chatId == null} legt lazy einen neuen Chat an (keine leeren Chats).
+     * Persistiert wird erst NACH erfolgreicher KI-Antwort - schlägt die KI fehl,
+     * bleibt kein verwaister Eintrag zurück, und das Frontend kann es erneut
+     * versuchen.
+     *
+     * @throws ChatNichtGefundenException wenn ein {@code chatId} angegeben ist, der
+     *                                    nicht dem Nutzer gehört (Controller -> 404)
+     * @throws IllegalArgumentException   bei leerer oder zu langer Nachricht (-> 400)
+     * @throws ChatLimitException         bei erreichtem Chat-/Nachrichtenlimit (-> 409)
+     */
+    @Transactional
+    public NachrichtErgebnis nachrichtSenden(String benutzername, UUID chatId, String inhalt) {
+        String text = inhalt == null ? "" : inhalt.trim();
+        if (text.isEmpty()) {
+            throw new IllegalArgumentException("Die Nachricht darf nicht leer sein.");
+        }
+        if (text.length() > MAX_NACHRICHT_LAENGE) {
+            throw new IllegalArgumentException(
+                    "Die Nachricht ist zu lang (maximal " + MAX_NACHRICHT_LAENGE + " Zeichen).");
+        }
+
+        User user = nutzer(benutzername);
+        ChatConversation chat = (chatId == null)
+                ? neuenChatAnlegen(user)
+                : conversationRepository.findByIdAndUserId(chatId, user.getId())
+                        .orElseThrow(ChatNichtGefundenException::new);
+
+        if (messageRepository.countByConversationId(chat.getId()) >= MAX_NACHRICHTEN_PRO_CHAT) {
+            throw new ChatLimitException(
+                    "Dieser Chat hat das Limit von " + MAX_NACHRICHTEN_PRO_CHAT
+                            + " Nachrichten erreicht. Bitte starte einen neuen Chat.");
+        }
+
+        // Kontext: die letzten Nachrichten chronologisch, danach die aktuelle Frage.
+        List<ChatMessage> letzte = messageRepository
+                .findTop10ByConversationIdOrderByErstelltAmDesc(chat.getId());
+        List<AIService.Nachricht> verlauf = new ArrayList<>();
+        for (int i = letzte.size() - 1; i >= 0; i--) {
+            ChatMessage m = letzte.get(i);
+            verlauf.add(new AIService.Nachricht(rolleFuerKi(m.getRolle()), m.getInhalt()));
+        }
+        verlauf.add(new AIService.Nachricht("user", text));
+
+        // KI-Aufruf zuerst - wirft bei Fehler, bevor etwas gespeichert wird.
+        String antwortText = aiService.chat(sopAssistentPrompt.systemPrompt(), verlauf);
+
+        LocalDateTime jetzt = LocalDateTime.now();
+        ChatMessage nutzerNachricht = neueNachricht(chat, ChatRolle.USER, text, jetzt);
+        // 1 ms später, damit die zeitliche Reihenfolge auch bei grober Zeitauflösung stabil ist.
+        ChatMessage antwort = neueNachricht(chat, ChatRolle.ASSISTANT, antwortText, jetzt.plusNanos(1_000_000));
+        messageRepository.save(nutzerNachricht);
+        antwort = messageRepository.save(antwort);
+
+        chat.setAktualisiertAm(jetzt);
+        chat = conversationRepository.save(chat);
+
+        return new NachrichtErgebnis(chat, antwort);
+    }
+
+    /** Legt einen neuen Chat an und setzt dabei das Chat-Limit pro Nutzer durch. */
+    private ChatConversation neuenChatAnlegen(User user) {
+        if (conversationRepository.countByUserId(user.getId()) >= MAX_CHATS_PRO_NUTZER) {
+            // Ältesten nicht angepinnten Chat löschen, um Platz zu schaffen.
+            ChatConversation aeltester = conversationRepository
+                    .findFirstByUserIdAndAngepinntFalseOrderByAktualisiertAmAsc(user.getId())
+                    .orElseThrow(() -> new ChatLimitException(
+                            "Du hast das Maximum von " + MAX_CHATS_PRO_NUTZER
+                                    + " Chats erreicht und alle sind angepinnt. Bitte löse eine Anpinnung oder lösche einen Chat."));
+            conversationRepository.delete(aeltester);
+        }
+        ChatConversation chat = new ChatConversation();
+        chat.setUser(user);
+        return conversationRepository.save(chat);
+    }
+
+    private ChatMessage neueNachricht(ChatConversation chat, ChatRolle rolle, String inhalt, LocalDateTime erstelltAm) {
+        ChatMessage nachricht = new ChatMessage();
+        nachricht.setConversation(chat);
+        nachricht.setRolle(rolle);
+        nachricht.setInhalt(inhalt);
+        nachricht.setErstelltAm(erstelltAm);
+        return nachricht;
+    }
+
+    private String rolleFuerKi(ChatRolle rolle) {
+        return rolle == ChatRolle.USER ? "user" : "assistant";
+    }
+
     private String kuerzeTitel(String titel) {
         if (titel == null) {
             return null;
@@ -117,5 +227,22 @@ public class ChatService {
             return null;
         }
         return bereinigt.length() > MAX_TITEL_LAENGE ? bereinigt.substring(0, MAX_TITEL_LAENGE) : bereinigt;
+    }
+
+    /** Ergebnis einer verarbeiteten Nachricht: der (ggf. neue) Chat und die KI-Antwort. */
+    public record NachrichtErgebnis(ChatConversation chat, ChatMessage antwort) {}
+
+    /** Chat gehört nicht dem Nutzer oder existiert nicht - Controller macht daraus 404. */
+    public static class ChatNichtGefundenException extends RuntimeException {
+        public ChatNichtGefundenException() {
+            super("Chat nicht gefunden.");
+        }
+    }
+
+    /** Ein Chat-/Nachrichtenlimit wurde erreicht - Controller macht daraus 409. */
+    public static class ChatLimitException extends RuntimeException {
+        public ChatLimitException(String nachricht) {
+            super(nachricht);
+        }
     }
 }

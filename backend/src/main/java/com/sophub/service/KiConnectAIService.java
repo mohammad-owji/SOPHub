@@ -13,6 +13,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,16 +58,37 @@ public class KiConnectAIService implements AIService {
 
     @Override
     public String generiereAntwort(String prompt, boolean alsJson) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new RuntimeException("KI-Dienst ist nicht konfiguriert (kein KI:connect API-Key hinterlegt).");
-        }
         if (prompt == null || prompt.isBlank()) {
             throw new RuntimeException("Kein Text zur Verarbeitung übergeben.");
+        }
+        List<Map<String, Object>> messages = List.of(Map.of("role", "user", "content", prompt));
+        return fuehreChatAus(messages, alsJson);
+    }
+
+    @Override
+    public String chat(String systemPrompt, List<Nachricht> verlauf) {
+        if (verlauf == null || verlauf.isEmpty()) {
+            throw new RuntimeException("Kein Nachrichtenverlauf übergeben.");
+        }
+        List<Map<String, Object>> messages = new ArrayList<>();
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+        }
+        for (Nachricht n : verlauf) {
+            messages.add(Map.of("role", n.rolle(), "content", n.inhalt() == null ? "" : n.inhalt()));
+        }
+        return fuehreChatAus(messages, false);
+    }
+
+    /** Gemeinsame Chat-Completions-Anfrage inkl. einheitlicher Fehlerbehandlung. */
+    private String fuehreChatAus(List<Map<String, Object>> messages, boolean alsJson) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new RuntimeException("KI-Dienst ist nicht konfiguriert (kein KI:connect API-Key hinterlegt).");
         }
 
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
-        body.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+        body.put("messages", messages);
         if (alsJson) {
             body.put("response_format", Map.of("type", "json_object"));
         }

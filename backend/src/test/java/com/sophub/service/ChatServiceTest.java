@@ -1,21 +1,27 @@
 package com.sophub.service;
 
 import com.sophub.model.ChatConversation;
+import com.sophub.model.ChatMessage;
+import com.sophub.model.ChatRolle;
 import com.sophub.model.User;
 import com.sophub.repository.ChatConversationRepository;
 import com.sophub.repository.ChatMessageRepository;
 import com.sophub.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -29,6 +35,8 @@ class ChatServiceTest {
     @Mock ChatConversationRepository conversationRepository;
     @Mock ChatMessageRepository messageRepository;
     @Mock UserRepository userRepository;
+    @Mock AIService aiService;
+    @Mock SopAssistentPrompt sopAssistentPrompt;
     @InjectMocks ChatService chatService;
 
     private User nutzer(String benutzername, long id) {
@@ -114,5 +122,106 @@ class ChatServiceTest {
 
         assertThat(chatService.aktualisieren("admin", chatId, "Neuer Titel", true)).isEmpty();
         verify(conversationRepository, never()).save(any());
+    }
+
+    // --- Schritt 3: Nachricht senden ---
+
+    @Test
+    void neueNachrichtLegtChatAnUndSpeichertNutzerUndKiNachricht() {
+        User user = nutzer("stud", 1L);
+        when(userRepository.findByBenutzername("stud")).thenReturn(Optional.of(user));
+        when(conversationRepository.countByUserId(1L)).thenReturn(0L);
+        when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(messageRepository.countByConversationId(any())).thenReturn(0L);
+        when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(any())).thenReturn(List.of());
+        when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
+        when(aiService.chat(eq("SYS"), any())).thenReturn("KI-Antwort");
+        when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ChatService.NachrichtErgebnis ergebnis = chatService.nachrichtSenden("stud", null, "Hallo KI");
+
+        assertThat(ergebnis.antwort().getInhalt()).isEqualTo("KI-Antwort");
+        assertThat(ergebnis.antwort().getRolle()).isEqualTo(ChatRolle.ASSISTANT);
+        // Nutzer- UND KI-Nachricht wurden gespeichert.
+        verify(messageRepository, times(2)).save(any());
+
+        // Die aktuelle Frage steht als letzte user-Nachricht im KI-Verlauf.
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<AIService.Nachricht>> captor = ArgumentCaptor.forClass(List.class);
+        verify(aiService).chat(eq("SYS"), captor.capture());
+        List<AIService.Nachricht> verlauf = captor.getValue();
+        assertThat(verlauf).isNotEmpty();
+        assertThat(verlauf.get(verlauf.size() - 1).rolle()).isEqualTo("user");
+        assertThat(verlauf.get(verlauf.size() - 1).inhalt()).isEqualTo("Hallo KI");
+    }
+
+    @Test
+    void leereNachrichtWirdAbgelehntOhneKiAufruf() {
+        assertThatThrownBy(() -> chatService.nachrichtSenden("stud", null, "   "))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(aiService);
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
+    void zuLangeNachrichtWirdAbgelehntOhneKiAufruf() {
+        String zuLang = "x".repeat(ChatService.MAX_NACHRICHT_LAENGE + 1);
+        assertThatThrownBy(() -> chatService.nachrichtSenden("stud", null, zuLang))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(aiService);
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
+    void nachrichtAnFremdenChatWirftNichtGefunden() {
+        User fremder = nutzer("fremd", 2L);
+        UUID chatId = UUID.randomUUID();
+        when(userRepository.findByBenutzername("fremd")).thenReturn(Optional.of(fremder));
+        when(conversationRepository.findByIdAndUserId(chatId, 2L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> chatService.nachrichtSenden("fremd", chatId, "Hallo"))
+                .isInstanceOf(ChatService.ChatNichtGefundenException.class);
+        verifyNoInteractions(aiService);
+    }
+
+    @Test
+    void nachrichtenLimitProChatBlocktKiAufruf() {
+        User user = nutzer("stud", 1L);
+        UUID chatId = UUID.randomUUID();
+        ChatConversation chat = new ChatConversation();
+        chat.setId(chatId);
+        chat.setUser(user);
+        when(userRepository.findByBenutzername("stud")).thenReturn(Optional.of(user));
+        when(conversationRepository.findByIdAndUserId(chatId, 1L)).thenReturn(Optional.of(chat));
+        when(messageRepository.countByConversationId(chatId))
+                .thenReturn((long) ChatService.MAX_NACHRICHTEN_PRO_CHAT);
+
+        assertThatThrownBy(() -> chatService.nachrichtSenden("stud", chatId, "Noch eine Frage"))
+                .isInstanceOf(ChatService.ChatLimitException.class);
+        verifyNoInteractions(aiService);
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
+    void beiErreichtemChatLimitWirdAeltesterUngepinnterGeloescht() {
+        User user = nutzer("stud", 1L);
+        ChatConversation aeltester = new ChatConversation();
+        aeltester.setId(UUID.randomUUID());
+        aeltester.setUser(user);
+        when(userRepository.findByBenutzername("stud")).thenReturn(Optional.of(user));
+        when(conversationRepository.countByUserId(1L))
+                .thenReturn((long) ChatService.MAX_CHATS_PRO_NUTZER);
+        when(conversationRepository.findFirstByUserIdAndAngepinntFalseOrderByAktualisiertAmAsc(1L))
+                .thenReturn(Optional.of(aeltester));
+        when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(messageRepository.countByConversationId(any())).thenReturn(0L);
+        when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(any())).thenReturn(List.of());
+        when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
+        when(aiService.chat(any(), any())).thenReturn("Antwort");
+        when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        chatService.nachrichtSenden("stud", null, "Erste Frage im neuen Chat");
+
+        verify(conversationRepository).delete(aeltester);
     }
 }

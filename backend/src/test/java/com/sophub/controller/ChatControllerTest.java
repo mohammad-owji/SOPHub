@@ -1,6 +1,8 @@
 package com.sophub.controller;
 
 import com.sophub.model.ChatConversation;
+import com.sophub.model.ChatMessage;
+import com.sophub.model.ChatRolle;
 import com.sophub.model.User;
 import com.sophub.service.ChatService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +22,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -109,5 +112,53 @@ class ChatControllerTest {
                         .contentType("application/json")
                         .content("{\"titel\":\"Hack\"}"))
                 .andExpect(status().isNotFound());
+    }
+
+    // --- Schritt 3: Nachricht senden ---
+
+    @Test
+    void neueNachrichtInNeuemChatGibt200MitAntwort() throws Exception {
+        UUID chatId = UUID.randomUUID();
+        ChatConversation chat = chatVon("stud", chatId);
+        ChatMessage antwort = new ChatMessage();
+        antwort.setId(UUID.randomUUID());
+        antwort.setRolle(ChatRolle.ASSISTANT);
+        antwort.setInhalt("Hallo, womit kann ich helfen?");
+        when(chatService.nachrichtSenden(eq("stud"), isNull(), any()))
+                .thenReturn(new ChatService.NachrichtErgebnis(chat, antwort));
+
+        mockMvc.perform(post("/sop/api/ai/chats/messages")
+                        .principal(als("stud"))
+                        .contentType("application/json")
+                        .content("{\"inhalt\":\"Hi\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chatId").value(chatId.toString()))
+                .andExpect(jsonPath("$.nachricht.rolle").value("ASSISTANT"))
+                .andExpect(jsonPath("$.nachricht.inhalt").value("Hallo, womit kann ich helfen?"));
+    }
+
+    @Test
+    void nachrichtAnFremdenChatGibt404() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(chatService.nachrichtSenden(eq("fremd"), eq(id), any()))
+                .thenThrow(new ChatService.ChatNichtGefundenException());
+
+        mockMvc.perform(post("/sop/api/ai/chats/{id}/messages", id)
+                        .principal(als("fremd"))
+                        .contentType("application/json")
+                        .content("{\"inhalt\":\"Hi\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void zuLangeNachrichtGibt400() throws Exception {
+        when(chatService.nachrichtSenden(eq("stud"), isNull(), any()))
+                .thenThrow(new IllegalArgumentException("Die Nachricht ist zu lang (maximal 2000 Zeichen)."));
+
+        mockMvc.perform(post("/sop/api/ai/chats/messages")
+                        .principal(als("stud"))
+                        .contentType("application/json")
+                        .content("{\"inhalt\":\"...\"}"))
+                .andExpect(status().isBadRequest());
     }
 }
