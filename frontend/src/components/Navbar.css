@@ -107,11 +107,34 @@
 
 /* Kleine Bildschirme: aufgeklapptes Menue */
 @media (max-width: 991.98px) {
+    .sop-navbar .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
     .sop-nav-links {
         margin: 0.75rem 0;
     }
 
     .sop-nav-links .nav-link.active {
         box-shadow: inset 3px 0 0 var(--sop-tuerkis-hell);
+    }
+
+    .sop-navbar .navbar-collapse > .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+        padding-bottom: 0.5rem;
+    }
+
+    .sop-btn-neu {
+        padding: 0.65rem 1rem;
+        text-align: center;
+    }
+
+    .sop-benutzer {
+        justify-content: flex-start;
+        width: 100%;
+        padding: 0.4rem 0.5rem;
     }
 }

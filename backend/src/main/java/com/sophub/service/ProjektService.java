@@ -2,11 +2,14 @@ package com.sophub.service;
 
 import com.sophub.model.Projekt;
 import com.sophub.model.User;
+import com.sophub.repository.DokumentRepository;
+import com.sophub.repository.ProjektMitgliedRepository;
 import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,16 +25,23 @@ public class ProjektService {
     private static final String STATUS_ABGELEHNT = "ABGELEHNT";
 
     private final ProjektRepository projektRepository;
+    private final ProjektMitgliedRepository projektMitgliedRepository;
+    private final DokumentRepository dokumentRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final AIService aiService;
     private final AnonymizerService anonymizerService;
     private final BetreuerService betreuerService;
 
-    public ProjektService(ProjektRepository projektRepository, UserRepository userRepository,
+    public ProjektService(ProjektRepository projektRepository,
+                          ProjektMitgliedRepository projektMitgliedRepository,
+                          DokumentRepository dokumentRepository,
+                          UserRepository userRepository,
                           EmailService emailService, AIService aiService,
                           AnonymizerService anonymizerService, BetreuerService betreuerService) {
         this.projektRepository = projektRepository;
+        this.projektMitgliedRepository = projektMitgliedRepository;
+        this.dokumentRepository = dokumentRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
         this.aiService = aiService;
@@ -129,6 +139,10 @@ public class ProjektService {
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
 
         String statusVorher = vorhandenes.getStatus();
+        boolean zusammenfassungVeraltet =
+                (aktuell.getTitel() != null && !aktuell.getTitel().equals(vorhandenes.getTitel()))
+                        || (aktuell.getBeschreibung() != null
+                        && !aktuell.getBeschreibung().equals(vorhandenes.getBeschreibung()));
 
         if (aktuell.getTitel() != null) vorhandenes.setTitel(aktuell.getTitel());
         if (aktuell.getBeschreibung() != null) vorhandenes.setBeschreibung(aktuell.getBeschreibung());
@@ -142,6 +156,10 @@ public class ProjektService {
         if (aktuell.getGruppenanzahl() != null) vorhandenes.setGruppenanzahl(aktuell.getGruppenanzahl());
         if (aktuell.getRate() != null) vorhandenes.setRate(aktuell.getRate());
         if (aktuell.getKiGeneriert() != null) vorhandenes.setKiGeneriert(aktuell.getKiGeneriert());
+        if (zusammenfassungVeraltet) {
+            vorhandenes.setKiZusammenfassung(null);
+            vorhandenes.setKiGeneriert(false);
+        }
 
         Projekt gespeichert = projektRepository.save(vorhandenes);
 
@@ -216,11 +234,16 @@ public class ProjektService {
         }
     }
 
+    @Transactional
     public void loeschen(Long id) {
-        if (!projektRepository.existsById(id)) {
-            throw new RuntimeException("Projekt nicht gefunden.");
-        }
-        projektRepository.deleteById(id);
+        Projekt projekt = projektRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+
+        projektMitgliedRepository.deleteByProjektId(id);
+        dokumentRepository.trenneVonProjekt(id);
+        projekt.getTags().clear();
+        projektRepository.saveAndFlush(projekt);
+        projektRepository.delete(projekt);
     }
 
     /**

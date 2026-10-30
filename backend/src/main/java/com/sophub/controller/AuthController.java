@@ -34,7 +34,6 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
             return ResponseEntity.ok(authService.register(
-                    null,
                     request.getPasswort(),
                     request.getEmail(),
                     null,

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import ProjektStatusBadge from "../components/ProjektStatus";
 import {
     getAuth,
     getProjektById,
+    aktualisiereProjekt,
+    loescheProjekt,
     getDokumenteFuerProjekt,
     downloadDokument,
     getStudenten,
@@ -32,10 +34,16 @@ const DOKUMENT_TYP_LABEL = {
 
 function ProjectDetails() {
     const { id } = useParams();
+    const navigate = useNavigate();
 
     const auth = getAuth();
 
     const [projekt, setProjekt] = useState(null);
+    const [bearbeiten, setBearbeiten] = useState(false);
+    const [wirdGespeichert, setWirdGespeichert] = useState(false);
+    const [wirdGeloescht, setWirdGeloescht] = useState(false);
+    const [aktionsFehler, setAktionsFehler] = useState("");
+    const [formular, setFormular] = useState(null);
     const [dokumente, setDokumente] = useState([]);
     const [fehler, setFehler] = useState("");
     const [mitglieder, setMitglieder] = useState([]);
@@ -119,6 +127,54 @@ function ProjectDetails() {
         }
     };
 
+    const bearbeitenStarten = () => {
+        setFormular({
+            titel: projekt.titel || "",
+            beschreibung: projekt.beschreibung || "",
+            semester: projekt.semester || "",
+            fachbereich: projekt.fachbereich || "",
+            projektart: projekt.projektart || "",
+            gruppenanzahl: projekt.gruppenanzahl ?? "",
+        });
+        setAktionsFehler("");
+        setBearbeiten(true);
+    };
+
+    const handleProjektSpeichern = async (event) => {
+        event.preventDefault();
+        setWirdGespeichert(true);
+        setAktionsFehler("");
+        try {
+            const aktualisiert = await aktualisiereProjekt(id, {
+                ...formular,
+                gruppenanzahl: formular.gruppenanzahl === ""
+                    ? projekt.gruppenanzahl
+                    : Number(formular.gruppenanzahl),
+            });
+            setProjekt(aktualisiert);
+            setBearbeiten(false);
+        } catch (error) {
+            setAktionsFehler(error.message || "Projekt konnte nicht gespeichert werden.");
+        } finally {
+            setWirdGespeichert(false);
+        }
+    };
+
+    const handleProjektLoeschen = async () => {
+        if (!window.confirm(`Möchtest du das Projekt „${projekt.titel}“ wirklich löschen?`)) {
+            return;
+        }
+        setWirdGeloescht(true);
+        setAktionsFehler("");
+        try {
+            await loescheProjekt(id);
+            navigate("/my-projects");
+        } catch (error) {
+            setAktionsFehler(error.message || "Projekt konnte nicht gelöscht werden.");
+            setWirdGeloescht(false);
+        }
+    };
+
     const schlagwoerterListe = projekt?.schlagwoerter
         ? projekt.schlagwoerter.split(",").map((s) => s.trim()).filter(Boolean)
         : [];
@@ -163,6 +219,104 @@ function ProjectDetails() {
             <div className="container py-4">
 
                 <Link to="/projects" className="pd-zurueck">← Alle Projekte</Link>
+
+                {aktionsFehler && <div className="alert alert-danger">{aktionsFehler}</div>}
+
+                <div className="d-flex flex-wrap justify-content-end gap-2 mb-3">
+                    <button className="btn btn-outline-primary" onClick={bearbeiten ? () => setBearbeiten(false) : bearbeitenStarten}>
+                        {bearbeiten ? "Bearbeiten abbrechen" : "Projekt bearbeiten"}
+                    </button>
+                    <button
+                        className="btn btn-outline-danger"
+                        onClick={handleProjektLoeschen}
+                        disabled={wirdGeloescht}
+                    >
+                        {wirdGeloescht ? "Wird gelöscht..." : "Projekt löschen"}
+                    </button>
+                </div>
+
+                {bearbeiten && formular && (
+                    <form className="card mb-4" onSubmit={handleProjektSpeichern}>
+                        <div className="card-body">
+                            <h2 className="h4 mb-3">Projekt bearbeiten</h2>
+                            <div className="mb-3">
+                                <label className="form-label" htmlFor="pd-edit-titel">Projekttitel</label>
+                                <input
+                                    id="pd-edit-titel"
+                                    className="form-control"
+                                    required
+                                    value={formular.titel}
+                                    onChange={(event) => setFormular({ ...formular, titel: event.target.value })}
+                                />
+                            </div>
+                            <div className="mb-3">
+                                <label className="form-label" htmlFor="pd-edit-beschreibung">Beschreibung</label>
+                                <textarea
+                                    id="pd-edit-beschreibung"
+                                    className="form-control"
+                                    rows="4"
+                                    value={formular.beschreibung}
+                                    onChange={(event) => setFormular({ ...formular, beschreibung: event.target.value })}
+                                />
+                            </div>
+                            <div className="row g-3">
+                                <div className="col-md-4">
+                                    <label className="form-label" htmlFor="pd-edit-semester">Semester</label>
+                                    <input
+                                        id="pd-edit-semester"
+                                        className="form-control"
+                                        value={formular.semester}
+                                        onChange={(event) => setFormular({ ...formular, semester: event.target.value })}
+                                    />
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="form-label" htmlFor="pd-edit-fachbereich">Fachbereich</label>
+                                    <input
+                                        id="pd-edit-fachbereich"
+                                        className="form-control"
+                                        value={formular.fachbereich}
+                                        onChange={(event) => setFormular({ ...formular, fachbereich: event.target.value })}
+                                    />
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="form-label" htmlFor="pd-edit-projektart">Projektart</label>
+                                    <input
+                                        id="pd-edit-projektart"
+                                        className="form-control"
+                                        value={formular.projektart}
+                                        onChange={(event) => setFormular({ ...formular, projektart: event.target.value })}
+                                    />
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="form-label" htmlFor="pd-edit-gruppe">Gruppengröße</label>
+                                    <select
+                                        id="pd-edit-gruppe"
+                                        className="form-select"
+                                        value={formular.gruppenanzahl}
+                                        onChange={(event) => setFormular({ ...formular, gruppenanzahl: event.target.value })}
+                                    >
+                                        <option value="">Unverändert</option>
+                                        {[1, 2, 3, 4, 5].map((anzahl) => (
+                                            <option key={anzahl} value={anzahl}>{anzahl} Personen</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="d-flex flex-wrap justify-content-end gap-2 mt-4">
+                                <button
+                                    className="btn btn-outline-secondary"
+                                    type="button"
+                                    onClick={() => setBearbeiten(false)}
+                                >
+                                    Abbrechen
+                                </button>
+                                <button className="btn btn-primary" type="submit" disabled={wirdGespeichert}>
+                                    {wirdGespeichert ? "Wird gespeichert..." : "Änderungen speichern"}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                )}
 
                 {/* Kopfbereich */}
                 <section className="card pd-kopf mb-4">

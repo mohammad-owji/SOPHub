@@ -1,8 +1,19 @@
 package com.sophub.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "users")
@@ -41,9 +52,10 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
-    // false = Konto wurde automatisch vorbereitet (z.B. Betreuer), Passwort noch nicht selbst gesetzt.
-    // true  = Konto ist aktiviert (selbst registriert).
-    // null  = aeltere Konten von vor dieser Spalte -> gelten als aktiviert.
+    // false = Konto wurde automatisch vorbereitet (z.B. Betreuer), Passwort noch
+    // nicht selbst gesetzt.
+    // true = Konto ist aktiviert (selbst registriert).
+    // null = aeltere Konten von vor dieser Spalte -> gelten als aktiviert.
     @Column(name = "konto_aktiviert")
     private Boolean kontoAktiviert;
 
@@ -59,31 +71,97 @@ public class User {
     }
 
     // getter
-    public Long getId() { return id; }
-    public String getBenutzername() { return benutzername; }
-    public String getEmail() { return email; }
-    public String getPasswort() { return passwort; }
-    public String getName() { return name; }
-    public String getVorname() { return vorname; }
-    public Rolle getRolle() { return rolle; }
-    public LocalDateTime getErstelltAm() { return erstelltAm; }
-    public LocalDateTime getBearbeitetAm() { return bearbeitetAm; }
-    public LocalDateTime getLastLogin() { return lastLogin; }
-    public Boolean getKontoAktiviert() { return kontoAktiviert; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getBenutzername() {
+        return benutzername;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPasswort() {
+        return passwort;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getVorname() {
+        return vorname;
+    }
+
+    public Rolle getRolle() {
+        return rolle;
+    }
+
+    public LocalDateTime getErstelltAm() {
+        return erstelltAm;
+    }
+
+    public LocalDateTime getBearbeitetAm() {
+        return bearbeitetAm;
+    }
+
+    public LocalDateTime getLastLogin() {
+        return lastLogin;
+    }
+
+    public Boolean getKontoAktiviert() {
+        return kontoAktiviert;
+    }
 
     // Hilfsmethode: null (alte Konten) zaehlt als aktiviert
-    public boolean istKontoAktiviert() { return kontoAktiviert == null || kontoAktiviert; }
+    public boolean istKontoAktiviert() {
+        return kontoAktiviert == null || kontoAktiviert;
+    }
 
     // setter
-    public void setId(Long id) { this.id = id; }
-    public void setBenutzername(String benutzername) { this.benutzername = benutzername; }
-    public void setEmail(String email) { this.email = email; }
-    public void setPasswort(String passwort) { this.passwort = passwort; }
-    public void setName(String name) { this.name = name; }
-    public void setVorname(String vorname) { this.vorname = vorname; }
-    public void setRolle(Rolle rolle) { this.rolle = rolle; }
-    public void setErstelltAm(LocalDateTime erstelltAm) { this.erstelltAm = erstelltAm; }
-    public void setBearbeitetAm(LocalDateTime bearbeitetAm) { this.bearbeitetAm = bearbeitetAm; }
-    public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
-    public void setKontoAktiviert(Boolean kontoAktiviert) { this.kontoAktiviert = kontoAktiviert; }
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setBenutzername(String benutzername) {
+        this.benutzername = benutzername;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setPasswort(String passwort) {
+        this.passwort = passwort;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setVorname(String vorname) {
+        this.vorname = vorname;
+    }
+
+    public void setRolle(Rolle rolle) {
+        this.rolle = rolle;
+    }
+
+    public void setErstelltAm(LocalDateTime erstelltAm) {
+        this.erstelltAm = erstelltAm;
+    }
+
+    public void setBearbeitetAm(LocalDateTime bearbeitetAm) {
+        this.bearbeitetAm = bearbeitetAm;
+    }
+
+    public void setLastLogin(LocalDateTime lastLogin) {
+        this.lastLogin = lastLogin;
+    }
+
+    public void setKontoAktiviert(Boolean kontoAktiviert) {
+        this.kontoAktiviert = kontoAktiviert;
+    }
 }

@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8080/sop/api";
+export const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:8081/sop/api`;
 
 export function getAuth() {
     const raw = localStorage.getItem("sophub_auth");
@@ -88,6 +88,25 @@ export async function getProjektById(id) {
         headers: authHeaders(),
     });
     return parseOrThrow(response);
+}
+
+export async function aktualisiereProjekt(id, daten) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(daten),
+    });
+    return parseOrThrow(response);
+}
+
+export async function loescheProjekt(id) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+    });
+    if (!response.ok) {
+        throw new Error((await response.text()) || "Projekt konnte nicht gelöscht werden.");
+    }
 }
 
 export async function getDokumenteFuerProjekt(projektId) {

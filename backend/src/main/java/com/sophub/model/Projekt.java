@@ -16,6 +16,7 @@ public class Projekt {
     @Column(nullable = false)
     private String titel;
 
+    @Column(columnDefinition = "TEXT")
     private String beschreibung;
 
     private String semester;

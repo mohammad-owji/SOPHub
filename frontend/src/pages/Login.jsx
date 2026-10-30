@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { API_BASE_URL } from "../services/api";
 import "./Auth.css";
 
 // startModus: "login" (Standard) oder "register"
@@ -64,7 +65,7 @@ function Login({ startModus = "login" }) {
             };
 
             const response = await fetch(
-                `http://localhost:8081/sop/api/auth/${endpoint}`,
+                `${API_BASE_URL}/auth/${endpoint}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

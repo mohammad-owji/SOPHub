@@ -40,9 +40,7 @@ public class AuthService {
         this.emailService = emailService;
     }
 
-    // Signatur bleibt passend zum bisherigen AuthController.
     public String register(
-            String benutzername,
             String passwort,
             String email,
             String name,

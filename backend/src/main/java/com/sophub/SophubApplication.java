@@ -16,7 +16,7 @@ public class SophubApplication {
     @Bean
     public ApplicationRunner openSwagger() {
         return args -> Runtime.getRuntime().exec(
-                new String[]{"cmd", "/c", "start", "http://localhost:8080/swagger-ui/index.html"}
+                new String[]{"cmd", "/c", "start", "http://localhost:8081/swagger-ui/index.html"}
         );
     }
 }
