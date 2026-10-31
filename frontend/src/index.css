@@ -299,3 +299,115 @@ h5 {
 .dropdown-item:active {
   background-color: var(--sop-tuerkis);
 }
+
+/* ---------- Mobile Layout (von Dalia) ---------- */
+
+@media (max-width: 767.98px) {
+  h1 {
+    font-size: 1.7rem;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+
+  .container.py-4 {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+
+  .card-body {
+    padding: 1.1rem;
+  }
+
+  /* 16px verhindert, dass iPhones beim Antippen eines Feldes hineinzoomen */
+  .form-control,
+  .form-select {
+    font-size: 16px;
+  }
+
+  .dash-hero {
+    padding: 1.5rem;
+  }
+
+  .dash-hero h1 {
+    font-size: 1.65rem;
+  }
+
+  .dash-eintrag {
+    align-items: flex-start;
+  }
+
+  .pd-titel {
+    font-size: clamp(1.45rem, 6vw, 1.9rem);
+    overflow-wrap: anywhere;
+  }
+
+  .pd-kennzahlen {
+    width: 100%;
+  }
+
+  .pd-kennzahlen>div {
+    flex: 1;
+    min-width: 0;
+    padding: 0.65rem 0.5rem;
+  }
+
+  .pd-infos {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .pd-infos dd {
+    overflow-wrap: anywhere;
+  }
+
+  .cp-aktionen {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .card-body {
+    padding: 1rem;
+  }
+
+  .dash-hero {
+    padding: 1.25rem;
+  }
+
+  .dash-kachel {
+    gap: 0.65rem;
+  }
+
+  .dash-kachel-symbol {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .dash-kachel-zahl {
+    font-size: 1.5rem;
+  }
+
+  .pd-dokument {
+    flex-wrap: wrap;
+  }
+
+  .pd-dokument>.btn {
+    margin-left: auto;
+  }
+
+  .profil-daten>div {
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .profil-daten dd {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .cp-aktionen>.btn {
+    flex: 1 1 9rem;
+  }
+}

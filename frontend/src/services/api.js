@@ -106,6 +106,18 @@ export async function aktualisiereProjekt(id, daten) {
     return parseOrThrow(response);
 }
 
+// Projekt loeschen (nur Ersteller:in, von Dalia)
+export async function loescheProjekt(id) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+    });
+    if (!response.ok) {
+        throw new Error((await response.text()) || "Projekt konnte nicht gelöscht werden.");
+    }
+    return true;
+}
+
 export async function getDokumenteFuerProjekt(projektId) {
     const response = await fetch(`${API_BASE_URL}/dokumente/projekt/${projektId}`, {
         headers: authHeaders(),

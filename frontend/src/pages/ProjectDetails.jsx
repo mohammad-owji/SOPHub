@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import AuswahlFeld from "../components/AuswahlFeld";
 import DokumentAnsicht from "../components/DokumentAnsicht";
@@ -10,6 +10,7 @@ import {
     getAuth,
     getProjektDetails,
     aktualisiereProjekt,
+    loescheProjekt,
     getDokumenteFuerProjekt,
     downloadDokument,
     uploadDokument,
@@ -20,7 +21,15 @@ import {
     mitgliedEntfernen,
 } from "../services/api";
 import { getKiUebersicht } from "../services/aiService";
-import { SEMESTER, FACHBEREICHE, PROJEKTARTEN, GRUPPENGROESSEN } from "../components/ProjektOptionen";
+import {
+    SEMESTER,
+    FACHBEREICHE,
+    GRUPPENGROESSEN,
+    studiengaengeFuer,
+    projektartenFuer,
+    nachFachbereichWechsel,
+    nachStudiengangWechsel,
+} from "../components/ProjektOptionen";
 import "./ProjectDetails.css";
 
 // Systemkonto der Beispielprojekte (siehe BeispielprojekteInitializer im Backend)
@@ -75,6 +84,7 @@ const formularAusProjekt = (p) => ({
     beschreibung: p?.beschreibung || "",
     semester: p?.semester || "",
     fachbereich: p?.fachbereich || "",
+    studiengang: p?.studiengang || "",
     projektart: p?.projektart || "",
     gruppenanzahl: p?.gruppenanzahl != null ? String(p.gruppenanzahl) : "",
 });
@@ -95,6 +105,7 @@ function StichwortBadges({ items }) {
 function ProjectDetails() {
     const { id } = useParams();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
 
     const auth = getAuth();
 
@@ -117,6 +128,8 @@ function ProjectDetails() {
     const [dokumentFehler, setDokumentFehler] = useState("");
     const [dokumentLaedt, setDokumentLaedt] = useState(false);
     const [ansichtDokument, setAnsichtDokument] = useState(null);
+    const [wirdGeloescht, setWirdGeloescht] = useState(false);
+    const [loeschFehler, setLoeschFehler] = useState("");
 
     // Reiter: "uebersicht", "abgaben" oder "mitteilungen"
     // (?reiter=abgaben bzw. ?reiter=mitteilungen oeffnet direkt den Reiter, z.B. aus einer E-Mail)
@@ -267,6 +280,23 @@ function ProjectDetails() {
         }
     };
 
+    // Projekt loeschen (nur Ersteller:in). Mitteilungen und Abgaben werden mitgeloescht.
+    const projektLoeschen = async () => {
+        const frage = `Möchten Sie das Projekt „${projekt.titel}“ wirklich löschen?\n\n`
+            + "Mitteilungen und Abgaben des Projekts werden ebenfalls gelöscht. "
+            + "Das kann nicht rückgängig gemacht werden.";
+        if (!window.confirm(frage)) return;
+        setLoeschFehler("");
+        setWirdGeloescht(true);
+        try {
+            await loescheProjekt(id);
+            navigate("/my-projects");
+        } catch (error) {
+            setLoeschFehler(error.message || "Projekt konnte nicht gelöscht werden.");
+            setWirdGeloescht(false);
+        }
+    };
+
     const dokumentHochladen = async (event) => {
         event.preventDefault();
         if (!datei) return;
@@ -406,7 +436,7 @@ function ProjectDetails() {
                                 <h1 className="pd-titel">{projekt.titel}</h1>
                                 {darfBearbeiten && (
                                     <div className="pd-meta">
-                                        {[projekt.projektart, projekt.fachbereich, projekt.semester]
+                                        {[projekt.projektart, projekt.studiengang, projekt.fachbereich, projekt.semester]
                                             .filter(Boolean)
                                             .join(" · ") || "Keine weiteren Angaben"}
                                     </div>
@@ -537,20 +567,20 @@ function ProjectDetails() {
 
                                         <div className="row g-3 mb-3">
                                             <div className="col-md-6">
-                                                <label className="form-label">Semester</label>
+                                                <label className="form-label">Fachbereich</label>
                                                 <AuswahlFeld
-                                                    value={projektForm.semester}
-                                                    onChange={(wert) => setProjektForm({ ...projektForm, semester: wert })}
-                                                    optionen={SEMESTER}
+                                                    value={projektForm.fachbereich}
+                                                    onChange={(wert) => setProjektForm(nachFachbereichWechsel(projektForm, wert))}
+                                                    optionen={FACHBEREICHE}
                                                     placeholder="Auswählen oder eintippen"
                                                 />
                                             </div>
                                             <div className="col-md-6">
-                                                <label className="form-label">Fachbereich</label>
+                                                <label className="form-label">Studiengang</label>
                                                 <AuswahlFeld
-                                                    value={projektForm.fachbereich}
-                                                    onChange={(wert) => setProjektForm({ ...projektForm, fachbereich: wert })}
-                                                    optionen={FACHBEREICHE}
+                                                    value={projektForm.studiengang}
+                                                    onChange={(wert) => setProjektForm(nachStudiengangWechsel(projektForm, wert))}
+                                                    optionen={studiengaengeFuer(projektForm.fachbereich)}
                                                     placeholder="Auswählen oder eintippen"
                                                 />
                                             </div>
@@ -559,7 +589,16 @@ function ProjectDetails() {
                                                 <AuswahlFeld
                                                     value={projektForm.projektart}
                                                     onChange={(wert) => setProjektForm({ ...projektForm, projektart: wert })}
-                                                    optionen={PROJEKTARTEN}
+                                                    optionen={projektartenFuer(projektForm.fachbereich, projektForm.studiengang)}
+                                                    placeholder="Auswählen oder eintippen"
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label">Semester</label>
+                                                <AuswahlFeld
+                                                    value={projektForm.semester}
+                                                    onChange={(wert) => setProjektForm({ ...projektForm, semester: wert })}
+                                                    optionen={SEMESTER}
                                                     placeholder="Auswählen oder eintippen"
                                                 />
                                             </div>
@@ -814,12 +853,30 @@ function ProjectDetails() {
                                             <dt>Fachbereich</dt>
                                             <dd>{projekt.fachbereich || "–"}</dd>
 
+                                            <dt>Studiengang</dt>
+                                            <dd>{projekt.studiengang || "–"}</dd>
+
                                             <dt>Projektart</dt>
                                             <dd>{projekt.projektart || "–"}</dd>
 
                                             <dt>Gruppengröße</dt>
                                             <dd>{projekt.gruppenanzahl != null ? `${projekt.gruppenanzahl} Personen` : "–"}</dd>
                                         </dl>
+
+                                        {/* Nur die Ersteller:in darf das Projekt loeschen (prueft auch das Backend) */}
+                                        {istErsteller && (
+                                            <div className="mt-3 pt-3 border-top">
+                                                {loeschFehler && <div className="alert alert-danger py-2">{loeschFehler}</div>}
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-danger w-100"
+                                                    onClick={projektLoeschen}
+                                                    disabled={wirdGeloescht}
+                                                >
+                                                    {wirdGeloescht ? "Wird gelöscht..." : "Projekt löschen"}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

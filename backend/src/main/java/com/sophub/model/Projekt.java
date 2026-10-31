@@ -16,6 +16,8 @@ public class Projekt {
     @Column(nullable = false)
     private String titel;
 
+    // TEXT statt VARCHAR(255), damit auch lange Beschreibungen gespeichert werden koennen
+    @Column(columnDefinition = "TEXT")
     private String beschreibung;
 
     private String semester;
