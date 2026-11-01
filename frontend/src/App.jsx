@@ -10,6 +10,7 @@ import Projects from "./pages/Projects";
 import ProjectInvitation from "./pages/ProjectInvitation";
 import KI from "./pages/KI";
 import SopAssistent from "./pages/SopAssistent";
+import Projektideen from "./pages/Projektideen";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/create-project" element={<CreateProject />} />
         <Route path="/einladungen" element={<MyInvitations />} />
         <Route path="/project-invitation/:projektId" element={<ProjectInvitation />} />
+        <Route path="/ideas" element={<Projektideen />} />
         <Route path="/ai" element={<KI />} />
         <Route path="/sop-assistent" element={<SopAssistent />} />
         <Route path="/sop-assistent/:chatId" element={<SopAssistent />} />
