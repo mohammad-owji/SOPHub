@@ -1,28 +1,54 @@
 package com.sophub.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * Liefert den System-Prompt für den SOP-Assistenten. Als eigene Komponente
  * gekapselt, damit der Text später leicht erweitert (Tool-Regeln in Phase B)
  * oder über eine Property/Datei ausgelagert werden kann.
  * <p>
- * Über {@code sop.assistent.systemprompt} in den application.properties lässt
- * sich der Standardtext bei Bedarf überschreiben.
+ * Aufbau des Prompts:
+ * <ol>
+ *   <li>fester Basis-Prompt ({@link #STANDARD}) mit Rollen-, Tool- und Struktur-Regeln,</li>
+ *   <li>frei pflegbare "Hausregeln" aus einer externen Datei (Standard:
+ *       {@code classpath:sop-assistent-regeln.txt}, über
+ *       {@code sop.assistent.regeln} umstellbar) - Kommentarzeilen mit {@code #}
+ *       werden ignoriert.</li>
+ * </ol>
+ * Alternativ überschreibt {@code sop.assistent.systemprompt} den GESAMTEN Prompt.
  */
 @Component
 public class SopAssistentPrompt {
 
+    private static final Logger log = LoggerFactory.getLogger(SopAssistentPrompt.class);
+
     private static final String STANDARD = """
-            Du bist der SOP-Assistent von SOPhub, einer Plattform für das Softwareprojekt (SOP)
-            im Informatikstudium. Antworte auf Deutsch: freundlich, klar, kurz und gut strukturiert
-            (kurze Absätze, Listen, wo sie helfen).
+            Du bist der KI-Assistent von SOPhub, einer Plattform für das Softwareprojekt (SOP)
+            im Informatikstudium. Antworte auf Deutsch: freundlich, klar und sachlich.
+
+            Antwortlänge (WICHTIG): Fasse dich so kurz wie möglich. Standard sind 2-5 Sätze oder
+            eine knappe Liste mit wenigen Punkten. Hol nur so weit aus, wie die Frage es wirklich
+            verlangt. Keine Emojis. Keine ausufernden Tabellen, Beispielsammlungen oder "Tipps"-
+            Abschnitte, solange nicht ausdrücklich danach gefragt wird. Hänge keine abschließenden
+            Rückfragen wie "Brauchst du noch Hilfe?" an. Umfangreiche, strukturierte Ausgaben (z. B.
+            eine vollständige Roadmap oder ein Dokumentaufbau) nur, wenn der Nutzer sie ausdrücklich
+            wünscht.
 
             Kontext des Softwareprojekts: Es läuft über 2 Semester, umfasst 19 CP und wird in Teams
             aus 3 Personen bearbeitet. Phasen: Themenfindung, Teambildung, Umsetzung, Abschluss.
-            Fragt jemand nach einer Roadmap, gib einen strukturierten Plan nach Semestern, Phasen und
-            Meilensteinen - realistisch für 2 Semester und ein 3er-Team.
+            Fragt jemand ausdrücklich nach einer Roadmap, gib einen strukturierten Plan nach Semestern,
+            Phasen und Meilensteinen - realistisch für 2 Semester und ein 3er-Team.
 
             Werkzeuge (Tools): Aussagen über bestehende Projekte, Zahlen, Technologien und
             Ähnlichkeiten stammen AUSSCHLIESSLICH aus Werkzeug-Ergebnissen, niemals aus Vermutung.
@@ -59,11 +85,52 @@ public class SopAssistentPrompt {
 
     private final String systemPrompt;
 
-    public SopAssistentPrompt(@Value("${sop.assistent.systemprompt:}") String konfiguriert) {
-        this.systemPrompt = (konfiguriert == null || konfiguriert.isBlank()) ? STANDARD : konfiguriert;
+    public SopAssistentPrompt(
+            @Value("${sop.assistent.systemprompt:}") String konfiguriert,
+            @Value("${sop.assistent.regeln:classpath:sop-assistent-regeln.txt}") String regelnOrt,
+            ResourceLoader resourceLoader) {
+        if (konfiguriert != null && !konfiguriert.isBlank()) {
+            // Vollständige Überschreibung des Prompts hat Vorrang.
+            this.systemPrompt = konfiguriert;
+            return;
+        }
+        String hausregeln = ladeHausregeln(resourceLoader, regelnOrt);
+        this.systemPrompt = hausregeln.isBlank() ? STANDARD : STANDARD + "\n\n" + hausregeln;
     }
 
     public String systemPrompt() {
         return systemPrompt;
+    }
+
+    /**
+     * Liest die externe Hausregel-Datei und entfernt Kommentarzeilen ({@code #}).
+     * Fehlt die Datei oder ist sie leer, wird ein leerer Text zurückgegeben
+     * (dann gilt nur der Basis-Prompt). Fehler werden geloggt, nicht geworfen -
+     * ein Tippfehler in den Regeln soll den Start nicht verhindern.
+     */
+    private String ladeHausregeln(ResourceLoader resourceLoader, String ort) {
+        try {
+            Resource resource = resourceLoader.getResource(ort);
+            if (!resource.exists()) {
+                log.info("Keine Hausregel-Datei unter '{}' gefunden - es gilt nur der Basis-Prompt.", ort);
+                return "";
+            }
+            String inhalt;
+            try (InputStream in = resource.getInputStream()) {
+                inhalt = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            }
+            String ohneKommentare = Arrays.stream(inhalt.split("\\R"))
+                    .filter(zeile -> !zeile.stripLeading().startsWith("#"))
+                    .collect(Collectors.joining("\n"))
+                    .strip();
+            if (ohneKommentare.isBlank()) {
+                return "";
+            }
+            log.info("Hausregeln aus '{}' geladen ({} Zeichen).", ort, ohneKommentare.length());
+            return ohneKommentare;
+        } catch (IOException e) {
+            log.warn("Hausregel-Datei '{}' konnte nicht gelesen werden: {}", ort, e.getMessage());
+            return "";
+        }
     }
 }

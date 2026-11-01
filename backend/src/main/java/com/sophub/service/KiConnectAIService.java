@@ -40,12 +40,14 @@ public class KiConnectAIService implements AIService {
     private final RestClient restClient;
     private final String apiKey;
     private final String model;
+    private final int maxTokens;
     private final ObjectMapper objectMapper;
 
     public KiConnectAIService(
             @Value("${kiconnect.api.url}") String apiUrl,
             @Value("${kiconnect.api.key:}") String apiKey,
             @Value("${kiconnect.model}") String model,
+            @Value("${kiconnect.max-tokens:1000}") int maxTokens,
             ObjectMapper objectMapper) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(10_000);   // 10s bis Verbindung steht
@@ -53,6 +55,7 @@ public class KiConnectAIService implements AIService {
         this.restClient = RestClient.builder().baseUrl(apiUrl).requestFactory(factory).build();
         this.apiKey = apiKey;
         this.model = model;
+        this.maxTokens = maxTokens;
         this.objectMapper = objectMapper;
     }
 
@@ -112,6 +115,9 @@ public class KiConnectAIService implements AIService {
             Map<String, Object> body = new HashMap<>();
             body.put("model", model);
             body.put("messages", messages);
+            if (maxTokens > 0) {
+                body.put("max_tokens", maxTokens);
+            }
             if (werkzeugeAnbieten) {
                 body.put("tools", toolSpezifikationen);
                 body.put("tool_choice", "auto");
@@ -159,6 +165,9 @@ public class KiConnectAIService implements AIService {
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
         body.put("messages", messages);
+        if (maxTokens > 0) {
+            body.put("max_tokens", maxTokens);
+        }
         if (alsJson) {
             body.put("response_format", Map.of("type", "json_object"));
         }
@@ -187,7 +196,10 @@ public class KiConnectAIService implements AIService {
         } catch (HttpClientErrorException.TooManyRequests e) {
             throw new RuntimeException("Die KI ist gerade überlastet (Rate Limit erreicht). Bitte versuchen Sie es in Kürze erneut.");
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden e) {
-            throw new RuntimeException("Der KI:connect-API-Key ist ungültig oder abgelaufen. Bitte prüfen Sie die Konfiguration.");
+            String detail = serverFehlerText(e.getResponseBodyAsString());
+            log.warn("KI-Zugriff abgelehnt (Status {}): {}", e.getStatusCode(), detail);
+            String basis = "Der KI:connect-Zugang wurde abgelehnt. Bitte prüfen Sie die Konfiguration";
+            throw new RuntimeException(detail == null ? basis + "." : basis + ": " + detail);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             log.warn("KI-Anfrage fehlgeschlagen (Status {}): {}", e.getStatusCode(), kuerze(e.getResponseBodyAsString()));
             throw new RuntimeException("Die KI-Anfrage ist fehlgeschlagen (Status " + e.getStatusCode().value() + ").");
@@ -276,6 +288,29 @@ public class KiConnectAIService implements AIService {
             throw new RuntimeException("Die KI hat keine Antwort geliefert.");
         }
         return message.content();
+    }
+
+    /**
+     * Liest die vom KI:connect-Server gelieferte Fehlermeldung aus dem Antwort-Body
+     * ({@code {"error":{"message":"..."}}}) aus. So wird z.B. "API key temporarily
+     * disabled" an den Nutzer durchgereicht, statt alles als "ungültig/abgelaufen"
+     * zu verallgemeinern. {@code null}, wenn keine verwertbare Meldung vorliegt.
+     */
+    private String serverFehlerText(String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode fehler = objectMapper.readTree(body).get("error");
+            JsonNode nachricht = fehler == null ? null : fehler.get("message");
+            if (nachricht != null && !nachricht.isNull()) {
+                String text = nachricht.asText().trim();
+                return text.isEmpty() ? null : text;
+            }
+        } catch (Exception ignored) {
+            // Kein JSON / unerwartetes Format -> keine Detailmeldung.
+        }
+        return null;
     }
 
     /** Kürzt lange Texte für das Log. */
