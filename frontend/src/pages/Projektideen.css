@@ -1,0 +1,352 @@
+/* Seite "Projektideen" (KI-Ideenfinder) – Farben aus index.css */
+
+.pi-seite {
+    max-width: 960px;
+}
+
+.pi-symbol {
+    color: var(--sop-tuerkis-hell);
+}
+
+/* ---------- Fortschritt (Schritt 1-4) ---------- */
+
+.pi-schritte {
+    display: flex;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    overflow-x: auto;
+}
+
+.pi-schritt {
+    flex: 1;
+    min-width: 7.5rem;
+}
+
+.pi-schritt button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: var(--sop-flaeche);
+    color: var(--sop-text-leise);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.pi-schritt-nr {
+    flex-shrink: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    background: #e8edf3;
+    color: var(--sop-navy);
+}
+
+.pi-schritt-aktiv button {
+    border-color: var(--sop-tuerkis);
+    color: var(--sop-navy);
+    box-shadow: 0 0 0 0.15rem rgba(15, 118, 110, 0.15);
+}
+
+.pi-schritt-aktiv .pi-schritt-nr,
+.pi-schritt-fertig .pi-schritt-nr {
+    background: var(--sop-tuerkis);
+    color: #ffffff;
+}
+
+/* ---------- Inhalt der Schritte ---------- */
+
+.pi-titel {
+    margin-bottom: 0.25rem;
+}
+
+.pi-hinweis {
+    color: var(--sop-text-leise);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+/* Auswahlkarten fuer die Schwierigkeit */
+.pi-option {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: var(--sop-flaeche);
+    text-align: left;
+    color: var(--sop-text);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.pi-option span {
+    font-size: 0.82rem;
+    color: var(--sop-text-leise);
+}
+
+.pi-option:hover {
+    border-color: #a7d8d2;
+}
+
+.pi-option-aktiv {
+    border-color: var(--sop-tuerkis);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+/* Chips zum Anklicken */
+.pi-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.pi-chip {
+    border: 1px solid #cbd5e1;
+    background: var(--sop-flaeche);
+    color: var(--sop-text);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.pi-chip:hover {
+    border-color: var(--sop-tuerkis);
+}
+
+.pi-chip-an {
+    background: var(--sop-tuerkis);
+    border-color: var(--sop-tuerkis);
+    color: #ffffff;
+}
+
+.pi-chip-lernen {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+/* Kleine Beispiel-Chips in der Erklaerung */
+.pi-legende {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.05rem 0.55rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.pi-gruppe {
+    margin-bottom: 1rem;
+}
+
+.pi-gruppe-name {
+    font-weight: 600;
+    color: var(--sop-navy);
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
+}
+
+.pi-zusammenfassung {
+    margin-top: 1.25rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--sop-radius-klein);
+    background: #fafcfc;
+    border: 1px solid var(--sop-rahmen);
+}
+
+.pi-zusammenfassung h5 {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.pi-zusammenfassung dl {
+    display: grid;
+    grid-template-columns: minmax(7rem, auto) 1fr;
+    gap: 0.3rem 1rem;
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.pi-zusammenfassung dt {
+    color: var(--sop-text-leise);
+    font-weight: 600;
+}
+
+.pi-zusammenfassung dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.pi-navigation {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--sop-rahmen);
+}
+
+/* ---------- Ergebnisse ---------- */
+
+.pi-laden {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem 1.5rem;
+}
+
+.pi-idee {
+    height: 100%;
+}
+
+.pi-idee .card-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.pi-idee-titel {
+    font-size: 1.15rem;
+    margin-bottom: 0.5rem;
+}
+
+.pi-text {
+    font-size: 0.9rem;
+    margin-bottom: 0.6rem;
+}
+
+.pi-abschnitt {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--sop-text-leise);
+    margin: 0.5rem 0 0.35rem;
+}
+
+.pi-liste {
+    padding-left: 1.1rem;
+    margin-bottom: 0.6rem;
+    font-size: 0.9rem;
+}
+
+.pi-liste li+li {
+    margin-top: 0.15rem;
+}
+
+.pi-technik {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.35rem;
+}
+
+.pi-technik-bereich {
+    font-size: 0.78rem;
+    color: var(--sop-text-leise);
+    min-width: 4.5rem;
+}
+
+.pi-tag {
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    background: var(--sop-tuerkis-flaeche);
+    color: var(--sop-tuerkis-dunkel);
+}
+
+.pi-tag-neu {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.pi-tag-neu::before {
+    content: "★ ";
+}
+
+.pi-aufwand {
+    font-size: 0.875rem;
+    margin: 0.6rem 0;
+}
+
+.pi-details {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.pi-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--sop-navy);
+    margin-bottom: 0.35rem;
+}
+
+.pi-aehnlich {
+    font-size: 0.8rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--sop-radius-klein);
+    background: #fef3c7;
+    color: #92400e;
+    margin-bottom: 0.75rem;
+}
+
+.pi-idee .btn.mt-auto {
+    margin-top: auto;
+}
+
+.pi-weitere {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--sop-radius);
+    background: var(--sop-flaeche);
+    border: 1px solid var(--sop-rahmen);
+}
+
+.pi-link {
+    color: var(--sop-text-leise);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+    .pi-schritt-name {
+        display: none;
+    }
+
+    .pi-schritt {
+        min-width: 0;
+    }
+
+    .pi-schritt button {
+        justify-content: center;
+    }
+
+    .pi-navigation .btn {
+        flex: 1;
+    }
+}

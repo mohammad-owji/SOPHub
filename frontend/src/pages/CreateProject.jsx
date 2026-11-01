@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import AuswahlFeld from "../components/AuswahlFeld";
 import {
@@ -55,15 +55,22 @@ function teileNamen(text) {
 
 function CreateProject() {
     const navigate = useNavigate();
+    const location = useLocation();
     const auth = getAuth();
 
-    const [titel, setTitel] = useState("");
-    const [beschreibung, setBeschreibung] = useState("");
+    // Vorlage aus dem KI-Ideenfinder (Seite "Projektideen" -> "Als Projekt übernehmen")
+    const vorlage = location.state?.vorlage || null;
+
+    const [titel, setTitel] = useState(vorlage?.titel || "");
+    const [beschreibung, setBeschreibung] = useState(vorlage?.beschreibung || "");
     const [semester, setSemester] = useState(STANDARD_SEMESTER);
-    const [fachbereich, setFachbereich] = useState("");
-    const [studiengang, setStudiengang] = useState("");
-    const [projektart, setProjektart] = useState("");
-    const [gruppenanzahl, setGruppenanzahl] = useState("3");
+    const [fachbereich, setFachbereich] = useState(vorlage?.fachbereich || "");
+    const [studiengang, setStudiengang] = useState(vorlage?.studiengang || "");
+    const [projektart, setProjektart] = useState(vorlage?.projektart || "");
+    // Die Auswahl hier geht bis 5 Personen
+    const [gruppenanzahl, setGruppenanzahl] = useState(
+        vorlage?.gruppenanzahl ? String(Math.min(5, Math.max(1, Number(vorlage.gruppenanzahl) || 3))) : "3"
+    );
     // Betreuer: Text im Auswahlfeld (Name aus der Liste oder selbst eingetippt)
     const [betreuerText, setBetreuerText] = useState("");
     // Nur noetig, wenn der Betreuer nicht in der Liste steht
@@ -259,6 +266,16 @@ function CreateProject() {
                         Legen Sie eine neue Projektidee an, wählen Sie eine Betreuung und laden Sie erste Dokumente hoch.
                     </p>
                 </div>
+
+                {vorlage && !message && (
+                    <div className="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <span>
+                            <strong>✦ Idee aus dem KI-Ideenfinder übernommen.</strong> Bitte prüfen und ergänzen Sie
+                            die Angaben, wählen Sie eine Betreuung und erstellen Sie dann das Projekt.
+                        </span>
+                        <Link to="/ideas" className="btn btn-sm btn-outline-secondary">← Zurück zu den Ideen</Link>
+                    </div>
+                )}
 
                 {message && (
                     <div className={`alert ${messageType === "error" ? "alert-danger" : "alert-success"}`}>
