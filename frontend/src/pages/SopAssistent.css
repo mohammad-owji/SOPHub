@@ -31,10 +31,22 @@
     border-bottom: 1px solid #dee2e6;
 }
 
+/* Eingeklappt: Buttons untereinander, damit beide in die schmale Leiste passen. */
+.sop-seitenleiste.zu .sop-seitenleiste-kopf {
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem;
+}
+
 .sop-icon-btn {
     width: 34px;
     flex: 0 0 34px;
     padding: 0.25rem 0;
+}
+
+.sop-seitenleiste.zu .sop-icon-btn {
+    width: 100%;
+    flex: 0 0 auto;
 }
 
 .sop-chatliste {
@@ -366,6 +378,22 @@
 .sop-eingabe-feld textarea {
     resize: vertical;
     max-height: 160px;
+}
+
+/* Runder Senden-Button mit Pfeil nach oben (Claude-Stil). */
+.sop-senden-btn {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sop-senden-btn:disabled {
+    opacity: 0.45;
 }
 
 .sop-zaehler {

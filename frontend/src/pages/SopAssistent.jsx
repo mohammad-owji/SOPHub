@@ -251,7 +251,12 @@ function SopAssistent() {
 
             const nochAktiv = zielId ? aktivRef.current === zielId : aktivRef.current === null;
             if (nochAktiv) {
-                setNachrichten((prev) => [...prev, antwortNachricht]);
+                // Die optimistisch eingefügte User-Nachricht bekommt eine stabile ID
+                // (abgeleitet von der echten Antwort), statt die tmp-ID zu behalten.
+                setNachrichten((prev) => [
+                    ...prev.map((m) => (m.id === tempId ? { ...m, id: `${antwortNachricht.id}-user` } : m)),
+                    antwortNachricht,
+                ]);
                 if (!zielId) {
                     schonGeladenRef.current = antwort.chatId;
                     aktivRef.current = antwort.chatId;
@@ -595,7 +600,7 @@ function SopAssistent() {
 
                         {leer && (
                             <div className="sop-leerzustand">
-                                <h1 className="h4 mb-2">SOP-Assistent</h1>
+                                <h1 className="h4 mb-2">KI-Assistent</h1>
                                 <p className="text-muted mb-4">
                                     Stell deine erste Frage – z.&nbsp;B. zu Ablauf, Lasten-/Pflichtenheft,
                                     Roadmap oder Projektideen.
@@ -676,7 +681,7 @@ function SopAssistent() {
                             <textarea
                                 className="form-control"
                                 rows={1}
-                                placeholder="Nachricht an den SOP-Assistenten... (Enter = senden, Shift+Enter = neue Zeile)"
+                                placeholder="Nachricht an den KI-Assistenten…"
                                 value={eingabe}
                                 onChange={(e) => setEingabe(e.target.value)}
                                 onKeyDown={beiTaste}
@@ -684,11 +689,22 @@ function SopAssistent() {
                             />
                             <button
                                 type="button"
-                                className="btn btn-primary"
+                                className="btn btn-primary sop-senden-btn"
                                 onClick={() => absenden()}
                                 disabled={senden || !eingabe.trim() || zuLang}
+                                title="Senden"
+                                aria-label="Senden"
                             >
-                                Senden
+                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                                    <path
+                                        d="M12 20V5M12 5l-6 6M12 5l6 6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </svg>
                             </button>
                         </div>
                         <div className={`sop-zaehler${zuLang ? " text-danger" : " text-muted"}`}>

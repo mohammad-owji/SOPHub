@@ -15,7 +15,7 @@ const ROLLEN_NAME = {
 };
 
 // Name des SOP-Assistenten als Konstante (leicht änderbar).
-export const SOP_ASSISTENT_LABEL = "SOP-Assistent";
+export const SOP_ASSISTENT_LABEL = "KI-Assistent";
 
 // Hauptmenue (Reihenfolge = Reihenfolge in der Navbar)
 // "Projekt erstellen" steht bewusst NICHT hier, sondern als Button auf
@@ -25,7 +25,6 @@ const MENUE = [
     { ziel: "/my-projects", text: "Meine Projekte" },
     { ziel: "/projects", text: "Alle Projekte" },
     { ziel: "/einladungen", text: "Einladungen" },
-    { ziel: "/ideas", text: "Projektideen" },
     { ziel: "/ai", text: "KI" },
     { ziel: "/sop-assistent", text: SOP_ASSISTENT_LABEL },
 ];
