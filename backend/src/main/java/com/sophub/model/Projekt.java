@@ -23,6 +23,9 @@ public class Projekt {
 
     private String fachbereich;
 
+    // z.B. "Informatik (B.Sc.)"; Auswahl im Frontend haengt vom Fachbereich ab
+    private String studiengang;
+
     private String projektart;
 
     private String sprache;
@@ -51,6 +54,23 @@ public class Projekt {
 
     @Column(name = "ki_zusammenfassung", columnDefinition = "TEXT")
     private String kiZusammenfassung;
+
+    // Ergebnis von summarize_project (rohes JSON), Cache für die Projekt-KI-Übersicht
+    @Column(name = "ki_zusammenfassung_json", columnDefinition = "TEXT")
+    private String kiZusammenfassungJson;
+
+    // Ergebnis von extract_keywords (rohes JSON), kategorisierte Stichwörter
+    @Column(name = "ki_stichwoerter_json", columnDefinition = "TEXT")
+    private String kiStichwoerterJson;
+
+    // Zeitpunkt der letzten KI-Übersicht-Generierung (für Caching/Neu-Erzeugung)
+    @Column(name = "ki_uebersicht_am")
+    private LocalDateTime kiUebersichtAm;
+
+    // Dokument-IDs, aus denen die aktuelle KI-Übersicht erzeugt wurde
+    // (kommagetrennt, sortiert). Dient zur Erkennung neuer/gelöschter Dokumente.
+    @Column(name = "ki_dokument_ids", columnDefinition = "TEXT")
+    private String kiDokumentIds;
 
     @ManyToMany
     @JoinTable(
@@ -91,6 +111,7 @@ public class Projekt {
     public String getBeschreibung() { return beschreibung; }
     public String getSemester() { return semester; }
     public String getFachbereich() { return fachbereich; }
+    public String getStudiengang() { return studiengang; }
     public String getProjektart() { return projektart; }
     public String getSprache() { return sprache; }
     public String getSchlagwoerter() { return schlagwoerter; }
@@ -102,6 +123,10 @@ public class Projekt {
     public Integer getBenutzerAnzahl() { return benutzerAnzahl; }
     public Boolean getKiGeneriert() { return kiGeneriert; }
     public String getKiZusammenfassung() { return kiZusammenfassung; }
+    public String getKiZusammenfassungJson() { return kiZusammenfassungJson; }
+    public String getKiStichwoerterJson() { return kiStichwoerterJson; }
+    public LocalDateTime getKiUebersichtAm() { return kiUebersichtAm; }
+    public String getKiDokumentIds() { return kiDokumentIds; }
     public Set<Tag> getTags() { return tags; }
     public LocalDateTime getErstelltAm() { return erstelltAm; }
     public LocalDateTime getGeaendertAm() { return geaendertAm; }
@@ -114,6 +139,7 @@ public class Projekt {
     public void setBeschreibung(String beschreibung) { this.beschreibung = beschreibung; }
     public void setSemester(String semester) { this.semester = semester; }
     public void setFachbereich(String fachbereich) { this.fachbereich = fachbereich; }
+    public void setStudiengang(String studiengang) { this.studiengang = studiengang; }
     public void setProjektart(String projektart) { this.projektart = projektart; }
     public void setSprache(String sprache) { this.sprache = sprache; }
     public void setSchlagwoerter(String schlagwoerter) { this.schlagwoerter = schlagwoerter; }
@@ -125,6 +151,10 @@ public class Projekt {
     public void setBenutzerAnzahl(Integer benutzerAnzahl) { this.benutzerAnzahl = benutzerAnzahl; }
     public void setKiGeneriert(Boolean kiGeneriert) { this.kiGeneriert = kiGeneriert; }
     public void setKiZusammenfassung(String kiZusammenfassung) { this.kiZusammenfassung = kiZusammenfassung; }
+    public void setKiZusammenfassungJson(String kiZusammenfassungJson) { this.kiZusammenfassungJson = kiZusammenfassungJson; }
+    public void setKiStichwoerterJson(String kiStichwoerterJson) { this.kiStichwoerterJson = kiStichwoerterJson; }
+    public void setKiUebersichtAm(LocalDateTime kiUebersichtAm) { this.kiUebersichtAm = kiUebersichtAm; }
+    public void setKiDokumentIds(String kiDokumentIds) { this.kiDokumentIds = kiDokumentIds; }
     public void setTags(Set<Tag> tags) { this.tags = tags; }
     public void setErstelltAm(LocalDateTime erstelltAm) { this.erstelltAm = erstelltAm; }
     public void setGeaendertAm(LocalDateTime geaendertAm) { this.geaendertAm = geaendertAm; }

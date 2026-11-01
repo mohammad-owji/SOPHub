@@ -150,3 +150,27 @@
     color: var(--sop-tuerkis-dunkel);
     text-decoration: underline;
 }
+
+/* ---------- Seite "E-Mail bestaetigen" ---------- */
+
+.auth-status-symbol {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+}
+
+.auth-status-erfolg {
+    color: #166534;
+    background: #dcfce7;
+}
+
+.auth-status-fehler {
+    color: #991b1b;
+    background: #fee2e2;
+}

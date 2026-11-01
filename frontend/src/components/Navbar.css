@@ -107,11 +107,6 @@
 
 /* Kleine Bildschirme: aufgeklapptes Menue */
 @media (max-width: 991.98px) {
-    .sop-navbar .container-fluid {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-
     .sop-nav-links {
         margin: 0.75rem 0;
     }
@@ -119,22 +114,37 @@
     .sop-nav-links .nav-link.active {
         box-shadow: inset 3px 0 0 var(--sop-tuerkis-hell);
     }
+}
 
-    .sop-navbar .navbar-collapse > .d-flex {
-        flex-direction: column;
-        align-items: stretch !important;
-        gap: 0.5rem !important;
-        padding-bottom: 0.5rem;
-    }
+/* Zahl offener Einladungen neben "Einladungen" (nur Betreuer:innen) */
+.sop-nav-zahl {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.4rem;
+    margin-left: 0.4rem;
+    border-radius: 999px;
+    background: #f59e0b;
+    color: var(--sop-navy);
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1;
+    vertical-align: middle;
+}
 
-    .sop-btn-neu {
-        padding: 0.65rem 1rem;
-        text-align: center;
-    }
+.sop-avatar {
+    position: relative;
+}
 
-    .sop-benutzer {
-        justify-content: flex-start;
-        width: 100%;
-        padding: 0.4rem 0.5rem;
-    }
+.sop-avatar-punkt {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #f59e0b;
+    border: 2px solid var(--sop-navy);
 }

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { API_BASE_URL } from "../services/api";
 import "./Auth.css";
 
 // startModus: "login" (Standard) oder "register"
@@ -12,8 +11,8 @@ function Login({ startModus = "login" }) {
     const redirectParam = searchParams.get("redirect");
     const zielNachLogin =
         redirectParam &&
-        redirectParam.startsWith("/") &&
-        !redirectParam.startsWith("//")
+            redirectParam.startsWith("/") &&
+            !redirectParam.startsWith("//")
             ? redirectParam
             : "/dashboard";
 
@@ -49,6 +48,12 @@ function Login({ startModus = "login" }) {
                 return;
             }
 
+            if (passwort.length < 8) {
+                setMessage("Das Passwort muss mindestens 8 Zeichen lang sein.");
+                setMessageType("error");
+                return;
+            }
+
             if (passwort !== passwortBestaetigen) {
                 setMessage("Die Passwörter stimmen nicht überein.");
                 setMessageType("error");
@@ -65,7 +70,7 @@ function Login({ startModus = "login" }) {
             };
 
             const response = await fetch(
-                `${API_BASE_URL}/auth/${endpoint}`,
+                `http://localhost:8080/sop/api/auth/${endpoint}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -77,12 +82,14 @@ function Login({ startModus = "login" }) {
 
             if (response.ok) {
                 if (mode === "register") {
-                    setMessage(text || "Registrierung erfolgreich.");
+                    // Hinweis "Bitte E-Mail bestaetigen" stehen lassen und zur Anmeldung wechseln.
+                    // (Nicht switchMode() benutzen: das wuerde die Meldung wieder loeschen.)
+                    setMode("login");
+                    setPasswort("");
+                    setPasswortBestaetigen("");
+                    setEmail("");
+                    setMessage(text || "Registrierung erfolgreich. Bitte bestätigen Sie Ihre E-Mail-Adresse.");
                     setMessageType("success");
-
-                    setTimeout(() => {
-                        switchMode();
-                    }, 1500);
                 } else {
                     const daten = JSON.parse(text);
 
@@ -190,7 +197,7 @@ function Login({ startModus = "login" }) {
 
                     <p className="text-muted mb-4">
                         {istLogin
-                            ? "Melden Sie sich mit Ihrem SOPhub-Konto an."
+                            ? "Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."
                             : "Registrieren Sie sich mit Ihrer Hochschul-E-Mail-Adresse."}
                     </p>
 
@@ -203,11 +210,10 @@ function Login({ startModus = "login" }) {
 
                     {message && (
                         <div
-                            className={`alert py-2 small ${
-                                messageType === "error"
+                            className={`alert py-2 small ${messageType === "error"
                                     ? "alert-danger"
                                     : "alert-success"
-                            }`}
+                                }`}
                         >
                             {message}
                         </div>
@@ -274,6 +280,9 @@ function Login({ startModus = "login" }) {
                                 value={passwort}
                                 onChange={(e) => setPasswort(e.target.value)}
                             />
+                            {!istLogin && (
+                                <div className="form-text">Mindestens 8 Zeichen.</div>
+                            )}
                         </div>
 
                         {!istLogin && (

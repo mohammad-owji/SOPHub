@@ -2,6 +2,7 @@ package com.sophub.controller;
 
 import com.sophub.model.User;
 import com.sophub.repository.UserRepository;
+import com.sophub.service.ProfilService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -17,9 +18,11 @@ public class UserController {
     private static final String SYSTEM_BENUTZERNAME = "sophub.beispielprojekte";
 
     private final UserRepository userRepository;
+    private final ProfilService profilService;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, ProfilService profilService) {
         this.userRepository = userRepository;
+        this.profilService = profilService;
     }
 
     @GetMapping("/profil")
@@ -28,6 +31,30 @@ public class UserController {
         return userRepository.findByBenutzername(benutzername)
                 .map(user -> ResponseEntity.ok(new ProfilResponse(user)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Benutzername aendern - liefert einen neuen Login-Token zurueck (der alte enthaelt den alten Namen)
+    @PutMapping("/profil/benutzername")
+    public ResponseEntity<?> benutzernameAendern(@RequestBody BenutzernameAenderung anfrage,
+                                                 Authentication authentication) {
+        try {
+            return ResponseEntity.ok(profilService.benutzernameAendern(
+                    authentication.getName(), anfrage.neuerBenutzername(), anfrage.passwort()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/profil/passwort")
+    public ResponseEntity<?> passwortAendern(@RequestBody PasswortAenderung anfrage,
+                                             Authentication authentication) {
+        try {
+            profilService.passwortAendern(
+                    authentication.getName(), anfrage.aktuellesPasswort(), anfrage.neuesPasswort());
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/professoren")
@@ -47,6 +74,10 @@ public class UserController {
                 .toList();
         return ResponseEntity.ok(ergebnis);
     }
+
+    record BenutzernameAenderung(String neuerBenutzername, String passwort) {}
+
+    record PasswortAenderung(String aktuellesPasswort, String neuesPasswort) {}
 
     record BenutzerKurzInfo(Long id, String vorname, String name) {
         BenutzerKurzInfo(User user) {

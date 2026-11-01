@@ -30,6 +30,10 @@ public class Dokument {
     @Column(name = "ki_zusammenfassung", columnDefinition = "TEXT")
     private String kiZusammenfassung;
 
+    // Ergebnis von summarize_document (rohes JSON), Eingabe für die Projekt-Zusammenfassung
+    @Column(name = "ki_zusammenfassung_json", columnDefinition = "TEXT")
+    private String kiZusammenfassungJson;
+
     @ManyToOne
     @JoinColumn(name = "benutzer_id", nullable = false)
     private User hochgeladenVon;
@@ -50,6 +54,7 @@ public class Dokument {
     public String getTyp() { return typ; }
     public String getExtrahierterText() { return extrahierterText; }
     public String getKiZusammenfassung() { return kiZusammenfassung; }
+    public String getKiZusammenfassungJson() { return kiZusammenfassungJson; }
     public LocalDateTime getHochgeladenAm() { return hochgeladenAm; }
     public User getHochgeladenVon() { return hochgeladenVon; }
     public Projekt getProjekt() { return projekt; }
@@ -61,6 +66,7 @@ public class Dokument {
     public void setTyp(String typ) { this.typ = typ; }
     public void setExtrahierterText(String extrahierterText) { this.extrahierterText = extrahierterText; }
     public void setKiZusammenfassung(String kiZusammenfassung) { this.kiZusammenfassung = kiZusammenfassung; }
+    public void setKiZusammenfassungJson(String kiZusammenfassungJson) { this.kiZusammenfassungJson = kiZusammenfassungJson; }
     public void setHochgeladenAm(LocalDateTime hochgeladenAm) { this.hochgeladenAm = hochgeladenAm; }
     public void setHochgeladenVon(User hochgeladenVon) { this.hochgeladenVon = hochgeladenVon; }
     public void setProjekt(Projekt projekt) { this.projekt = projekt; }

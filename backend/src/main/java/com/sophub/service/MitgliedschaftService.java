@@ -33,6 +33,46 @@ public class MitgliedschaftService {
         return projektMitgliedRepository.findByProjektId(projektId);
     }
 
+    public boolean istErsteller(Long projektId, String benutzername) {
+        Projekt projekt = projektRepository.findById(projektId)
+                .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+        User benutzer = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+        return projekt.getStudent() != null && projekt.getStudent().getId().equals(benutzer.getId());
+    }
+
+    public boolean istTeammitglied(Long projektId, String benutzername) {
+        User benutzer = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+        return projektMitgliedRepository.existsByProjektIdAndStudentId(projektId, benutzer.getId());
+    }
+
+    public boolean darfProjektVerwalten(Long projektId, String benutzername) {
+        return istErsteller(projektId, benutzername) || istTeammitglied(projektId, benutzername);
+    }
+
+    /**
+     * Darf der Nutzer interne Details/Inhalte des Projekts sehen?
+     * Das sind Admins, der zugewiesene Betreuer, der Ersteller und Teammitglieder -
+     * dieselbe Regel wie beim Zugriff auf Original-Dokumente (F27).
+     */
+    public boolean darfInterneDetails(Long projektId, String benutzername) {
+        User benutzer = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+        if (benutzer.getRolle() != null && "ADMIN".equalsIgnoreCase(benutzer.getRolle().getName())) {
+            return true;
+        }
+        Projekt projekt = projektRepository.findById(projektId)
+                .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+        if (projekt.getBetreuer() != null && projekt.getBetreuer().getId().equals(benutzer.getId())) {
+            return true;
+        }
+        if (projekt.getStudent() != null && projekt.getStudent().getId().equals(benutzer.getId())) {
+            return true;
+        }
+        return projektMitgliedRepository.existsByProjektIdAndStudentId(projektId, benutzer.getId());
+    }
+
     public ProjektMitglied hinzufuegen(Long projektId, Long studentId) {
         Projekt projekt = projektRepository.findById(projektId)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));

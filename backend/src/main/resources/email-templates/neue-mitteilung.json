@@ -1,0 +1,4 @@
+{
+    "subject": "SOPhub: ${art} im Projekt \"${projektTitel}\"",
+    "body": "Hallo ${vorname} ${name},\n\n${autor} hat im Projekt \"${projektTitel}\" ${artText}:\n\n[${kategorie}] ${betreff}\n\n${text}\n\nZur Projektseite: ${link}\n\nBitte antworten Sie direkt in SOPhub und nicht auf diese E-Mail.\n\nIhr SOPhub-Team"
+}

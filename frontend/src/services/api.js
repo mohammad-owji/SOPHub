@@ -1,4 +1,4 @@
-export const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:8081/sop/api`;
+const API_BASE_URL = "http://localhost:8080/sop/api";
 
 export function getAuth() {
     const raw = localStorage.getItem("sophub_auth");
@@ -90,6 +90,13 @@ export async function getProjektById(id) {
     return parseOrThrow(response);
 }
 
+export async function getProjektDetails(id) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}/details`, {
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
+}
+
 export async function aktualisiereProjekt(id, daten) {
     const response = await fetch(`${API_BASE_URL}/projekte/${id}`, {
         method: "PUT",
@@ -99,21 +106,23 @@ export async function aktualisiereProjekt(id, daten) {
     return parseOrThrow(response);
 }
 
-export async function loescheProjekt(id) {
-    const response = await fetch(`${API_BASE_URL}/projekte/${id}`, {
-        method: "DELETE",
-        headers: authHeaders(),
-    });
-    if (!response.ok) {
-        throw new Error((await response.text()) || "Projekt konnte nicht gelöscht werden.");
-    }
-}
-
 export async function getDokumenteFuerProjekt(projektId) {
     const response = await fetch(`${API_BASE_URL}/dokumente/projekt/${projektId}`, {
         headers: authHeaders(),
     });
     return parseOrThrow(response);
+}
+
+export async function loescheDokument(dokumentId) {
+    const response = await fetch(`${API_BASE_URL}/dokumente/${dokumentId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Dokument konnte nicht gelöscht werden.");
+    }
+    return true;
 }
 
 export async function getStudenten() {

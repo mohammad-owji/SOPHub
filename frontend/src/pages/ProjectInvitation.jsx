@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import Navbar, { EINLADUNGEN_GEAENDERT } from "../components/Navbar";
 import ProjektStatusBadge from "../components/ProjektStatus";
 import {
     acceptProject,
@@ -54,6 +54,8 @@ function ProjectInvitation() {
             const updatedProjekt = await acceptProject(projektId, auth.id);
             setProjekt(updatedProjekt);
             setDecision("accepted");
+            // Zahl der offenen Einladungen in der Navbar aktualisieren
+            window.dispatchEvent(new Event(EINLADUNGEN_GEAENDERT));
         } catch (err) {
             console.error(err);
             setError(err.message);
@@ -67,6 +69,7 @@ function ProjectInvitation() {
             const updatedProjekt = await declineProject(projektId, auth.id);
             setProjekt(updatedProjekt);
             setDecision("declined");
+            window.dispatchEvent(new Event(EINLADUNGEN_GEAENDERT));
         } catch (err) {
             console.error(err);
             setError(err.message);
@@ -145,6 +148,10 @@ function ProjectInvitation() {
                             <div>
                                 <dt>Fachbereich</dt>
                                 <dd>{projekt.fachbereich || "–"}</dd>
+                            </div>
+                            <div>
+                                <dt>Studiengang</dt>
+                                <dd>{projekt.studiengang || "–"}</dd>
                             </div>
                             <div>
                                 <dt>Projektart</dt>
@@ -229,7 +236,14 @@ function ProjectInvitation() {
                             </div>
                         )}
 
-                        <div className="text-center mt-4">
+                        <div className="d-flex flex-wrap justify-content-center gap-2 mt-4">
+                            {/* Nach der Annahme: direkt zu den Mitteilungen des Projekts */}
+                            {istEingeladenerBetreuer && (decision === "accepted"
+                                || ["ANGENOMMEN", "ABGESCHLOSSEN"].includes((projekt.status || "").toUpperCase())) && (
+                                    <Link to={`/projectdetails/${projekt.id}?reiter=mitteilungen`} className="btn btn-primary">
+                                        Mitteilungen öffnen
+                                    </Link>
+                                )}
                             <Link to={`/projectdetails/${projekt.id}`} className="btn btn-outline-secondary">
                                 Zur Projektseite
                             </Link>

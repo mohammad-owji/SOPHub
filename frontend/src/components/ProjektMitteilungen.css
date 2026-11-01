@@ -1,0 +1,174 @@
+/* Mitteilungsbrett auf der Projektseite */
+
+.pm-hinweis {
+    color: var(--sop-text-leise);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.pm-formular {
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: #fafcfc;
+}
+
+.pm-mitteilung {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: var(--sop-flaeche);
+}
+
+.pm-kopf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.pm-betreff {
+    flex-basis: 100%;
+    font-size: 1.02rem;
+    margin: 0.15rem 0 0;
+}
+
+.pm-kategorie,
+.pm-nur-team {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.2em 0.7em;
+}
+
+.pm-kat-wichtig {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.pm-kat-frage {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+.pm-kat-termin {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.pm-kat-abgabe {
+    background: var(--sop-tuerkis-flaeche);
+    color: var(--sop-tuerkis-dunkel);
+}
+
+.pm-kat-info {
+    background: #e8edf3;
+    color: var(--sop-navy);
+}
+
+.pm-nur-team {
+    background: transparent;
+    border: 1px dashed #94a3b8;
+    color: var(--sop-text-leise);
+}
+
+.pm-autor {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.pm-avatar {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--sop-tuerkis-hell), var(--sop-tuerkis));
+}
+
+.pm-avatar-klein {
+    width: 24px;
+    height: 24px;
+    font-size: 0.62rem;
+}
+
+.pm-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 0.25rem;
+}
+
+.pm-antworten {
+    margin-top: 0.75rem;
+    padding-left: 1rem;
+    border-left: 3px solid var(--sop-tuerkis-flaeche);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pm-antwort-formular {
+    margin-top: 0.75rem;
+}
+
+.pm-loeschen {
+    color: #b42318;
+    padding: 0;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Reiter (Tabs) auf der Projektseite: "Uebersicht" und "Mitteilungen" */
+.pd-reiter {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--sop-rahmen);
+    margin-bottom: 1.5rem;
+}
+
+.pd-reiter-knopf {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    padding: 0.65rem 1.1rem;
+    font-weight: 600;
+    color: var(--sop-text-leise);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.pd-reiter-knopf:hover {
+    color: var(--sop-navy);
+}
+
+.pd-reiter-aktiv {
+    color: var(--sop-tuerkis);
+    border-bottom-color: var(--sop-tuerkis);
+}
+
+.pd-reiter-zahl {
+    min-width: 1.5rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: var(--sop-tuerkis-flaeche);
+    color: var(--sop-tuerkis-dunkel);
+}

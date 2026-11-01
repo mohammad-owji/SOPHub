@@ -1,6 +1,11 @@
+import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { getAuth } from "../services/api";
+import { getAuth, getMeineEinladungen } from "../services/api";
 import "./Navbar.css";
+
+// Diese Meldung schicken Seiten, nachdem sich etwas an den Einladungen geaendert hat
+// (z.B. Projekt angenommen), damit die Zahl in der Navbar sofort stimmt.
+export const EINLADUNGEN_GEAENDERT = "sophub:einladungen-geaendert";
 
 // Lesbare Bezeichnung fuer die Rolle aus der Datenbank
 const ROLLEN_NAME = {
@@ -9,19 +14,62 @@ const ROLLEN_NAME = {
     ADMIN: "Admin",
 };
 
+// Name des SOP-Assistenten als Konstante (leicht änderbar).
+export const SOP_ASSISTENT_LABEL = "KI-Assistent";
+
 // Hauptmenue (Reihenfolge = Reihenfolge in der Navbar)
+// "Projekt erstellen" steht bewusst NICHT hier, sondern als Button auf
+// Dashboard, "Meine Projekte" und "Alle Projekte" (keine doppelten Buttons).
 const MENUE = [
     { ziel: "/dashboard", text: "Dashboard" },
     { ziel: "/my-projects", text: "Meine Projekte" },
     { ziel: "/projects", text: "Alle Projekte" },
     { ziel: "/einladungen", text: "Einladungen" },
-    { ziel: "/ideas", text: "Projektideen" },
     { ziel: "/ai", text: "KI" },
+    { ziel: "/sop-assistent", text: SOP_ASSISTENT_LABEL },
 ];
 
 function Navbar() {
     const navigate = useNavigate();
     const auth = getAuth();
+    const istBetreuer = auth?.rolle === "PROFESSOR";
+
+    // Anzahl offener Projektanfragen (nur fuer Betreuer:innen), als Zahl neben "Einladungen"
+    const [offeneEinladungen, setOffeneEinladungen] = useState(0);
+
+    useEffect(() => {
+        if (!istBetreuer) return;
+
+        let aktiv = true;
+        const laden = () =>
+            getMeineEinladungen()
+                .then((liste) => {
+                    if (!aktiv) return;
+                    const offen = (liste || []).filter((p) => (p.status || "").toUpperCase() === "OFFEN");
+                    setOffeneEinladungen(offen.length);
+                })
+                .catch(() => { });
+
+        laden();
+        // Neu laden, wenn eine Seite Bescheid gibt oder man zum Browser-Tab zurueckkehrt
+        window.addEventListener(EINLADUNGEN_GEAENDERT, laden);
+        window.addEventListener("focus", laden);
+        return () => {
+            aktiv = false;
+            window.removeEventListener(EINLADUNGEN_GEAENDERT, laden);
+            window.removeEventListener("focus", laden);
+        };
+    }, [istBetreuer]);
+
+    const zahlBadge = (
+        <span
+            className="sop-nav-zahl"
+            title={`${offeneEinladungen} offene ${offeneEinladungen === 1 ? "Anfrage" : "Anfragen"}`}
+        >
+            {offeneEinladungen}
+        </span>
+    );
+    const zeigeZahl = istBetreuer && offeneEinladungen > 0;
 
     const handleLogout = () => {
         localStorage.removeItem("sophub_auth");
@@ -63,15 +111,12 @@ function Navbar() {
                                 to={eintrag.ziel}
                             >
                                 {eintrag.text}
+                                {eintrag.ziel === "/einladungen" && zeigeZahl && zahlBadge}
                             </NavLink>
                         ))}
                     </div>
 
                     <div className="d-flex align-items-center gap-3">
-                        <Link className="btn btn-sm sop-btn-neu" to="/create-project">
-                            + Projekt erstellen
-                        </Link>
-
                         <div className="dropdown">
                             <button
                                 className="btn sop-benutzer dropdown-toggle d-flex align-items-center gap-2"
@@ -79,7 +124,11 @@ function Navbar() {
                                 data-bs-toggle="dropdown"
                                 aria-expanded="false"
                             >
-                                <span className="sop-avatar">{initiale}</span>
+                                <span className="sop-avatar">
+                                    {initiale}
+                                    {/* Kleiner Punkt am Avatar, falls das Menue auf dem Handy zugeklappt ist */}
+                                    {zeigeZahl && <span className="sop-avatar-punkt" aria-hidden="true" />}
+                                </span>
 
                                 <span className="text-start d-none d-md-block lh-sm">
                                     <span className="d-block fw-semibold">{auth?.vorname || "Gast"}</span>
@@ -90,7 +139,7 @@ function Navbar() {
                             <ul className="dropdown-menu dropdown-menu-end">
                                 <li>
                                     <Link className="dropdown-item" to="/profile">
-                                        Profil bearbeiten
+                                        Mein Profil
                                     </Link>
                                 </li>
 
@@ -101,8 +150,9 @@ function Navbar() {
                                 </li>
 
                                 <li>
-                                    <Link className="dropdown-item" to="/einladungen">
+                                    <Link className="dropdown-item d-flex align-items-center justify-content-between gap-2" to="/einladungen">
                                         Einladungen
+                                        {zeigeZahl && zahlBadge}
                                     </Link>
                                 </li>
 

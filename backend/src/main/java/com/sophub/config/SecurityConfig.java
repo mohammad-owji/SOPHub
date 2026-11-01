@@ -22,6 +22,14 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
+    /**
+     * Erlaubte Frontend-Origins (kommagetrennt). Default {@code *} ist für die lokale
+     * Entwicklung gedacht; in Produktion über {@code app.cors.allowed-origins} auf die
+     * echte Domain einschränken, z.B. {@code https://sophub.example.de}.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:*}")
+    private String allowedOrigins;
+
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
     }
@@ -38,7 +46,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/sop/api/auth/login", "/sop/api/auth/register").permitAll()
+                        // Ohne Login erreichbar: Anmelden, Registrieren, E-Mail bestaetigen
+                        .requestMatchers("/sop/api/auth/login", "/sop/api/auth/register",
+                                "/sop/api/auth/bestaetigen").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -50,8 +60,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Pattern-Variante, damit sowohl "*" als auch konkrete Domains funktionieren.
+        config.setAllowedOriginPatterns(
+                List.of(allowedOrigins.split("\\s*,\\s*")));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

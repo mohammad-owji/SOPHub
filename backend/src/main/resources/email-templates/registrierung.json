@@ -1,4 +1,4 @@
 {
-  "subject": "Willkommen bei SOPHub, ${vorname}!",
-  "body": "Hallo ${vorname} ${name},\n\nSie sind erfolgreich bei SOPHub registriert worden.\n\nBenutzername: ${benutzername}\nE-Mail: ${email}\n\nWir wünschen Ihnen viel Erfolg und eine gute Zusammenarbeit auf SOPHub!\n\nIhr SOPHub-Team"
+  "subject": "Willkommen bei SOPhub, ${vorname}!",
+  "body": "Hallo ${vorname} ${name},\n\nIhre E-Mail-Adresse wurde bestätigt und Ihr SOPhub-Konto ist jetzt aktiv.\n\nSie melden sich ab sofort mit Ihrer E-Mail-Adresse an:\n${email}\n\nWir wünschen Ihnen viel Erfolg und eine gute Zusammenarbeit auf SOPhub!\n\nIhr SOPhub-Team"
 }

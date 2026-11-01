@@ -1,0 +1,4 @@
+{
+    "subject": "SOPhub: ${betreff}",
+    "body": "Hallo ${vorname} ${name},\n\n${inhalt}\n\nZur Projektseite: ${link}\n\nIhr SOPhub-Team"
+}

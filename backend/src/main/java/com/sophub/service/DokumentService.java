@@ -1,12 +1,14 @@
 package com.sophub.service;
 
 import com.sophub.model.Dokument;
+import com.sophub.model.Dokumenttyp;
 import com.sophub.model.Projekt;
 import com.sophub.model.User;
 import com.sophub.repository.DokumentRepository;
 import com.sophub.repository.ProjektMitgliedRepository;
 import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -40,6 +42,7 @@ public class DokumentService {
     private final UserRepository userRepository;
     private final ProjektRepository projektRepository;
     private final ProjektMitgliedRepository projektMitgliedRepository;
+    private final MitgliedschaftService mitgliedschaftService;
     private final AIService aiService;
     private final AnonymizerService anonymizerService;
     private final TagService tagService;
@@ -48,6 +51,7 @@ public class DokumentService {
                            UserRepository userRepository,
                            ProjektRepository projektRepository,
                            ProjektMitgliedRepository projektMitgliedRepository,
+                           MitgliedschaftService mitgliedschaftService,
                            AIService aiService,
                            AnonymizerService anonymizerService,
                            TagService tagService) {
@@ -55,19 +59,27 @@ public class DokumentService {
         this.userRepository = userRepository;
         this.projektRepository = projektRepository;
         this.projektMitgliedRepository = projektMitgliedRepository;
+        this.mitgliedschaftService = mitgliedschaftService;
         this.aiService = aiService;
         this.anonymizerService = anonymizerService;
         this.tagService = tagService;
     }
 
-    public Dokument hochladen(MultipartFile datei, Long benutzerId, Long projektId, String typ) throws IOException {
+    public Dokument hochladen(MultipartFile datei, Long benutzerId, Long projektId, String typ,
+                              String angemeldeterBenutzer) throws IOException {
         User benutzer = userRepository.findById(benutzerId)
                 .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden."));
+        if (!benutzer.getBenutzername().equals(angemeldeterBenutzer)) {
+            throw new AccessDeniedException("Sie können nur Dateien mit Ihrem eigenen Benutzerkonto hochladen.");
+        }
 
         Projekt projekt = null;
         if (projektId != null) {
             projekt = projektRepository.findById(projektId)
                     .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+            if (!mitgliedschaftService.darfProjektVerwalten(projektId, angemeldeterBenutzer)) {
+                throw new AccessDeniedException("Nur Projekt-Ersteller und Teammitglieder können Dateien hinzufügen.");
+            }
         }
 
         String originName = datei.getOriginalFilename();
@@ -85,7 +97,9 @@ public class DokumentService {
         Dokument dokument = new Dokument();
         dokument.setDateiName(originName);
         dokument.setDateiPfad(zielPfad.toString());
-        dokument.setTyp(typ.toUpperCase());
+        // Typ auf einen kanonischen Dokumenttyp normalisieren; ist die Angabe
+        // unbekannt/SONSTIGES, per Dateiname-Heuristik verfeinern (vorbelegen).
+        dokument.setTyp(Dokumenttyp.bestimme(typ, originName).name());
         dokument.setHochgeladenVon(benutzer);
         dokument.setProjekt(projekt);
 
@@ -98,19 +112,10 @@ public class DokumentService {
             dokument.setExtrahierterText(textAusTxtExtrahieren(datei));
         }
 
-        if (dokument.getExtrahierterText() != null && !dokument.getExtrahierterText().isBlank()) {
-            zusammenfassungBeiUploadErzeugen(dokument);
-        }
-
-        Dokument gespeichert = dokumentRepository.save(dokument);
-
-        if (gespeichert.getProjekt() != null
-                && gespeichert.getExtrahierterText() != null
-                && !gespeichert.getExtrahierterText().isBlank()) {
-            autoTaggingAusloesen(gespeichert);
-        }
-
-        return gespeichert;
+        // Die KI-Auswertung läuft nicht mehr synchron beim Upload (das blockierte die Anfrage
+        // mit mehreren KI-Aufrufen), sondern gebündelt on-demand über den Endpunkt
+        // GET /sop/api/projekte/{id}/ki-uebersicht.
+        return dokumentRepository.save(dokument);
     }
 
     /**
@@ -221,6 +226,20 @@ public class DokumentService {
         return dokumentRepository.findByProjektId(projektId);
     }
 
+    public boolean darfProjektVerwalten(Long projektId, String benutzername) {
+        return mitgliedschaftService.darfProjektVerwalten(projektId, benutzername);
+    }
+
+    public boolean darfDokumentVerwalten(Long dokumentId, String benutzername) {
+        Dokument dokument = einzelnesDokument(dokumentId);
+        if (dokument.getProjekt() != null) {
+            return mitgliedschaftService.darfProjektVerwalten(dokument.getProjekt().getId(), benutzername);
+        }
+        return userRepository.findByBenutzername(benutzername)
+                .map(user -> user.getId().equals(dokument.getHochgeladenVon().getId()))
+                .orElse(false);
+    }
+
     public Resource herunterladen(Long dokumentId) throws MalformedURLException {
         Dokument dokument = dokumentRepository.findById(dokumentId)
                 .orElseThrow(() -> new RuntimeException("Dokument nicht gefunden."));
@@ -234,9 +253,12 @@ public class DokumentService {
         return resource;
     }
 
-    public void loeschen(Long dokumentId) throws IOException {
+    public void loeschen(Long dokumentId, String benutzername) throws IOException {
         Dokument dokument = dokumentRepository.findById(dokumentId)
                 .orElseThrow(() -> new RuntimeException("Dokument nicht gefunden."));
+        if (!darfDokumentVerwalten(dokumentId, benutzername)) {
+            throw new AccessDeniedException("Nur Projekt-Ersteller und Teammitglieder können Dateien löschen.");
+        }
 
         Files.deleteIfExists(Paths.get(dokument.getDateiPfad()));
         dokumentRepository.deleteById(dokumentId);
