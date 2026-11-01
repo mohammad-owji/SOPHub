@@ -10,9 +10,11 @@ import com.sophub.repository.UserRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -55,6 +57,7 @@ public class ChatService {
     private final ChatTitelService chatTitelService;
     private final com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry;
     private final tools.jackson.databind.ObjectMapper objectMapper;
+    private final TransactionTemplate transactionTemplate;
 
     public ChatService(ChatConversationRepository conversationRepository,
                        ChatMessageRepository messageRepository,
@@ -63,7 +66,8 @@ public class ChatService {
                        SopAssistentPrompt sopAssistentPrompt,
                        ChatTitelService chatTitelService,
                        com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry,
-                       tools.jackson.databind.ObjectMapper objectMapper) {
+                       tools.jackson.databind.ObjectMapper objectMapper,
+                       PlatformTransactionManager transactionManager) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
@@ -72,6 +76,7 @@ public class ChatService {
         this.chatTitelService = chatTitelService;
         this.werkzeugRegistry = werkzeugRegistry;
         this.objectMapper = objectMapper;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     private User nutzer(String benutzername) {
@@ -151,7 +156,6 @@ public class ChatService {
      * @throws IllegalArgumentException   bei leerer oder zu langer Nachricht (-> 400)
      * @throws ChatLimitException         bei erreichtem Chat-/Nachrichtenlimit (-> 409)
      */
-    @Transactional
     public NachrichtErgebnis nachrichtSenden(String benutzername, UUID chatId, String inhalt) {
         String text = inhalt == null ? "" : inhalt.trim();
         if (text.isEmpty()) {
@@ -163,32 +167,61 @@ public class ChatService {
         }
 
         User user = nutzer(benutzername);
-        ChatConversation chat = (chatId == null)
-                ? neuenChatAnlegen(user)
-                : conversationRepository.findByIdAndUserId(chatId, user.getId())
-                        .orElseThrow(ChatNichtGefundenException::new);
 
+        // Phase 1: Vorhandenen Chat prüfen und Kontext laden - nur kurze Lesezugriffe,
+        // KEINE Transaktion, die über den (langsamen) KI-Aufruf offen bliebe.
+        List<AIService.Nachricht> verlauf = ladeKontext(user, chatId);
+        verlauf.add(new AIService.Nachricht("user", text));
+
+        // Phase 2: KI-Aufruf OHNE offene DB-Transaktion - hält keine Verbindung aus dem
+        // Pool, während bis zu mehrere Minuten auf die externe KI gewartet wird.
+        // Wirft bei Fehler, bevor Phase 3 etwas speichert (-> kein verwaister Chat).
+        com.sophub.service.werkzeug.Werkzeugkasten kasten = werkzeugRegistry.fuer(benutzername);
+        String antwortText = aiService.chatMitWerkzeugen(sopAssistentPrompt.systemPrompt(), verlauf, kasten);
+        String bloeckeJson = serialisiereBloecke(kasten == null ? List.of() : kasten.gesammelteBloecke());
+
+        // Phase 3: Nutzer- UND KI-Nachricht in einer kurzen Schreib-Transaktion speichern.
+        return transactionTemplate.execute(status ->
+                speichereNachrichten(user, chatId, text, antwortText, bloeckeJson));
+    }
+
+    /**
+     * Lädt den KI-Kontext (letzte Nachrichten chronologisch) für einen bestehenden Chat.
+     * Prüft dabei Eigentümerschaft und Nachrichtenlimit. Bei {@code chatId == null} ist
+     * der Verlauf leer (neuer Chat wird erst in Phase 3 angelegt).
+     */
+    private List<AIService.Nachricht> ladeKontext(User user, UUID chatId) {
+        List<AIService.Nachricht> verlauf = new ArrayList<>();
+        if (chatId == null) {
+            return verlauf;
+        }
+        ChatConversation chat = conversationRepository.findByIdAndUserId(chatId, user.getId())
+                .orElseThrow(ChatNichtGefundenException::new);
         if (messageRepository.countByConversationId(chat.getId()) >= MAX_NACHRICHTEN_PRO_CHAT) {
             throw new ChatLimitException(
                     "Dieser Chat hat das Limit von " + MAX_NACHRICHTEN_PRO_CHAT
                             + " Nachrichten erreicht. Bitte starte einen neuen Chat.");
         }
-
-        // Kontext: die letzten Nachrichten chronologisch, danach die aktuelle Frage.
         List<ChatMessage> letzte = messageRepository
                 .findTop10ByConversationIdOrderByErstelltAmDesc(chat.getId());
-        List<AIService.Nachricht> verlauf = new ArrayList<>();
         for (int i = letzte.size() - 1; i >= 0; i--) {
             ChatMessage m = letzte.get(i);
             verlauf.add(new AIService.Nachricht(rolleFuerKi(m.getRolle()), m.getInhalt()));
         }
-        verlauf.add(new AIService.Nachricht("user", text));
+        return verlauf;
+    }
 
-        // KI-Aufruf zuerst - wirft bei Fehler, bevor etwas gespeichert wird.
-        // Mit Werkzeugen (Tool-Calling) im Kontext des eingeloggten Nutzers.
-        com.sophub.service.werkzeug.Werkzeugkasten kasten = werkzeugRegistry.fuer(benutzername);
-        String antwortText = aiService.chatMitWerkzeugen(sopAssistentPrompt.systemPrompt(), verlauf, kasten);
-        String bloeckeJson = serialisiereBloecke(kasten == null ? List.of() : kasten.gesammelteBloecke());
+    /**
+     * Phase 3: speichert Nutzer- und KI-Nachricht in einer kurzen Transaktion und legt
+     * bei Bedarf lazy einen neuen Chat an. Läuft erst NACH erfolgreichem KI-Aufruf, damit
+     * bei einem KI-Fehler kein verwaister (leerer) Chat zurückbleibt.
+     */
+    private NachrichtErgebnis speichereNachrichten(User user, UUID chatId, String text,
+                                                   String antwortText, String bloeckeJson) {
+        ChatConversation chat = (chatId == null)
+                ? neuenChatAnlegen(user)
+                : conversationRepository.findByIdAndUserId(chatId, user.getId())
+                        .orElseThrow(ChatNichtGefundenException::new);
 
         LocalDateTime jetzt = LocalDateTime.now();
         ChatMessage nutzerNachricht = neueNachricht(chat, ChatRolle.USER, text, jetzt);

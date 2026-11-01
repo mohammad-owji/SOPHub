@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,7 @@ class ChatServiceTest {
     @Mock ChatTitelService chatTitelService;
     @Mock com.sophub.service.werkzeug.WerkzeugRegistry werkzeugRegistry;
     @Mock tools.jackson.databind.ObjectMapper objectMapper;
+    @Mock PlatformTransactionManager transactionManager;
     @InjectMocks ChatService chatService;
 
     private User nutzer(String benutzername, long id) {
@@ -135,8 +137,7 @@ class ChatServiceTest {
         when(userRepository.findByBenutzername("stud")).thenReturn(Optional.of(user));
         when(conversationRepository.countByUserId(1L)).thenReturn(0L);
         when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(messageRepository.countByConversationId(any())).thenReturn(0L);
-        when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(any())).thenReturn(List.of());
+        // Neuer Chat: kein Verlauf -> ladeKontext liest keine früheren Nachrichten.
         when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
         when(aiService.chatMitWerkzeugen(eq("SYS"), any(), any())).thenReturn("KI-Antwort");
         when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -242,8 +243,7 @@ class ChatServiceTest {
         when(conversationRepository.findFirstByUserIdAndAngepinntFalseOrderByAktualisiertAmAsc(1L))
                 .thenReturn(Optional.of(aeltester));
         when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(messageRepository.countByConversationId(any())).thenReturn(0L);
-        when(messageRepository.findTop10ByConversationIdOrderByErstelltAmDesc(any())).thenReturn(List.of());
+        // Neuer Chat: kein Verlauf -> ladeKontext liest keine früheren Nachrichten.
         when(sopAssistentPrompt.systemPrompt()).thenReturn("SYS");
         when(aiService.chatMitWerkzeugen(any(), any(), any())).thenReturn("Antwort");
         when(messageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
