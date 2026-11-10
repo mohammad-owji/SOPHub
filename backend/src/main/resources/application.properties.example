@@ -26,3 +26,8 @@ kiconnect.api.url=https://chat.kiconnect.nrw/api/v1
 kiconnect.api.key=DEIN_KICONNECT_API_KEY
 # Modellname aus der eigenen KI:connect-Freigabe (z.B. qwen3.5-397b-a17b_stud, glm-4.7_stud)
 kiconnect.model=DEIN_KICONNECT_MODELL
+# Obergrenze fuer die Antwortlaenge in Tokens (0 = keine Begrenzung).
+kiconnect.max-tokens=1000
+# Externe Hausregeln des KI-Assistenten (Kommentarzeilen mit # werden ignoriert).
+# Standard ist die mitgelieferte Classpath-Datei; alternativ file:/pfad/zu/regeln.txt
+sop.assistent.regeln=classpath:sop-assistent-regeln.txt

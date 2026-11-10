@@ -39,14 +39,21 @@ const BEISPIEL_KONTO = "sophub.beispielprojekte";
 const initialen = (vorname, name) =>
     `${(vorname || "").charAt(0)}${(name || "").charAt(0)}`.toUpperCase() || "?";
 
-const DOKUMENT_TYP_LABEL = {
-    PFLICHTENHEFT: "Pflichtenheft",
+// Auswahl im Upload-Dialog: kanonische Dokumenttypen (muessen zum Backend-Enum passen).
+const DOKUMENT_TYP_OPTIONEN = {
     LASTENHEFT: "Lastenheft",
+    PFLICHTENHEFT: "Pflichtenheft",
+    ABSCHLUSSBERICHT: "Abschlussbericht",
+    PRAESENTATION: "Präsentation",
+    SONSTIGES: "Sonstiges",
+};
+
+// Anzeige-Labels: kanonische Typen plus alte Freitext-Werte (fuer Bestandsdaten).
+const DOKUMENT_TYP_LABEL = {
+    ...DOKUMENT_TYP_OPTIONEN,
     DATENBANKMODELL: "Datenbankmodell",
     DOKUMENTATION: "Dokumentation",
     TESTKONZEPT: "Testkonzept",
-    PRAESENTATION: "Präsentation",
-    SONSTIGES: "Sonstiges",
 };
 
 const KATEGORIE_LABEL = {
@@ -124,7 +131,7 @@ function ProjectDetails() {
     const [projektForm, setProjektForm] = useState(formularAusProjekt(null));
     const [projektFehler, setProjektFehler] = useState("");
     const [datei, setDatei] = useState(null);
-    const [dateiTyp, setDateiTyp] = useState("DOKUMENTATION");
+    const [dateiTyp, setDateiTyp] = useState("SONSTIGES");
     const [dokumentFehler, setDokumentFehler] = useState("");
     const [dokumentLaedt, setDokumentLaedt] = useState(false);
     const [ansichtDokument, setAnsichtDokument] = useState(null);
@@ -770,7 +777,7 @@ function ProjectDetails() {
                                                 value={dateiTyp}
                                                 onChange={(event) => setDateiTyp(event.target.value)}
                                             >
-                                                {Object.entries(DOKUMENT_TYP_LABEL).map(([wert, label]) => (
+                                                {Object.entries(DOKUMENT_TYP_OPTIONEN).map(([wert, label]) => (
                                                     <option key={wert} value={wert}>{label}</option>
                                                 ))}
                                             </select>

@@ -96,9 +96,14 @@ function Projects({ scope = "alle" }) {
                         </p>
                     </div>
 
-                    <button className="btn btn-primary" onClick={() => navigate("/create-project")}>
-                        + Neues Projekt
-                    </button>
+                    <div className="d-flex gap-2">
+                        <button className="btn btn-outline-primary" onClick={() => navigate("/sop-assistent")}>
+                            Mit KI entwickeln
+                        </button>
+                        <button className="btn btn-primary" onClick={() => navigate("/create-project")}>
+                            + Neues Projekt
+                        </button>
+                    </div>
                 </div>
 
                 {error && <div className="alert alert-warning">{error}</div>}

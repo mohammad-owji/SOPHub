@@ -21,11 +21,12 @@ import {
 } from "../services/api";
 import "./CreateProject.css";
 
+// Muss zum Backend-Enum Dokumenttyp passen (unbekannte Werte speichert das Backend als SONSTIGES)
 const DOKUMENT_TYPEN = [
-    { value: "PFLICHTENHEFT", label: "Pflichtenheft" },
     { value: "LASTENHEFT", label: "Lastenheft" },
-    { value: "DATENBANKMODELL", label: "Datenbankmodell" },
-    { value: "DOKUMENTATION", label: "Dokumentation" },
+    { value: "PFLICHTENHEFT", label: "Pflichtenheft" },
+    { value: "ABSCHLUSSBERICHT", label: "Abschlussbericht" },
+    { value: "PRAESENTATION", label: "Präsentation" },
     { value: "SONSTIGES", label: "Sonstiges" },
 ];
 
@@ -58,8 +59,11 @@ function CreateProject() {
     const location = useLocation();
     const auth = getAuth();
 
-    // Vorlage aus dem KI-Ideenfinder (Seite "Projektideen" -> "Als Projekt übernehmen")
+    // Vorlage aus dem KI-Ideenfinder ("Als Projekt übernehmen") oder dem
+    // KI-Assistenten ("Als Projektidee speichern")
     const vorlage = location.state?.vorlage || null;
+    // Nur der Ideenfinder uebergibt auch Rahmenangaben wie die Gruppengroesse
+    const ausIdeenfinder = Boolean(vorlage && "gruppenanzahl" in vorlage);
 
     const [titel, setTitel] = useState(vorlage?.titel || "");
     const [beschreibung, setBeschreibung] = useState(vorlage?.beschreibung || "");
@@ -270,10 +274,18 @@ function CreateProject() {
                 {vorlage && !message && (
                     <div className="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <span>
-                            <strong>✦ Idee aus dem KI-Ideenfinder übernommen.</strong> Bitte prüfen und ergänzen Sie
-                            die Angaben, wählen Sie eine Betreuung und erstellen Sie dann das Projekt.
+                            <strong>
+                                ✦ Idee aus dem {ausIdeenfinder ? "KI-Ideenfinder" : "KI-Assistenten"} übernommen.
+                            </strong>{" "}
+                            Bitte prüfen und ergänzen Sie die Angaben, wählen Sie eine Betreuung und erstellen Sie
+                            dann das Projekt.
                         </span>
-                        <Link to="/ideas" className="btn btn-sm btn-outline-secondary">← Zurück zu den Ideen</Link>
+                        <Link
+                            to={ausIdeenfinder ? "/ideas" : "/sop-assistent"}
+                            className="btn btn-sm btn-outline-secondary"
+                        >
+                            {ausIdeenfinder ? "← Zurück zu den Ideen" : "← Zurück zum KI-Assistenten"}
+                        </Link>
                     </div>
                 )}
 
