@@ -1,0 +1,4 @@
+{
+    "subject": "Bitte um Übernahme der Betreuung: ${projektTitel}",
+    "body": "Hallo ${anrede},\n\n${betreuerVorname} ${betreuerName} möchte die Betreuung des folgenden Projekts in SOPHub an Sie übergeben:\n\nProjekt: ${projektTitel}\nProjektart: ${projektart}\nSemester: ${semester}\n${grund}\nWenn Sie annehmen, sind Sie die neue Betreuung des Projekts. Der bisherige Verlauf (Mitteilungen, Abgaben und Dokumente) bleibt vollständig erhalten.\n\n${kontoHinweis}\n\nZur Anfrage:\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
+}

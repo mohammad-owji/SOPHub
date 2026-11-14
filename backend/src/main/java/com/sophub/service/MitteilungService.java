@@ -1,9 +1,11 @@
 package com.sophub.service;
 
+import com.sophub.model.BetreuungsEinladung;
 import com.sophub.model.Mitteilung;
 import com.sophub.model.Projekt;
 import com.sophub.model.ProjektMitglied;
 import com.sophub.model.User;
+import com.sophub.repository.BetreuungsEinladungRepository;
 import com.sophub.repository.MitteilungRepository;
 import com.sophub.repository.ProjektMitgliedRepository;
 import com.sophub.repository.ProjektRepository;
@@ -21,7 +23,7 @@ import java.util.Set;
  * Mitteilungsbrett eines Projekts: wichtige Mitteilungen zwischen Team und Betreuer:in.
  * <ul>
  *     <li>Team = Ersteller:in + Teammitglieder. Das Team sieht alle Mitteilungen.</li>
- *     <li>Betreuer:in (nach Annahme des Projekts) sieht alle Mitteilungen ausser "Nur Team".</li>
+ *     <li>Betreuer:in und Co-Betreuung (nach Annahme des Projekts) sehen alle Mitteilungen ausser "Nur Team".</li>
  *     <li>Alle anderen haben keinen Zugriff.</li>
  * </ul>
  */
@@ -38,17 +40,20 @@ public class MitteilungService {
     private final UserRepository userRepository;
     private final ProjektMitgliedRepository projektMitgliedRepository;
     private final MitteilungEmailService mitteilungEmailService;
+    private final BetreuungsEinladungRepository betreuungsEinladungRepository;
 
     public MitteilungService(MitteilungRepository mitteilungRepository,
                              ProjektRepository projektRepository,
                              UserRepository userRepository,
                              ProjektMitgliedRepository projektMitgliedRepository,
-                             MitteilungEmailService mitteilungEmailService) {
+                             MitteilungEmailService mitteilungEmailService,
+                             BetreuungsEinladungRepository betreuungsEinladungRepository) {
         this.mitteilungRepository = mitteilungRepository;
         this.projektRepository = projektRepository;
         this.userRepository = userRepository;
         this.projektMitgliedRepository = projektMitgliedRepository;
         this.mitteilungEmailService = mitteilungEmailService;
+        this.betreuungsEinladungRepository = betreuungsEinladungRepository;
     }
 
     /** Alle Mitteilungen des Projekts, die der angemeldete Benutzer sehen darf (neueste zuerst). */
@@ -111,6 +116,9 @@ public class MitteilungService {
         }
         if (!nurFuerTeam && betreuerAktiv(zugang.projekt())) {
             fuegeHinzu(empfaenger, zugang.projekt().getBetreuer(), zugang.user());
+            for (User co : coBetreuer(zugang.projekt())) {
+                fuegeHinzu(empfaenger, co, zugang.user());
+            }
         }
         mitteilungEmailService.benachrichtige(empfaenger, projektId, zugang.projekt().getTitel(),
                 vollerName(zugang.user()), false, kat, betreffBereinigt, textBereinigt);
@@ -167,7 +175,9 @@ public class MitteilungService {
 
         boolean istTeam = (projekt.getStudent() != null && projekt.getStudent().getId().equals(user.getId()))
                 || projektMitgliedRepository.existsByProjektIdAndStudentId(projektId, user.getId());
-        boolean istBetreuer = betreuerAktiv(projekt) && projekt.getBetreuer().getId().equals(user.getId());
+        // Betreuung = Betreuer:in oder angenommene Co-Betreuung (gleiche Rechte)
+        boolean istBetreuer = betreuerAktiv(projekt) && (projekt.getBetreuer().getId().equals(user.getId())
+                || betreuungsEinladungRepository.istCoBetreuer(projektId, user.getId()));
 
         if (!istTeam && !istBetreuer) {
             throw new AccessDeniedException("Nur Projektmitglieder und die Betreuung sehen die Mitteilungen.");
@@ -214,6 +224,17 @@ public class MitteilungService {
         return team;
     }
 
+    // Angenommene Co-Betreuungen des Projekts
+    private List<User> coBetreuer(Projekt projekt) {
+        return betreuungsEinladungRepository
+                .findByProjektIdAndArtAndStatus(projekt.getId(), BetreuungsEinladung.ART_CO_BETREUUNG,
+                        BetreuungsEinladung.ANGENOMMEN)
+                .stream()
+                .map(BetreuungsEinladung::getEingeladener)
+                .filter(u -> u != null)
+                .toList();
+    }
+
     private void fuegeHinzu(List<MitteilungEmailService.Empfaenger> liste, User empfaenger, User autor) {
         if (empfaenger == null || empfaenger.getId().equals(autor.getId())) {
             return;
@@ -229,10 +250,15 @@ public class MitteilungService {
         String rolle;
         if (projekt.getBetreuer() != null && projekt.getBetreuer().getId().equals(user.getId())) {
             rolle = "Betreuer:in";
+        } else if (betreuungsEinladungRepository.istCoBetreuer(projekt.getId(), user.getId())) {
+            rolle = "Co-Betreuer:in";
         } else if (projekt.getStudent() != null && projekt.getStudent().getId().equals(user.getId())) {
             rolle = "Ersteller:in";
-        } else {
+        } else if (projektMitgliedRepository.existsByProjektIdAndStudentId(projekt.getId(), user.getId())) {
             rolle = "Teammitglied";
+        } else {
+            // z.B. die bisherige Betreuung nach einer Uebergabe (Verlauf bleibt nachvollziehbar)
+            rolle = "Ehemalige Betreuung";
         }
         return new PersonAnsicht(user.getId(), user.getVorname(), user.getName(), rolle);
     }

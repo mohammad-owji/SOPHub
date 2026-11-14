@@ -1,12 +1,14 @@
 package com.sophub.service;
 
 import com.sophub.model.AnforderungEintrag;
+import com.sophub.model.BetreuungsEinladung;
 import com.sophub.model.Dokument;
 import com.sophub.model.DokumentAnforderung;
 import com.sophub.model.Projekt;
 import com.sophub.model.ProjektMitglied;
 import com.sophub.model.User;
 import com.sophub.repository.AnforderungEintragRepository;
+import com.sophub.repository.BetreuungsEinladungRepository;
 import com.sophub.repository.DokumentAnforderungRepository;
 import com.sophub.repository.ProjektMitgliedRepository;
 import com.sophub.repository.ProjektRepository;
@@ -28,7 +30,8 @@ import java.util.Map;
 /**
  * Dokument-Anforderungen ("Abgaben") eines Projekts.
  * <ul>
- *     <li>Die Betreuung (nach Annahme des Projekts) fordert Dokumente an und prueft sie (OK / Ueberarbeiten).</li>
+ *     <li>Die Betreuung (Betreuer:in und Co-Betreuung, nach Annahme des Projekts) fordert Dokumente an
+ *     und prueft sie (OK / Ueberarbeiten).</li>
  *     <li>Das Team (Ersteller:in + Teammitglieder) laedt angeforderte Dokumente hoch.</li>
  *     <li>Jeder Schritt wird im Verlauf gespeichert und per E-Mail gemeldet.</li>
  * </ul>
@@ -57,6 +60,7 @@ public class AnforderungService {
     private final ProjektMitgliedRepository projektMitgliedRepository;
     private final DokumentService dokumentService;
     private final AnforderungEmailService anforderungEmailService;
+    private final BetreuungsEinladungRepository betreuungsEinladungRepository;
 
     public AnforderungService(DokumentAnforderungRepository anforderungRepository,
                               AnforderungEintragRepository eintragRepository,
@@ -64,7 +68,8 @@ public class AnforderungService {
                               UserRepository userRepository,
                               ProjektMitgliedRepository projektMitgliedRepository,
                               DokumentService dokumentService,
-                              AnforderungEmailService anforderungEmailService) {
+                              AnforderungEmailService anforderungEmailService,
+                              BetreuungsEinladungRepository betreuungsEinladungRepository) {
         this.anforderungRepository = anforderungRepository;
         this.eintragRepository = eintragRepository;
         this.projektRepository = projektRepository;
@@ -72,6 +77,7 @@ public class AnforderungService {
         this.projektMitgliedRepository = projektMitgliedRepository;
         this.dokumentService = dokumentService;
         this.anforderungEmailService = anforderungEmailService;
+        this.betreuungsEinladungRepository = betreuungsEinladungRepository;
     }
 
     /** Alle Anforderungen des Projekts samt Verlauf, dazu die Rolle des angemeldeten Benutzers. */
@@ -177,15 +183,20 @@ public class AnforderungService {
         anforderung.setStatus(DokumentAnforderung.EINGEREICHT);
         anforderungRepository.save(anforderung);
 
-        // Betreuung informieren
+        // Betreuung informieren (Betreuer:in und Co-Betreuung)
         Projekt projekt = zugang.projekt();
         if (projekt.getBetreuer() != null) {
+            List<AnforderungEmailService.Empfaenger> betreuung = new ArrayList<>();
+            betreuung.add(empfaenger(projekt.getBetreuer()));
+            for (User co : coBetreuer(projekt)) {
+                betreuung.add(empfaenger(co));
+            }
             String inhalt = vollerName(zugang.user()) + " hat im Projekt \"" + projekt.getTitel()
                     + "\" das angeforderte Dokument \"" + anforderung.getTitel() + "\" eingereicht (Datei: "
                     + dokument.getDateiName() + ")."
                     + (eintrag.getKommentar() != null ? "\n\nKommentar: " + eintrag.getKommentar() : "")
                     + "\n\nBitte prüfen Sie das Dokument in SOPhub im Reiter \"Abgaben\".";
-            anforderungEmailService.benachrichtige(List.of(empfaenger(projekt.getBetreuer())), projektId,
+            anforderungEmailService.benachrichtige(betreuung, projektId,
                     "Dokument eingereicht: " + anforderung.getTitel(), inhalt);
         }
     }
@@ -260,7 +271,9 @@ public class AnforderungService {
 
         boolean istTeam = (projekt.getStudent() != null && projekt.getStudent().getId().equals(user.getId()))
                 || projektMitgliedRepository.existsByProjektIdAndStudentId(projektId, user.getId());
-        boolean istBetreuer = betreuerAktiv(projekt) && projekt.getBetreuer().getId().equals(user.getId());
+        // Betreuung = Betreuer:in oder angenommene Co-Betreuung (gleiche Rechte)
+        boolean istBetreuer = betreuerAktiv(projekt) && (projekt.getBetreuer().getId().equals(user.getId())
+                || betreuungsEinladungRepository.istCoBetreuer(projektId, user.getId()));
 
         if (!istTeam && !istBetreuer) {
             throw new AccessDeniedException("Nur Projektmitglieder und die Betreuung sehen die Abgaben.");
@@ -322,6 +335,17 @@ public class AnforderungService {
         return liste;
     }
 
+    // Angenommene Co-Betreuungen des Projekts
+    private List<User> coBetreuer(Projekt projekt) {
+        return betreuungsEinladungRepository
+                .findByProjektIdAndArtAndStatus(projekt.getId(), BetreuungsEinladung.ART_CO_BETREUUNG,
+                        BetreuungsEinladung.ANGENOMMEN)
+                .stream()
+                .map(BetreuungsEinladung::getEingeladener)
+                .filter(u -> u != null)
+                .toList();
+    }
+
     private AnforderungEmailService.Empfaenger empfaenger(User user) {
         return new AnforderungEmailService.Empfaenger(user.getEmail(), user.getVorname(), user.getName());
     }
@@ -335,10 +359,15 @@ public class AnforderungService {
         String rolle;
         if (projekt.getBetreuer() != null && projekt.getBetreuer().getId().equals(user.getId())) {
             rolle = "Betreuer:in";
+        } else if (betreuungsEinladungRepository.istCoBetreuer(projekt.getId(), user.getId())) {
+            rolle = "Co-Betreuer:in";
         } else if (projekt.getStudent() != null && projekt.getStudent().getId().equals(user.getId())) {
             rolle = "Ersteller:in";
-        } else {
+        } else if (projektMitgliedRepository.existsByProjektIdAndStudentId(projekt.getId(), user.getId())) {
             rolle = "Teammitglied";
+        } else {
+            // z.B. die bisherige Betreuung nach einer Uebergabe (Verlauf bleibt nachvollziehbar)
+            rolle = "Ehemalige Betreuung";
         }
         return new PersonAnsicht(user.getId(), user.getVorname(), user.getName(), rolle);
     }

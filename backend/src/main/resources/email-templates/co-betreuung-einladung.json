@@ -1,0 +1,4 @@
+{
+    "subject": "Einladung zur Co-Betreuung: ${projektTitel}",
+    "body": "Hallo ${anrede},\n\n${einladenderVorname} ${einladenderName} lädt Sie ein, das folgende Projekt in SOPHub als Co-Betreuung zu begleiten:\n\nProjekt: ${projektTitel}\nProjektart: ${projektart}\nSemester: ${semester}\n${nachricht}\nAls Co-Betreuung haben Sie nach der Annahme dieselben Rechte wie die Betreuung: Sie sehen Mitteilungen und Dokumente, fordern Abgaben an und prüfen sie.\n\n${kontoHinweis}\n\nZur Einladung:\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
+}

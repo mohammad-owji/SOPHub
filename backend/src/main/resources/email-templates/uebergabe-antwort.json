@@ -1,0 +1,4 @@
+{
+    "subject": "Übergabe ${entscheidung}: ${projektTitel}",
+    "body": "Hallo ${empfaengerVorname} ${empfaengerName},\n\n${personVorname} ${personName} hat die Übergabe der Betreuung des Projekts \"${projektTitel}\" ${entscheidung}.\n\n${folge}\n\nZum Projekt:\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
+}

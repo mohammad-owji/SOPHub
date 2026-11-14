@@ -100,3 +100,14 @@
     background: var(--sop-tuerkis-flaeche);
     color: var(--sop-tuerkis-dunkel);
 }
+
+/* Kennzeichnung "Co-Betreuung" in "Aktuelle Projekte" */
+.proj-co {
+    align-self: flex-start;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}

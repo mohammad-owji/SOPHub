@@ -148,7 +148,11 @@ public class DokumentService {
         if (projekt.getStudent() != null && projekt.getStudent().getId().equals(benutzer.getId())) {
             return true;
         }
-        return projektMitgliedRepository.existsByProjektIdAndStudentId(projekt.getId(), benutzer.getId());
+        if (projektMitgliedRepository.existsByProjektIdAndStudentId(projekt.getId(), benutzer.getId())) {
+            return true;
+        }
+        // Co-Betreuung hat dieselben Rechte wie die Betreuung
+        return mitgliedschaftService.istCoBetreuer(projekt.getId(), benutzer.getId());
     }
 
     /**

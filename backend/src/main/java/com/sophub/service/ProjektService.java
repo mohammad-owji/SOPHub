@@ -1,6 +1,7 @@
 package com.sophub.service;
 
 import com.sophub.model.Projekt;
+import com.sophub.model.ProjektMitglied;
 import com.sophub.model.User;
 import com.sophub.repository.DokumentRepository;
 import com.sophub.repository.ProjektMitgliedRepository;
@@ -11,7 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -23,6 +27,17 @@ public class ProjektService {
     private static final String STATUS_OFFEN = "OFFEN";
     private static final String STATUS_ANGENOMMEN = "ANGENOMMEN";
     private static final String STATUS_ABGELEHNT = "ABGELEHNT";
+
+    // Auswahl im Ablehnungs-Dialog (Schluessel kommt vom Frontend, Text wird gespeichert und gemailt)
+    public static final Map<String, String> ABLEHNUNGS_GRUENDE = new LinkedHashMap<>();
+    static {
+        ABLEHNUNGS_GRUENDE.put("KEINE_KAPAZITAET", "Keine freie Betreuungskapazität in diesem Semester");
+        ABLEHNUNGS_GRUENDE.put("FACHGEBIET", "Das Thema passt nicht zu meinem Fachgebiet");
+        ABLEHNUNGS_GRUENDE.put("UMFANG", "Der Umfang passt nicht zur Projektart oder Gruppengröße");
+        ABLEHNUNGS_GRUENDE.put("UNKLAR", "Die Projektbeschreibung ist noch zu unklar");
+        ABLEHNUNGS_GRUENDE.put("SONSTIGES", "Sonstiger Grund");
+    }
+    private static final int MAX_LAENGE_KOMMENTAR = 1000;
 
     private final ProjektRepository projektRepository;
     private final ProjektMitgliedRepository projektMitgliedRepository;
@@ -190,6 +205,10 @@ public class ProjektService {
 
         projekt.setBetreuer(betreuer);
         projekt.setStatus(STATUS_ANGENOMMEN);
+        // Eine fruehere Ablehnung gilt nicht mehr
+        projekt.setAblehnungsGrund(null);
+        projekt.setAblehnungsKommentar(null);
+        projekt.setAbgelehntAm(null);
 
         Projekt gespeichert = projektRepository.save(projekt);
 
@@ -204,8 +223,9 @@ public class ProjektService {
     // Projekt ablehnen
     // Nur moeglich, wenn das Projekt OFFEN ist.
     // Wurde ein Betreuer eingeladen, darf nur genau dieser Betreuer ablehnen.
+    // Der Betreuer muss einen Grund auswaehlen; bei "Sonstiges" ist eine Erklaerung Pflicht.
     // Der Betreuer bleibt im Projekt gespeichert, damit nachvollziehbar ist, wer abgelehnt hat.
-    public Projekt ablehnen(Long projektId, Long betreuerId) {
+    public Projekt ablehnen(Long projektId, Long betreuerId, String grundSchluessel, String kommentar) {
         Projekt projekt = projektRepository.findById(projektId)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
 
@@ -214,16 +234,45 @@ public class ProjektService {
 
         pruefeAnfrageOffen(projekt, betreuerId);
 
+        String grund = grundSchluessel == null ? null : ABLEHNUNGS_GRUENDE.get(grundSchluessel.trim().toUpperCase());
+        if (grund == null) {
+            throw new IllegalArgumentException("Bitte wählen Sie einen Grund für die Ablehnung aus.");
+        }
+        String erklaerung = kommentar == null ? "" : kommentar.trim();
+        if ("SONSTIGES".equalsIgnoreCase(grundSchluessel.trim()) && erklaerung.isEmpty()) {
+            throw new IllegalArgumentException("Bitte beschreiben Sie den Grund für die Ablehnung.");
+        }
+        if (erklaerung.length() > MAX_LAENGE_KOMMENTAR) {
+            throw new IllegalArgumentException("Die Erklärung darf höchstens " + MAX_LAENGE_KOMMENTAR + " Zeichen lang sein.");
+        }
+
         projekt.setStatus(STATUS_ABGELEHNT);
+        projekt.setAblehnungsGrund(grund);
+        projekt.setAblehnungsKommentar(erklaerung.isEmpty() ? null : erklaerung);
+        projekt.setAbgelehntAm(LocalDateTime.now());
 
         Projekt gespeichert = projektRepository.save(projekt);
 
-        // Student informieren: Projektanfrage wurde abgelehnt
+        // Ganzes Team informieren (Ersteller:in und Teammitglieder), mit Grund
         if (gespeichert.getStudent() != null) {
-            emailService.sendeProjektEntscheidungEmail(gespeichert.getStudent(), betreuer, gespeichert, false);
+            emailService.sendeProjektAblehnungEmail(gespeichert.getStudent(), betreuer, gespeichert);
+        }
+        for (ProjektMitglied mitglied : projektMitgliedRepository.findByProjektId(projektId)) {
+            User person = mitglied.getStudent();
+            if (person != null && (gespeichert.getStudent() == null
+                    || !person.getId().equals(gespeichert.getStudent().getId()))) {
+                emailService.sendeProjektAblehnungEmail(person, betreuer, gespeichert);
+            }
         }
 
         return gespeichert;
+    }
+
+    /** Stimmt der angemeldete Benutzer mit dem Betreuer aus der Adresse ueberein? */
+    public boolean istAngemeldeterBenutzer(Long benutzerId, String benutzername) {
+        return userRepository.findById(benutzerId)
+                .map(u -> u.getBenutzername() != null && u.getBenutzername().equals(benutzername))
+                .orElse(false);
     }
 
     // Gemeinsame Pruefung fuer annehmen() und ablehnen()

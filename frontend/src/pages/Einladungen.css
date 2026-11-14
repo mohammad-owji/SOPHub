@@ -35,6 +35,55 @@
     background: #fef3c7;
 }
 
+.einl-zaehler-gruen {
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+.einl-zaehler-grau {
+    color: #475569;
+    background: #e2e8f0;
+}
+
+/* Aufklappbarer Bereich "Abgelehnte Anfragen" */
+.einl-klappe {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid var(--sop-rahmen);
+    border-radius: var(--sop-radius-klein);
+    background: var(--sop-flaeche);
+    color: var(--sop-navy);
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.einl-klappe:hover {
+    border-color: var(--sop-tuerkis);
+}
+
+.einl-pfeil {
+    display: inline-block;
+    transition: transform 0.15s;
+    color: var(--sop-text-leise);
+}
+
+.einl-pfeil-offen {
+    transform: rotate(90deg);
+}
+
+.einl-klappe-hinweis {
+    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--sop-text-leise);
+}
+
 /* Karten in "Meine Einladungen" */
 .einl-karte {
     height: 100%;
@@ -188,4 +237,108 @@
     font-weight: 700;
     color: var(--sop-navy);
     margin-bottom: 1rem;
+}
+
+/* Ablehnung mit Grund (Radio-Buttons + Erklaerung) */
+.anfrage-ablehnung {
+    padding: 1.5rem;
+    border-radius: var(--sop-radius);
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+}
+
+.anfrage-ablehnung-titel {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+    color: #991b1b;
+}
+
+.anfrage-ablehnung-hinweis {
+    font-size: 0.85rem;
+    color: var(--sop-text-leise);
+    margin-bottom: 1rem;
+}
+
+.anfrage-grund {
+    padding: 0.55rem 0.75rem 0.55rem 2.25rem;
+    margin-bottom: 0.4rem;
+    border-radius: var(--sop-radius-klein);
+    border: 1px solid var(--sop-rahmen);
+    background: var(--sop-flaeche);
+}
+
+.anfrage-grund .form-check-input:checked {
+    background-color: #dc2626;
+    border-color: #dc2626;
+}
+
+.anfrage-grund-anzeige {
+    padding: 0.85rem 1rem;
+    border-radius: var(--sop-radius-klein);
+    border: 1px solid var(--sop-rahmen);
+    background: var(--sop-hintergrund);
+    font-size: 0.9rem;
+}
+
+
+/* Einladungen zur Co-Betreuung */
+.einl-karte-co {
+    border-left: 4px solid var(--sop-tuerkis) !important;
+}
+
+.einl-co-badge {
+    flex-shrink: 0;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    background: #e2e8f0;
+}
+
+.einl-co-offen {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.einl-co-angenommen {
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+.einl-nachricht {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--sop-text-leise);
+    white-space: pre-line;
+}
+
+/* Uebergabe der Betreuung */
+.einl-karte-uebergabe {
+    border-left: 4px solid var(--sop-navy) !important;
+}
+
+.einl-art {
+    align-self: flex-start;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+.einl-art-uebergabe {
+    color: #ffffff;
+    background: var(--sop-navy);
+}
+
+.einl-hinweis {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: var(--sop-radius-klein);
+    background: var(--sop-hintergrund);
+    color: var(--sop-text-leise);
 }

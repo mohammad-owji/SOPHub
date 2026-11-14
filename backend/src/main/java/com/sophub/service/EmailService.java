@@ -32,6 +32,11 @@ public class EmailService {
     private static final String PROJEKT_ANFRAGE_TEMPLATE = "email-templates/projekt-anfrage.json";
     private static final String PROJEKT_ANGENOMMEN_TEMPLATE = "email-templates/projekt-angenommen.json";
     private static final String PROJEKT_ABGELEHNT_TEMPLATE = "email-templates/projekt-abgelehnt.json";
+    private static final String CO_BETREUUNG_EINLADUNG_TEMPLATE = "email-templates/co-betreuung-einladung.json";
+    private static final String CO_BETREUUNG_ANTWORT_TEMPLATE = "email-templates/co-betreuung-antwort.json";
+    private static final String UEBERGABE_ANFRAGE_TEMPLATE = "email-templates/uebergabe-anfrage.json";
+    private static final String UEBERGABE_ANTWORT_TEMPLATE = "email-templates/uebergabe-antwort.json";
+    private static final String UEBERGABE_TEAM_TEMPLATE = "email-templates/uebergabe-team.json";
     private static final DateTimeFormatter DATUM_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final JavaMailSender mailSender;
@@ -150,6 +155,130 @@ public class EmailService {
                 "link", link
         );
         sende(vorlage, student.getEmail(), werte);
+    }
+
+    /**
+     * Informiert eine Person aus dem Team, dass die Betreuung die Projektanfrage abgelehnt hat,
+     * mit dem ausgewaehlten Grund und der optionalen Erklaerung.
+     */
+    public void sendeProjektAblehnungEmail(User empfaenger, User betreuer, Projekt projekt) {
+        String link = frontendUrl + "/projectdetails/" + projekt.getId();
+        String erklaerung = projekt.getAblehnungsKommentar() == null || projekt.getAblehnungsKommentar().isBlank()
+                ? ""
+                : "\nErklärung: " + projekt.getAblehnungsKommentar();
+
+        Map<String, String> werte = Map.of(
+                "studentVorname", textOderStrich(empfaenger.getVorname()),
+                "studentName", textOderStrich(empfaenger.getName()),
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "projektart", textOderStrich(projekt.getProjektart()),
+                "semester", textOderStrich(projekt.getSemester()),
+                "grund", textOderStrich(projekt.getAblehnungsGrund()),
+                "erklaerung", erklaerung,
+                "link", link
+        );
+        sende(PROJEKT_ABGELEHNT_TEMPLATE, empfaenger.getEmail(), werte);
+    }
+
+    /**
+     * Einladung zur Co-Betreuung an eine Hochschul-E-Mail. Hat die Person noch kein Konto,
+     * steht in der Mail, dass sie sich mit genau dieser Adresse registrieren soll.
+     */
+    public void sendeCoBetreuungEinladungEmail(String email, User konto, User einladender, Projekt projekt,
+                                               String nachricht) {
+        String anrede = konto == null ? "" : (textOderLeer(konto.getVorname()) + " " + textOderLeer(konto.getName())).trim();
+        String kontoHinweis = konto != null
+                ? "Bitte melden Sie sich in SOPHub an und nehmen Sie die Einladung unter \"Einladungen\" an oder lehnen Sie sie ab."
+                : "Sie haben noch kein SOPHub-Konto. Bitte registrieren Sie sich mit genau dieser E-Mail-Adresse ("
+                + email + "). Danach finden Sie die Einladung unter \"Einladungen\".";
+
+        Map<String, String> werte = Map.of(
+                "anrede", anrede.isEmpty() ? "liebe Kollegin, lieber Kollege" : anrede,
+                "einladenderVorname", textOderStrich(einladender.getVorname()),
+                "einladenderName", textOderStrich(einladender.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "projektart", textOderStrich(projekt.getProjektart()),
+                "semester", textOderStrich(projekt.getSemester()),
+                "nachricht", nachricht == null || nachricht.isBlank() ? "" : "\nNachricht: " + nachricht + "\n",
+                "kontoHinweis", kontoHinweis,
+                "link", frontendUrl + "/einladungen"
+        );
+        sende(CO_BETREUUNG_EINLADUNG_TEMPLATE, email, werte);
+    }
+
+    /** Meldet der einladenden Person, ob die Co-Betreuung angenommen oder abgelehnt wurde. */
+    public void sendeCoBetreuungAntwortEmail(User empfaenger, User person, Projekt projekt, boolean angenommen) {
+        Map<String, String> werte = Map.of(
+                "empfaengerVorname", textOderStrich(empfaenger.getVorname()),
+                "empfaengerName", textOderStrich(empfaenger.getName()),
+                "personVorname", textOderStrich(person.getVorname()),
+                "personName", textOderStrich(person.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "entscheidung", angenommen ? "angenommen" : "abgelehnt",
+                "link", frontendUrl + "/projectdetails/" + projekt.getId()
+        );
+        sende(CO_BETREUUNG_ANTWORT_TEMPLATE, empfaenger.getEmail(), werte);
+    }
+
+    /** Bittet eine Person, die Betreuung eines Projekts zu uebernehmen (Uebergabe). */
+    public void sendeUebergabeAnfrageEmail(String email, User konto, User betreuer, Projekt projekt, String grund) {
+        String anrede = konto == null ? "" : (textOderLeer(konto.getVorname()) + " " + textOderLeer(konto.getName())).trim();
+        String kontoHinweis = konto != null
+                ? "Bitte melden Sie sich in SOPHub an und nehmen Sie die Übergabe unter \"Einladungen\" an oder lehnen Sie sie ab."
+                : "Sie haben noch kein SOPHub-Konto. Bitte registrieren Sie sich mit genau dieser E-Mail-Adresse ("
+                + email + "). Danach finden Sie die Anfrage unter \"Einladungen\".";
+
+        Map<String, String> werte = Map.of(
+                "anrede", anrede.isEmpty() ? "liebe Kollegin, lieber Kollege" : anrede,
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "projektart", textOderStrich(projekt.getProjektart()),
+                "semester", textOderStrich(projekt.getSemester()),
+                "grund", grund == null || grund.isBlank() ? "" : "\nGrund: " + grund + "\n",
+                "kontoHinweis", kontoHinweis,
+                "link", frontendUrl + "/einladungen"
+        );
+        sende(UEBERGABE_ANFRAGE_TEMPLATE, email, werte);
+    }
+
+    /** Meldet der bisherigen Betreuer:in, ob die Uebergabe angenommen oder abgelehnt wurde. */
+    public void sendeUebergabeAntwortEmail(User empfaenger, User person, Projekt projekt, boolean angenommen) {
+        Map<String, String> werte = Map.of(
+                "empfaengerVorname", textOderStrich(empfaenger.getVorname()),
+                "empfaengerName", textOderStrich(empfaenger.getName()),
+                "personVorname", textOderStrich(person.getVorname()),
+                "personName", textOderStrich(person.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "entscheidung", angenommen ? "angenommen" : "abgelehnt",
+                "folge", angenommen
+                        ? "Die Betreuung liegt ab sofort bei " + textOderStrich(person.getVorname()) + " "
+                            + textOderStrich(person.getName()) + "."
+                        : "Sie betreuen das Projekt weiterhin. Sie können es an eine andere Person übergeben.",
+                "link", frontendUrl + "/projectdetails/" + projekt.getId()
+        );
+        sende(UEBERGABE_ANTWORT_TEMPLATE, empfaenger.getEmail(), werte);
+    }
+
+    /** Informiert eine Person aus dem Team ueber den Wechsel der Betreuung. */
+    public void sendeUebergabeTeamEmail(User empfaenger, User bisher, User neu, Projekt projekt) {
+        Map<String, String> werte = Map.of(
+                "empfaengerVorname", textOderStrich(empfaenger.getVorname()),
+                "empfaengerName", textOderStrich(empfaenger.getName()),
+                "bisherVorname", textOderStrich(bisher.getVorname()),
+                "bisherName", textOderStrich(bisher.getName()),
+                "neuVorname", textOderStrich(neu.getVorname()),
+                "neuName", textOderStrich(neu.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "link", frontendUrl + "/projectdetails/" + projekt.getId()
+        );
+        sende(UEBERGABE_TEAM_TEMPLATE, empfaenger.getEmail(), werte);
+    }
+
+    private String textOderLeer(String text) {
+        return text == null ? "" : text.trim();
     }
 
     // Map.of(...) erlaubt keine null-Werte. Leere Felder werden deshalb als "-" angezeigt.

@@ -2,8 +2,28 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import ProjektStatusBadge, { PROJEKT_STATUS } from "../components/ProjektStatus";
-import { getAlleProjekte, getMeineProjekte, getAuth } from "../services/api";
+import { getAlleProjekte, getMeineProjekte, getMeineEinladungen, getAuth } from "../services/api";
+import { getMeineCoEinladungen } from "../services/betreuungService";
 import "./Projects.css";
+
+// Ueberschrift, Untertitel und Text fuer eine leere Liste je Ansicht
+const ANSICHT = {
+    alle: {
+        titel: "Alle Projekte",
+        untertitel: "Laufende, offene und abgeschlossene SOP-Projekte durchsuchen.",
+        leer: "Im Portal gibt es noch keine Projekte.",
+    },
+    meine: {
+        titel: "Meine Projekte",
+        untertitel: "Ihre eigenen SOP-Projekte und deren aktueller Stand.",
+        leer: "Sie haben noch kein eigenes Projekt angelegt.",
+    },
+    aktuell: {
+        titel: "Aktuelle Projekte",
+        untertitel: "Alle Projekte, die Sie derzeit aktiv betreuen – auch als Co-Betreuung.",
+        leer: "Sie betreuen zurzeit kein laufendes Projekt. Angenommene Projektanfragen erscheinen hier.",
+    },
+};
 
 // Systemkonto der Beispielprojekte (siehe BeispielprojekteInitializer im Backend)
 const BEISPIEL_KONTO = "sophub.beispielprojekte";
@@ -19,6 +39,10 @@ function Projects({ scope = "alle" }) {
     const [semesterFilter, setSemesterFilter] = useState("alle");
 
     const istMeine = scope === "meine";
+    const istAktuell = scope === "aktuell";
+    const ansicht = ANSICHT[scope] || ANSICHT.alle;
+    // Betreuer:innen legen keine eigenen Projekte an
+    const istBetreuer = getAuth()?.rolle === "PROFESSOR";
 
     useEffect(() => {
         setError("");
@@ -29,14 +53,33 @@ function Projects({ scope = "alle" }) {
         setSemesterFilter("alle");
 
         const auth = getAuth();
-        if (istMeine && !auth?.id) {
+        if ((istMeine || istAktuell) && !auth?.id) {
             setError("Bitte zuerst einloggen, um Ihre Projekte zu sehen.");
             setProjects([]);
             setLaedt(false);
             return;
         }
 
-        const ladeProjekte = istMeine ? getMeineProjekte(auth.id) : getAlleProjekte();
+        // "Aktuelle Projekte": betreute und co-betreute Projekte, die angenommen und noch nicht abgeschlossen sind
+        const laufend = (p) => (p?.status || "").toUpperCase() === "ANGENOMMEN";
+        const ladeAktuelle = () =>
+            Promise.all([
+                getMeineEinladungen(),
+                getMeineCoEinladungen().catch(() => []),
+            ]).then(([betreut, co]) => {
+                const eigene = (betreut || []).filter(laufend);
+                const coProjekte = (co || [])
+                    .filter((e) => e.status === "ANGENOMMEN" && laufend(e.projekt))
+                    .map((e) => ({ ...e.projekt, alsCoBetreuung: true }))
+                    .filter((p) => !eigene.some((x) => x.id === p.id));
+                return [...eigene, ...coProjekte];
+            });
+
+        const ladeProjekte = istAktuell
+            ? ladeAktuelle()
+            : istMeine
+                ? getMeineProjekte(auth.id)
+                : getAlleProjekte();
 
         ladeProjekte
             .then((data) => {
@@ -88,22 +131,20 @@ function Projects({ scope = "alle" }) {
             <div className="container py-4">
                 <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
                     <div>
-                        <h2 className="mb-1">{istMeine ? "Meine Projekte" : "Alle Projekte"}</h2>
-                        <p className="text-muted mb-0">
-                            {istMeine
-                                ? "Ihre eigenen SOP-Projekte und deren aktueller Stand."
-                                : "Laufende, offene und abgeschlossene SOP-Projekte durchsuchen."}
-                        </p>
+                        <h2 className="mb-1">{ansicht.titel}</h2>
+                        <p className="text-muted mb-0">{ansicht.untertitel}</p>
                     </div>
 
-                    <div className="d-flex gap-2">
-                        <button className="btn btn-outline-primary" onClick={() => navigate("/sop-assistent")}>
-                            Mit KI entwickeln
-                        </button>
-                        <button className="btn btn-primary" onClick={() => navigate("/create-project")}>
-                            + Neues Projekt
-                        </button>
-                    </div>
+                    {!istBetreuer && (
+                        <div className="d-flex gap-2">
+                            <button className="btn btn-outline-primary" onClick={() => navigate("/sop-assistent")}>
+                                Mit KI entwickeln
+                            </button>
+                            <button className="btn btn-primary" onClick={() => navigate("/create-project")}>
+                                + Neues Projekt
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {error && <div className="alert alert-warning">{error}</div>}
@@ -185,6 +226,10 @@ function Projects({ scope = "alle" }) {
                                             <ProjektStatusBadge status={project.status} className="flex-shrink-0" />
                                         </div>
 
+                                        {project.alsCoBetreuung && (
+                                            <span className="proj-co">Co-Betreuung</span>
+                                        )}
+
                                         <p className="proj-beschreibung">
                                             {project.beschreibung || "Keine Beschreibung hinterlegt."}
                                         </p>
@@ -241,14 +286,18 @@ function Projects({ scope = "alle" }) {
                             {projects.length === 0 ? (
                                 <>
                                     <h4>Noch keine Projekte</h4>
-                                    <p className="text-muted">
-                                        {istMeine
-                                            ? "Sie haben noch kein eigenes Projekt angelegt."
-                                            : "Im Portal gibt es noch keine Projekte."}
-                                    </p>
-                                    <button className="btn btn-primary" onClick={() => navigate("/create-project")}>
-                                        Projekt erstellen
-                                    </button>
+                                    <p className="text-muted">{ansicht.leer}</p>
+                                    {istBetreuer ? (
+                                        istAktuell && (
+                                            <button className="btn btn-primary" onClick={() => navigate("/einladungen")}>
+                                                Zu den Einladungen
+                                            </button>
+                                        )
+                                    ) : (
+                                        <button className="btn btn-primary" onClick={() => navigate("/create-project")}>
+                                            Projekt erstellen
+                                        </button>
+                                    )}
                                 </>
                             ) : (
                                 <>

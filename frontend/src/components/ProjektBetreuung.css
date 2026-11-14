@@ -1,0 +1,219 @@
+/* Bereich "Betreuung" auf der Projektseite – Farben aus index.css */
+
+.pb-ablehnung {
+    display: flex;
+    gap: 1rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: var(--sop-radius);
+    border: 1px solid #fecaca;
+    border-left: 4px solid #dc2626;
+    background: #fef2f2;
+}
+
+.pb-ablehnung-symbol {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #b91c1c;
+    background: #fee2e2;
+}
+
+.pb-ablehnung-titel {
+    margin: 0 0 0.25rem;
+    color: #991b1b;
+}
+
+.pb-ablehnung-text {
+    margin: 0 0 0.6rem;
+    font-size: 0.9rem;
+    color: var(--sop-text);
+}
+
+.pb-ablehnung-grund {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0 0 0.6rem;
+    font-size: 0.9rem;
+}
+
+.pb-ablehnung-grund dt {
+    font-weight: 600;
+    color: var(--sop-text-leise);
+}
+
+.pb-ablehnung-grund dd {
+    margin: 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.pb-ablehnung-hinweis {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--sop-text-leise);
+}
+
+@media (max-width: 575.98px) {
+    .pb-ablehnung-grund {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- Karte "Betreuung" (Betreuer:in und Co-Betreuung) ---------- */
+
+.pb-titel {
+    color: var(--sop-navy);
+}
+
+.pb-personen {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.25rem 1.5rem;
+}
+
+.pb-person {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    min-width: 0;
+}
+
+.pb-avatar {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.pb-avatar-betreuer {
+    color: #ffffff;
+    background: var(--sop-navy);
+}
+
+.pb-avatar-co {
+    color: #ffffff;
+    background: var(--sop-tuerkis);
+}
+
+.pb-avatar-offen {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.pb-name {
+    font-weight: 600;
+    color: var(--sop-navy);
+    line-height: 1.2;
+}
+
+.pb-ich {
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--sop-tuerkis-dunkel);
+    background: var(--sop-tuerkis-flaeche);
+}
+
+.pb-rolle {
+    font-size: 0.78rem;
+    color: var(--sop-text-leise);
+}
+
+.pb-status {
+    font-weight: 600;
+}
+
+.pb-status-offen {
+    color: #b45309;
+}
+
+.pb-status-angenommen {
+    color: var(--sop-tuerkis-dunkel);
+}
+
+.pb-leer {
+    grid-column: 1 / -1;
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--sop-text-leise);
+}
+
+.pb-form {
+    margin-top: 0.75rem;
+    padding: 1rem;
+    border-radius: var(--sop-radius-klein);
+    border: 1px solid var(--sop-rahmen);
+    background: var(--sop-hintergrund);
+}
+
+.pb-verlauf {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.pb-verlauf summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--sop-text-leise);
+}
+
+.pb-verlauf ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
+    color: var(--sop-text-leise);
+}
+
+/* ---------- Uebergabe der Betreuung ---------- */
+
+.pb-uebergabe-hinweis {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0.25rem 0 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--sop-radius-klein);
+    border: 1px solid #fde68a;
+    background: #fffbeb;
+    font-size: 0.88rem;
+    color: #78350f;
+}
+
+.pb-form-titel {
+    margin-bottom: 0.25rem;
+    color: var(--sop-navy);
+    font-weight: 700;
+}
+
+.pb-form legend {
+    font-size: 1rem;
+}
+
+.pb-verlauf-datum {
+    font-weight: 600;
+    color: var(--sop-navy);
+}
+
+/* Gruende fuer die Uebergabe (Radio-Buttons) */
+.pb-grund {
+    padding: 0.45rem 0.75rem 0.45rem 2.25rem;
+    margin-bottom: 0.35rem;
+    border-radius: var(--sop-radius-klein);
+    border: 1px solid var(--sop-rahmen);
+    background: var(--sop-flaeche);
+}

@@ -1,4 +1,4 @@
 {
     "subject": "Ihre Projektanfrage wurde abgelehnt: ${projektTitel}",
-    "body": "Hallo ${studentVorname} ${studentName},\n\nIhre Projektanfrage wurde leider abgelehnt.\n\n${betreuerVorname} ${betreuerName} kann die Betreuung für folgendes Projekt nicht übernehmen:\n\nProjekt: ${projektTitel}\nFachbereich: ${fachbereich}\nProjektart: ${projektart}\nSemester: ${semester}\n\nSie können in SOPHub eine andere Betreuerin oder einen anderen Betreuer anfragen:\n\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
+    "body": "Hallo ${studentVorname} ${studentName},\n\nIhre Projektanfrage wurde leider abgelehnt.\n\n${betreuerVorname} ${betreuerName} kann die Betreuung für folgendes Projekt nicht übernehmen:\n\nProjekt: ${projektTitel}\nProjektart: ${projektart}\nSemester: ${semester}\n\nGrund: ${grund}${erklaerung}\n\nDen Grund finden Sie auch auf der Projektseite. Sie können in SOPHub eine andere Betreuerin oder einen anderen Betreuer anfragen:\n\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
 }

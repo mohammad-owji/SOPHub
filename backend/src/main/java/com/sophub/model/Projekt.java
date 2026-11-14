@@ -95,6 +95,17 @@ public class Projekt {
     @JoinColumn(name = "betreuer_id")
     private User betreuer;
 
+    // Ablehnung durch die Betreuung: Grund (aus der Auswahl) und optionale Erklaerung,
+    // damit das Team nachvollziehen kann, warum die Anfrage abgelehnt wurde
+    @Column(name = "ablehnungs_grund")
+    private String ablehnungsGrund;
+
+    @Column(name = "ablehnungs_kommentar", columnDefinition = "TEXT")
+    private String ablehnungsKommentar;
+
+    @Column(name = "abgelehnt_am")
+    private LocalDateTime abgelehntAm;
+
     @PrePersist
     protected void onCreate() {
         erstelltAm = LocalDateTime.now();
@@ -133,6 +144,9 @@ public class Projekt {
     public LocalDateTime getGeaendertAm() { return geaendertAm; }
     public User getStudent() { return student; }
     public User getBetreuer() { return betreuer; }
+    public String getAblehnungsGrund() { return ablehnungsGrund; }
+    public String getAblehnungsKommentar() { return ablehnungsKommentar; }
+    public LocalDateTime getAbgelehntAm() { return abgelehntAm; }
 
     // setter
     public void setId(Long id) { this.id = id; }
@@ -161,4 +175,7 @@ public class Projekt {
     public void setGeaendertAm(LocalDateTime geaendertAm) { this.geaendertAm = geaendertAm; }
     public void setStudent(User student) { this.student = student; }
     public void setBetreuer(User betreuer) { this.betreuer = betreuer; }
+    public void setAblehnungsGrund(String ablehnungsGrund) { this.ablehnungsGrund = ablehnungsGrund; }
+    public void setAblehnungsKommentar(String ablehnungsKommentar) { this.ablehnungsKommentar = ablehnungsKommentar; }
+    public void setAbgelehntAm(LocalDateTime abgelehntAm) { this.abgelehntAm = abgelehntAm; }
 }

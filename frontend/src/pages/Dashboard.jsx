@@ -5,12 +5,18 @@ import ProjektStatusBadge from "../components/ProjektStatus";
 import { getAuth, getAlleProjekte, getMeineProjekte, getMeineEinladungen } from "../services/api";
 import "./Dashboard.css";
 
-// Schnellzugriff rechts (nur Seiten, die es wirklich gibt)
-const SCHNELLZUGRIFF = [
+// Schnellzugriff rechts (nur Seiten, die es wirklich gibt), je nach Rolle
+const SCHNELLZUGRIFF_STUDENT = [
     { ziel: "/create-project", titel: "Projekt erstellen", text: "Neue Projektidee anlegen und Betreuer:in anfragen" },
     { ziel: "/my-projects", titel: "Meine Projekte", text: "Eigene Projekte ansehen und bearbeiten" },
     { ziel: "/projects", titel: "Alle Projekte", text: "Laufende und abgeschlossene Projekte durchsuchen" },
+    { ziel: "/profile", titel: "Profil", text: "Persönliche Daten verwalten" },
+];
+
+const SCHNELLZUGRIFF_BETREUER = [
+    { ziel: "/aktuelle-projekte", titel: "Aktuelle Projekte", text: "Projekte, die Sie derzeit betreuen" },
     { ziel: "/einladungen", titel: "Einladungen", text: "Projektanfragen annehmen oder ablehnen" },
+    { ziel: "/projects", titel: "Alle Projekte", text: "Laufende und abgeschlossene Projekte durchsuchen" },
     { ziel: "/profile", titel: "Profil", text: "Persönliche Daten verwalten" },
 ];
 
@@ -53,7 +59,7 @@ function Dashboard() {
     const kacheln = istBetreuer
         ? [
             { symbol: "✉", zahl: zaehle(einladungen, "OFFEN"), text: "Offene Anfragen", ziel: "/einladungen" },
-            { symbol: "✓", zahl: zaehle(einladungen, "ANGENOMMEN"), text: "Betreute Projekte", ziel: "/einladungen" },
+            { symbol: "✓", zahl: zaehle(einladungen, "ANGENOMMEN"), text: "Aktuelle Projekte", ziel: "/aktuelle-projekte" },
             { symbol: "✕", zahl: zaehle(einladungen, "ABGELEHNT"), text: "Abgelehnte Anfragen", ziel: "/einladungen" },
             { symbol: "▦", zahl: alleProjekte.length, text: "Projekte im Portal", ziel: "/projects" },
         ]
@@ -185,7 +191,7 @@ function Dashboard() {
                             <div className="card-body">
                                 <h4 className="mb-2">Schnellzugriff</h4>
 
-                                {SCHNELLZUGRIFF.map((eintrag) => (
+                                {(istBetreuer ? SCHNELLZUGRIFF_BETREUER : SCHNELLZUGRIFF_STUDENT).map((eintrag) => (
                                     <Link className="dash-eintrag" to={eintrag.ziel} key={eintrag.ziel}>
                                         <div>
                                             <div className="dash-eintrag-titel">{eintrag.titel}</div>

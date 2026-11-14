@@ -1,0 +1,4 @@
+{
+    "subject": "Neue Betreuung für Ihr Projekt: ${projektTitel}",
+    "body": "Hallo ${empfaengerVorname} ${empfaengerName},\n\ndie Betreuung Ihres Projekts \"${projektTitel}\" wurde von ${bisherVorname} ${bisherName} an ${neuVorname} ${neuName} übergeben.\n\nMitteilungen, Abgaben und Dokumente bleiben unverändert erhalten. Neue Mitteilungen und Abgaben gehen ab sofort an die neue Betreuung.\n\nZum Projekt:\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
+}

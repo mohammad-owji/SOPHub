@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { getAuth, getMeineEinladungen } from "../services/api";
+import { getMeineCoEinladungen } from "../services/betreuungService";
 import "./Navbar.css";
 
 // Diese Meldung schicken Seiten, nachdem sich etwas an den Einladungen geaendert hat
@@ -20,9 +21,12 @@ export const SOP_ASSISTENT_LABEL = "KI-Assistent";
 // Hauptmenue (Reihenfolge = Reihenfolge in der Navbar)
 // "Projekt erstellen" steht bewusst NICHT hier, sondern als Button auf
 // Dashboard, "Meine Projekte" und "Alle Projekte" (keine doppelten Buttons).
-const MENUE = [
+// Betreuer:innen sehen statt "Meine Projekte" die "Aktuellen Projekte" (laufende Betreuungen).
+const menueFuer = (istBetreuer) => [
     { ziel: "/dashboard", text: "Dashboard" },
-    { ziel: "/my-projects", text: "Meine Projekte" },
+    istBetreuer
+        ? { ziel: "/aktuelle-projekte", text: "Aktuelle Projekte" }
+        : { ziel: "/my-projects", text: "Meine Projekte" },
     { ziel: "/projects", text: "Alle Projekte" },
     { ziel: "/einladungen", text: "Einladungen" },
     { ziel: "/ideas", text: "Projektideen" },
@@ -35,7 +39,8 @@ function Navbar() {
     const auth = getAuth();
     const istBetreuer = auth?.rolle === "PROFESSOR";
 
-    // Anzahl offener Projektanfragen (nur fuer Betreuer:innen), als Zahl neben "Einladungen"
+    // Anzahl offener Projektanfragen und Co-Betreuungs-Einladungen (nur fuer Betreuer:innen),
+    // als Zahl neben "Einladungen"
     const [offeneEinladungen, setOffeneEinladungen] = useState(0);
 
     useEffect(() => {
@@ -43,13 +48,15 @@ function Navbar() {
 
         let aktiv = true;
         const laden = () =>
-            getMeineEinladungen()
-                .then((liste) => {
-                    if (!aktiv) return;
-                    const offen = (liste || []).filter((p) => (p.status || "").toUpperCase() === "OFFEN");
-                    setOffeneEinladungen(offen.length);
-                })
-                .catch(() => { });
+            Promise.all([
+                getMeineEinladungen().catch(() => []),
+                getMeineCoEinladungen().catch(() => []),
+            ]).then(([anfragen, co]) => {
+                if (!aktiv) return;
+                const offen = (anfragen || []).filter((p) => (p.status || "").toUpperCase() === "OFFEN").length
+                    + (co || []).filter((e) => e.status === "OFFEN").length;
+                setOffeneEinladungen(offen);
+            });
 
         laden();
         // Neu laden, wenn eine Seite Bescheid gibt oder man zum Browser-Tab zurueckkehrt
@@ -105,7 +112,7 @@ function Navbar() {
 
                 <div className="collapse navbar-collapse" id="sopHauptmenue">
                     <div className="navbar-nav mx-auto sop-nav-links">
-                        {MENUE.map((eintrag) => (
+                        {menueFuer(istBetreuer).map((eintrag) => (
                             <NavLink
                                 key={eintrag.ziel}
                                 className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
@@ -145,8 +152,8 @@ function Navbar() {
                                 </li>
 
                                 <li>
-                                    <Link className="dropdown-item" to="/my-projects">
-                                        Meine Projekte
+                                    <Link className="dropdown-item" to={istBetreuer ? "/aktuelle-projekte" : "/my-projects"}>
+                                        {istBetreuer ? "Aktuelle Projekte" : "Meine Projekte"}
                                     </Link>
                                 </li>
 

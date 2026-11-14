@@ -24,6 +24,8 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects scope="alle" />} />
         <Route path="/my-projects" element={<Projects scope="meine" />} />
+        {/* Betreuer:innen: laufende Projekte, die sie aktuell betreuen */}
+        <Route path="/aktuelle-projekte" element={<Projects scope="aktuell" />} />
         <Route path="/projectdetails" element={<ProjectDetails />} />
         <Route path="/projectdetails/:id" element={<ProjectDetails />} />
         <Route path="/profile" element={<Profile />} />

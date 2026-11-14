@@ -3,6 +3,7 @@ package com.sophub.service;
 import com.sophub.model.Projekt;
 import com.sophub.model.Rolle;
 import com.sophub.model.User;
+import com.sophub.repository.BetreuungsEinladungRepository;
 import com.sophub.repository.ProjektMitgliedRepository;
 import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
@@ -28,6 +29,7 @@ class MitgliedschaftServiceTest {
     @Mock ProjektRepository projektRepository;
     @Mock UserRepository userRepository;
     @Mock EmailService emailService;
+    @Mock BetreuungsEinladungRepository betreuungsEinladungRepository;
     @InjectMocks MitgliedschaftService service;
 
     private User user(String benutzername, long id, String rolle) {

@@ -1,0 +1,4 @@
+{
+    "subject": "Co-Betreuung ${entscheidung}: ${projektTitel}",
+    "body": "Hallo ${empfaengerVorname} ${empfaengerName},\n\n${personVorname} ${personName} hat Ihre Einladung zur Co-Betreuung des Projekts \"${projektTitel}\" ${entscheidung}.\n\nZum Projekt:\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
+}

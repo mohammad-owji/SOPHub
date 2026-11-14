@@ -73,7 +73,8 @@ public class ProjektController {
             projekt.getGruppenanzahl(), projekt.getSchlagwoerter(),
             projekt.getStudent() == null ? null : new PersonAnsicht(projekt.getStudent()),
             projekt.getBetreuer() == null ? null : new PersonAnsicht(projekt.getBetreuer()),
-            projekt.getTags().stream().map(TagAnsicht::new).toList(), owner, teammitglied));
+            projekt.getTags().stream().map(TagAnsicht::new).toList(), owner, teammitglied,
+            projekt.getAblehnungsGrund(), projekt.getAblehnungsKommentar(), projekt.getAbgelehntAm()));
     }
 
     // Einladungen des eingeloggten Betreuers.
@@ -151,9 +152,13 @@ public class ProjektController {
         }
     }
 
-    // Projekt annehmen
+    // Projekt annehmen (nur der angemeldete, eingeladene Betreuer selbst)
     @PutMapping("/{projektId}/annehmen/{betreuerId}")
-    public ResponseEntity<?> annehmen(@PathVariable Long projektId, @PathVariable Long betreuerId) {
+    public ResponseEntity<?> annehmen(@PathVariable Long projektId, @PathVariable Long betreuerId,
+                                      Authentication authentication) {
+        if (!projektService.istAngemeldeterBenutzer(betreuerId, authentication.getName())) {
+            return ResponseEntity.status(403).body("Sie können nur für sich selbst entscheiden.");
+        }
         try {
             return ResponseEntity.ok(projektService.annehmen(projektId, betreuerId));
         } catch (Exception e) {
@@ -161,11 +166,18 @@ public class ProjektController {
         }
     }
 
-    // Projekt ablehnen
+    // Projekt ablehnen: Grund (Pflicht) und Erklaerung (Pflicht bei "Sonstiges") im Body
     @PutMapping("/{projektId}/ablehnen/{betreuerId}")
-    public ResponseEntity<?> ablehnen(@PathVariable Long projektId, @PathVariable Long betreuerId) {
+    public ResponseEntity<?> ablehnen(@PathVariable Long projektId, @PathVariable Long betreuerId,
+                                      @RequestBody(required = false) AblehnungAnfrage anfrage,
+                                      Authentication authentication) {
+        if (!projektService.istAngemeldeterBenutzer(betreuerId, authentication.getName())) {
+            return ResponseEntity.status(403).body("Sie können nur für sich selbst entscheiden.");
+        }
         try {
-            return ResponseEntity.ok(projektService.ablehnen(projektId, betreuerId));
+            String grund = anfrage == null ? null : anfrage.grund();
+            String kommentar = anfrage == null ? null : anfrage.kommentar();
+            return ResponseEntity.ok(projektService.ablehnen(projektId, betreuerId, grund, kommentar));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
         }
@@ -215,7 +227,11 @@ public class ProjektController {
     record ProjektDetailansicht(Long id, String titel, String beschreibung, String semester,
                                 String fachbereich, String studiengang, String projektart, String status, Integer gruppenanzahl,
                                 String schlagwoerter, PersonAnsicht student, PersonAnsicht betreuer,
-                                List<TagAnsicht> tags, boolean istOwner, boolean istTeammitglied) {}
+                                List<TagAnsicht> tags, boolean istOwner, boolean istTeammitglied,
+                                String ablehnungsGrund, String ablehnungsKommentar, java.time.LocalDateTime abgelehntAm) {}
+
+    /** Body von PUT /{projektId}/ablehnen/{betreuerId} */
+    record AblehnungAnfrage(String grund, String kommentar) {}
 
     record PersonAnsicht(Long id, String vorname, String name, String benutzername) {
         PersonAnsicht(User user) {

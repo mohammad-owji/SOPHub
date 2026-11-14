@@ -6,6 +6,7 @@ import DokumentAnsicht from "../components/DokumentAnsicht";
 import ProjektMitteilungen from "../components/ProjektMitteilungen";
 import ProjektAnforderungen from "../components/ProjektAnforderungen";
 import ProjektStatusBadge from "../components/ProjektStatus";
+import ProjektBetreuung from "../components/ProjektBetreuung";
 import {
     getAuth,
     getProjektDetails,
@@ -468,6 +469,10 @@ function ProjectDetails() {
                         </div>
                     </div>
                 </section>
+
+                {/* Betreuung: Grund einer Ablehnung (fuer das Team), spaeter auch Co-Betreuung und Uebergabe.
+                    Die Komponente entscheidet selbst, was die angemeldete Person sehen darf. */}
+                <ProjektBetreuung projekt={projekt} projektId={id} istTeam={darfBearbeiten} />
 
                 {/* Reiter nur fuer Personen mit Zugriff (Team und Betreuung) */}
                 {zeigeReiter && (

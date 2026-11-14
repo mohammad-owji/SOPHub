@@ -3,6 +3,7 @@ package com.sophub.service;
 import com.sophub.model.Projekt;
 import com.sophub.model.ProjektMitglied;
 import com.sophub.model.User;
+import com.sophub.repository.BetreuungsEinladungRepository;
 import com.sophub.repository.ProjektMitgliedRepository;
 import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
@@ -18,15 +19,23 @@ public class MitgliedschaftService {
     private final ProjektRepository projektRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final BetreuungsEinladungRepository betreuungsEinladungRepository;
 
     public MitgliedschaftService(ProjektMitgliedRepository projektMitgliedRepository,
                                  ProjektRepository projektRepository,
                                  UserRepository userRepository,
-                                 EmailService emailService) {
+                                 EmailService emailService,
+                                 BetreuungsEinladungRepository betreuungsEinladungRepository) {
         this.projektMitgliedRepository = projektMitgliedRepository;
         this.projektRepository = projektRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.betreuungsEinladungRepository = betreuungsEinladungRepository;
+    }
+
+    /** Ist die Person angenommene Co-Betreuung des Projekts (gleiche Rechte wie die Betreuung)? */
+    public boolean istCoBetreuer(Long projektId, Long userId) {
+        return betreuungsEinladungRepository.istCoBetreuer(projektId, userId);
     }
 
     public List<ProjektMitglied> mitglieder(Long projektId) {
@@ -53,7 +62,7 @@ public class MitgliedschaftService {
 
     /**
      * Darf der Nutzer interne Details/Inhalte des Projekts sehen?
-     * Das sind Admins, der zugewiesene Betreuer, der Ersteller und Teammitglieder -
+     * Das sind Admins, der zugewiesene Betreuer, die Co-Betreuung, der Ersteller und Teammitglieder -
      * dieselbe Regel wie beim Zugriff auf Original-Dokumente (F27).
      */
     public boolean darfInterneDetails(Long projektId, String benutzername) {
@@ -70,7 +79,10 @@ public class MitgliedschaftService {
         if (projekt.getStudent() != null && projekt.getStudent().getId().equals(benutzer.getId())) {
             return true;
         }
-        return projektMitgliedRepository.existsByProjektIdAndStudentId(projektId, benutzer.getId());
+        if (projektMitgliedRepository.existsByProjektIdAndStudentId(projektId, benutzer.getId())) {
+            return true;
+        }
+        return betreuungsEinladungRepository.istCoBetreuer(projektId, benutzer.getId());
     }
 
     public ProjektMitglied hinzufuegen(Long projektId, Long studentId) {
