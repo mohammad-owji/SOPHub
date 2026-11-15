@@ -30,7 +30,6 @@ const menueFuer = (istBetreuer) => [
     { ziel: "/projects", text: "Alle Projekte" },
     { ziel: "/einladungen", text: "Einladungen" },
     { ziel: "/ideas", text: "Projektideen" },
-    { ziel: "/ai", text: "KI" },
     { ziel: "/sop-assistent", text: SOP_ASSISTENT_LABEL },
 ];
 
