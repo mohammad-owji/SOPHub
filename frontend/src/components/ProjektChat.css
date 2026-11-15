@@ -90,6 +90,53 @@
     font-style: italic;
 }
 
+/* Inline-Bestätigung direkt an der Nachricht (statt Browser-Dialog) */
+.pc-confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    background: #fff5f5;
+    border: 1px solid #f5c2c7;
+    border-radius: 0.5rem;
+    font-size: 0.82rem;
+}
+
+/* Rechtsklick-Kontextmenü */
+.pc-menu-fang {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+}
+
+.pc-menu {
+    position: fixed;
+    z-index: 1050;
+    min-width: 8rem;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    padding: 0.25rem;
+}
+
+.pc-menu-eintrag {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.35rem;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.pc-menu-eintrag:hover {
+    background: #f8f9fa;
+}
+
 .pc-bubble {
     padding: 0.5rem 0.75rem;
     border-radius: 0.9rem;

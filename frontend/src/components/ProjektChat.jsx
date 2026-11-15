@@ -51,6 +51,11 @@ function ProjektChat({ projektId, onZugriff, onKeinZugriff }) {
     const [eingabe, setEingabe] = useState("");
     const [sendet, setSendet] = useState(false);
 
+    // Rechtsklick-Menü (welche Nachricht, Position) und die zu bestätigende Löschung.
+    const [menuId, setMenuId] = useState(null);
+    const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+    const [loeschId, setLoeschId] = useState(null);
+
     const verlaufEndeRef = useRef(null);
     const containerRef = useRef(null);
 
@@ -123,13 +128,23 @@ function ProjektChat({ projektId, onZugriff, onKeinZugriff }) {
         }
     };
 
-    const loeschen = async (nachrichtId) => {
-        if (!window.confirm("Diese Nachricht löschen? Sie wird für alle als „gelöscht\" angezeigt.")) return;
+    // Rechtsklick auf eine eigene, noch nicht gelöschte Nachricht öffnet das Menü.
+    const kontextMenue = (event, n) => {
+        if (!n.eigene || n.geloescht) return;
+        event.preventDefault();
+        setMenuId(n.id);
+        setMenuPos({ x: event.clientX, y: event.clientY });
+    };
+
+    const loeschenBestaetigen = async () => {
+        const id = loeschId;
+        setLoeschId(null);
+        if (!id) return;
         setFehler("");
         try {
-            await loescheChatNachricht(projektId, nachrichtId);
+            await loescheChatNachricht(projektId, id);
             setNachrichten((prev) =>
-                prev.map((n) => (n.id === nachrichtId ? { ...n, geloescht: true, text: "" } : n)));
+                prev.map((n) => (n.id === id ? { ...n, geloescht: true, text: "" } : n)));
         } catch (error) {
             setFehler(error.message || "Nachricht konnte nicht gelöscht werden.");
         }
@@ -162,7 +177,11 @@ function ProjektChat({ projektId, onZugriff, onKeinZugriff }) {
                             const rechts = n.autor?.seite === "rechts";
                             const farbe = avatarFarbe(n.autor);
                             return (
-                                <div key={n.id} className={`pc-zeile ${rechts ? "rechts" : "links"}`}>
+                                <div
+                                    key={n.id}
+                                    className={`pc-zeile ${rechts ? "rechts" : "links"}`}
+                                    onContextMenu={(e) => kontextMenue(e, n)}
+                                >
                                     {n.autor?.profilbild ? (
                                         <img
                                             className="pc-avatar pc-avatar-bild"
@@ -185,8 +204,8 @@ function ProjektChat({ projektId, onZugriff, onKeinZugriff }) {
                                                 <button
                                                     type="button"
                                                     className="pc-loeschen"
-                                                    onClick={() => loeschen(n.id)}
-                                                    title="Nachricht löschen"
+                                                    onClick={() => setLoeschId(n.id)}
+                                                    title="Nachricht löschen (oder Rechtsklick)"
                                                 >
                                                     Löschen
                                                 </button>
@@ -203,6 +222,25 @@ function ProjektChat({ projektId, onZugriff, onKeinZugriff }) {
                                                 {n.text}
                                             </div>
                                         )}
+                                        {loeschId === n.id && (
+                                            <div className="pc-confirm">
+                                                <span>Nachricht löschen?</span>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={loeschenBestaetigen}
+                                                >
+                                                    Löschen
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    onClick={() => setLoeschId(null)}
+                                                >
+                                                    Abbrechen
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -210,6 +248,25 @@ function ProjektChat({ projektId, onZugriff, onKeinZugriff }) {
                     )}
                     <div ref={verlaufEndeRef} />
                 </div>
+
+                {/* Rechtsklick-Menü einer eigenen Nachricht */}
+                {menuId !== null && (
+                    <>
+                        <div className="pc-menu-fang" onClick={() => setMenuId(null)} />
+                        <div className="pc-menu" style={{ top: menuPos.y, left: menuPos.x }}>
+                            <button
+                                type="button"
+                                className="pc-menu-eintrag text-danger"
+                                onClick={() => {
+                                    setLoeschId(menuId);
+                                    setMenuId(null);
+                                }}
+                            >
+                                Löschen
+                            </button>
+                        </div>
+                    </>
+                )}
 
                 <form className="pc-eingabe" onSubmit={senden}>
                     <textarea
