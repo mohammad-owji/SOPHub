@@ -274,6 +274,11 @@
     border: 1px solid #e9ecef;
 }
 
+/* Aktions-Schaltfläche (z. B. "Projekt erstellen") - nur der Button, kein Kasten */
+.sop-aktion {
+    display: flex;
+}
+
 .sop-ampel-gruen,
 .sop-grad-hoch { background: #198754; color: #fff; }
 

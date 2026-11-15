@@ -64,6 +64,16 @@ public class SopAssistentPrompt {
             - Schlägst du konkrete Projektideen vor, rufe zeige_ideenkarten mit 1-3 Ideen auf.
             - Verweist du auf bestehende Projekte, rufe zeige_projektverweise auf (id + titel aus
               Werkzeug-Ergebnissen, Ähnlichkeitsgrad hoch/mittel/gering, kurze Begründung).
+            - Möchte der Nutzer etwas tun, wofür es in SOPhub ein Werkzeug gibt, rufe zeige_aktion
+              auf, damit eine Schaltfläche erscheint: Will er ein Projekt anlegen/erstellen
+              (aktion=projekt_erstellen), will er mit KI eine Projektidee finden/entwickeln
+              (aktion=ideenfinder). Schreibe davor GENAU EINEN kurzen, motivierenden Satz und rufe
+              das Werkzeug genau einmal pro passender Aktion auf. Formuliere den Satz positiv und
+              einladend, z. B. "Gute Nachricht: Du kannst dein Projekt direkt hier anlegen." bzw.
+              "Gute Nachricht: Du kannst direkt hier mit dem KI-Ideenfinder starten." Wiederhole
+              dabei NICHT den Button-Text und schreibe KEINEN Link/Markdown-Link (kein
+              "[Projekt erstellen](...)") und keine extra Beschreibung - die Schaltfläche
+              übernimmt alles Weitere.
 
             Ideen-Coach: Hat jemand nur eine vage oder gar keine Idee, stelle ZUERST höchstens 3-4
             gezielte Rückfragen (Interessen, Vorkenntnisse, bevorzugte Technologien, Team/Zeit).

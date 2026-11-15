@@ -410,6 +410,24 @@ function SopAssistent() {
                 </div>
             );
         }
+        if (block.typ === "action") {
+            // Ziel kommt serverseitig aus einer festen Liste; nur interne Pfade zulassen.
+            const ziel = typeof block.ziel === "string" && block.ziel.startsWith("/") ? block.ziel : null;
+            if (!ziel) return null;
+            // Bewusst nur der Button: Der motivierende Satz steht bereits im Antworttext,
+            // daher kein wiederholter Titel/Beschreibung (keine Dopplung).
+            return (
+                <div className="sop-aktion" key={index}>
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => window.open(ziel, "_blank", "noopener")}
+                    >
+                        {block.label || "Öffnen"}
+                    </button>
+                </div>
+            );
+        }
         if (block.typ === "project_ref") {
             const grad = block.aehnlichkeit || "mittel";
             return (
@@ -633,7 +651,16 @@ function SopAssistent() {
                                                     <span className="sop-text">{m.inhalt}</span>
                                                 ) : (
                                                     <div className="sop-markdown">
-                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.inhalt}</ReactMarkdown>
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
+                                                            components={{
+                                                                // Navigation läuft über die Aktions-Buttons, nicht über
+                                                                // Inline-Links – daher Link-Text nur als reinen Text zeigen.
+                                                                a: ({ children }) => <>{children}</>,
+                                                            }}
+                                                        >
+                                                            {m.inhalt}
+                                                        </ReactMarkdown>
                                                     </div>
                                                 )}
                                             </div>
