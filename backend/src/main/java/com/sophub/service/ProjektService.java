@@ -8,10 +8,12 @@ import com.sophub.repository.ProjektRepository;
 import com.sophub.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
@@ -91,6 +93,7 @@ public class ProjektService {
     public Projekt erstellen(Projekt projekt, Long studentId, Long betreuerId,
                              String neuerBetreuerVorname, String neuerBetreuerName,
                              String neuerBetreuerEmail) {
+        pruefePflichtfelder(projekt);
         Long ausgewaehlteBetreuerId = betreuerId;
 
         boolean betreuerEingetippt = neuerBetreuerEmail != null && !neuerBetreuerEmail.isBlank();
@@ -104,6 +107,8 @@ public class ProjektService {
     }
 
     public Projekt erstellen(Projekt projekt, Long studentId, Long betreuerId) {
+        pruefePflichtfelder(projekt);
+
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student nicht gefunden."));
         projekt.setStudent(student);
@@ -135,11 +140,55 @@ public class ProjektService {
         return gespeichert;
     }
 
+    private void pruefePflichtfelder(Projekt projekt) {
+        if (projekt == null
+                || istLeer(projekt.getTitel())
+                || istLeer(projekt.getFachbereich())
+                || istLeer(projekt.getStudiengang())
+                || istLeer(projekt.getProjektart())) {
+            throw new IllegalArgumentException(
+                    "Titel, Fachbereich, Studiengang und Projektart sind Pflichtfelder.");
+        }
+
+        projekt.setTitel(projekt.getTitel().trim());
+        projekt.setFachbereich(projekt.getFachbereich().trim());
+        projekt.setStudiengang(projekt.getStudiengang().trim());
+        projekt.setProjektart(projekt.getProjektart().trim());
+    }
+
+    private boolean istLeer(String wert) {
+        return wert == null || wert.isBlank();
+    }
+
     public Projekt aktualisieren(Long id, Projekt aktuell) {
+        return aktualisieren(id, aktuell, null);
+    }
+
+    public Projekt aktualisieren(Long id, Projekt aktuell, Long betreuerId) {
         Projekt vorhandenes = projektRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
 
         String statusVorher = vorhandenes.getStatus();
+        User neuerBetreuer = null;
+        if (betreuerId != null) {
+            boolean betreuerwechselNachAblehnung = STATUS_ABGELEHNT.equalsIgnoreCase(statusVorher);
+            if (vorhandenes.getBetreuer() != null && !betreuerwechselNachAblehnung) {
+                throw new IllegalArgumentException("Diesem Projekt ist bereits ein Betreuer zugewiesen.");
+            }
+            neuerBetreuer = userRepository.findById(betreuerId)
+                    .orElseThrow(() -> new RuntimeException("Betreuer nicht gefunden."));
+            if (neuerBetreuer.getRolle() == null
+                    || !"PROFESSOR".equalsIgnoreCase(neuerBetreuer.getRolle().getName())) {
+                throw new IllegalArgumentException("Der ausgewählte Benutzer ist kein Betreuer.");
+            }
+            if (betreuerwechselNachAblehnung && vorhandenes.getBetreuer() != null
+                    && vorhandenes.getBetreuer().getId().equals(neuerBetreuer.getId())) {
+                throw new IllegalArgumentException("Bitte wählen Sie einen anderen Betreuer aus.");
+            }
+            vorhandenes.setBetreuer(neuerBetreuer);
+            vorhandenes.setStatus(STATUS_OFFEN);
+        }
+
         boolean zusammenfassungVeraltet =
                 (aktuell.getTitel() != null && !aktuell.getTitel().equals(vorhandenes.getTitel()))
                         || (aktuell.getBeschreibung() != null
@@ -165,6 +214,10 @@ public class ProjektService {
 
         Projekt gespeichert = projektRepository.save(vorhandenes);
 
+        if (neuerBetreuer != null && gespeichert.getStudent() != null) {
+            emailService.sendeProjektAnfrageEmailSofort(neuerBetreuer, gespeichert.getStudent(), gespeichert);
+        }
+
         boolean wurdeArchiviert = STATUS_ABGESCHLOSSEN.equalsIgnoreCase(gespeichert.getStatus())
                 && !STATUS_ABGESCHLOSSEN.equalsIgnoreCase(statusVorher);
         if (wurdeArchiviert) {
@@ -172,6 +225,22 @@ public class ProjektService {
         }
 
         return gespeichert;
+    }
+
+    public void einladungErneutSenden(Long id) {
+        Projekt projekt = projektRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Projekt nicht gefunden."));
+        if (projekt.getBetreuer() == null) {
+            throw new IllegalStateException("Dem Projekt ist kein Betreuer zugewiesen.");
+        }
+        if (!STATUS_OFFEN.equals(projekt.getStatus())) {
+            throw new IllegalStateException("Die Einladung ist nicht mehr offen.");
+        }
+        if (projekt.getStudent() == null) {
+            throw new IllegalStateException("Dem Projekt ist kein Ersteller zugewiesen.");
+        }
+
+        emailService.sendeProjektAnfrageEmailSofort(projekt.getBetreuer(), projekt.getStudent(), projekt);
     }
 
     // Projekt annehmen
@@ -237,15 +306,46 @@ public class ProjektService {
     }
 
     @Transactional
-    public void loeschen(Long id) {
+    public void loeschen(Long id, String benutzername) {
         Projekt projekt = projektRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Projekt nicht gefunden."));
+                .orElseThrow(() -> new NoSuchElementException("Projekt nicht gefunden."));
+
+        User benutzer = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new NoSuchElementException("Benutzer nicht gefunden."));
+        if (projekt.getBetreuer() != null) {
+            if (!projekt.getBetreuer().getId().equals(benutzer.getId())) {
+                throw new AccessDeniedException("Nur der zugewiesene Betreuer kann das Projekt löschen.");
+            }
+        } else if (!istTeammitglied(projekt, benutzer)) {
+            throw new AccessDeniedException("Nur Projekt-Ersteller und Teammitglieder können das Projekt löschen.");
+        }
 
         projektMitgliedRepository.deleteByProjektId(id);
         dokumentRepository.trenneVonProjekt(id);
         projekt.getTags().clear();
         projektRepository.saveAndFlush(projekt);
         projektRepository.delete(projekt);
+    }
+
+    public void loeschanfrageSenden(Long id, String benutzername) {
+        Projekt projekt = projektRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Projekt nicht gefunden."));
+        if (projekt.getBetreuer() == null) {
+            throw new IllegalStateException("Dem Projekt ist kein Betreuer zugewiesen.");
+        }
+
+        User anfragender = userRepository.findByBenutzername(benutzername)
+                .orElseThrow(() -> new NoSuchElementException("Benutzer nicht gefunden."));
+        if (!istTeammitglied(projekt, anfragender)) {
+            throw new AccessDeniedException("Nur Projekt-Ersteller und Teammitglieder können eine Löschanfrage senden.");
+        }
+
+        emailService.sendeProjektLoeschanfrageEmail(projekt.getBetreuer(), anfragender, projekt);
+    }
+
+    private boolean istTeammitglied(Projekt projekt, User benutzer) {
+        return (projekt.getStudent() != null && projekt.getStudent().getId().equals(benutzer.getId()))
+                || projektMitgliedRepository.existsByProjektIdAndStudentId(projekt.getId(), benutzer.getId());
     }
 
     /**

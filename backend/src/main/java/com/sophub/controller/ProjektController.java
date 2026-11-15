@@ -4,14 +4,17 @@ import com.sophub.model.AIResponse;
 import com.sophub.model.Projekt;
 import com.sophub.model.Tag;
 import com.sophub.model.User;
+import com.sophub.service.EmailService;
 import com.sophub.service.ProjektKiService;
 import com.sophub.service.ProjektService;
 import com.sophub.service.MitgliedschaftService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/sop/api/projekte")
@@ -63,7 +66,9 @@ public class ProjektController {
 
         boolean owner = mitgliedschaftService.istErsteller(id, authentication.getName());
         boolean teammitglied = mitgliedschaftService.istTeammitglied(id, authentication.getName());
-        if (!owner && !teammitglied) {
+        boolean betreuer = projekt.getBetreuer() != null
+                && authentication.getName().equals(projekt.getBetreuer().getBenutzername());
+        if (!owner && !teammitglied && !betreuer) {
             return ResponseEntity.ok(oeffentlicheAnsicht(projekt));
         }
 
@@ -73,7 +78,7 @@ public class ProjektController {
             projekt.getGruppenanzahl(), projekt.getSchlagwoerter(),
             projekt.getStudent() == null ? null : new PersonAnsicht(projekt.getStudent()),
             projekt.getBetreuer() == null ? null : new PersonAnsicht(projekt.getBetreuer()),
-            projekt.getTags().stream().map(TagAnsicht::new).toList(), owner, teammitglied));
+            projekt.getTags().stream().map(TagAnsicht::new).toList(), owner, teammitglied, betreuer));
     }
 
     // Einladungen des eingeloggten Betreuers.
@@ -111,6 +116,7 @@ public class ProjektController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> aktualisieren(@PathVariable Long id, @RequestBody Projekt projekt,
+                                           @RequestParam(required = false) Long betreuerId,
                                            Authentication authentication) {
         if (!mitgliedschaftService.darfProjektVerwalten(id, authentication.getName())) {
             return ResponseEntity.status(403).body("Nur Projekt-Ersteller und Teammitglieder können das Projekt bearbeiten.");
@@ -135,8 +141,7 @@ public class ProjektController {
                 }
             }
 
-            // Nur diese Felder duerfen ueber "Bearbeiten" geaendert werden.
-            // Status und Betreuer laufen bewusst NICHT hierueber (dafuer gibt es den Einladungs-Ablauf).
+            // Betreuerzuweisung und Wechsel nach einer Ablehnung werden im Service geprueft.
             Projekt aenderung = new Projekt();
             aenderung.setTitel(titel);
             aenderung.setBeschreibung(projekt.getBeschreibung());
@@ -145,9 +150,28 @@ public class ProjektController {
             aenderung.setStudiengang(getrimmt(projekt.getStudiengang()));
             aenderung.setProjektart(getrimmt(projekt.getProjektart()));
             aenderung.setGruppenanzahl(gruppenanzahl);
-            return ResponseEntity.ok(projektService.aktualisieren(id, aenderung));
+            return ResponseEntity.ok(projektService.aktualisieren(id, aenderung, betreuerId));
+        } catch (EmailService.EmailVersandException e) {
+            return ResponseEntity.status(502).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/einladung/erneut-senden")
+    public ResponseEntity<?> einladungErneutSenden(@PathVariable Long id, Authentication authentication) {
+        if (!mitgliedschaftService.istErsteller(id, authentication.getName())) {
+            return ResponseEntity.status(403).body("Nur der Projekt-Ersteller kann die Einladung erneut senden.");
+        }
+        try {
+            projektService.einladungErneutSenden(id);
+            return ResponseEntity.noContent().build();
+        } catch (EmailService.EmailVersandException e) {
+            return ResponseEntity.status(502).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 
@@ -173,13 +197,26 @@ public class ProjektController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> loeschen(@PathVariable Long id, Authentication authentication) {
-        if (!mitgliedschaftService.istErsteller(id, authentication.getName())) {
-            return ResponseEntity.status(403).body("Nur der Projekt-Ersteller kann das Projekt löschen.");
-        }
         try {
-            projektService.loeschen(id);
+            projektService.loeschen(id, authentication.getName());
             return ResponseEntity.ok("Projekt gelöscht.");
-        } catch (Exception e) {
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/loeschanfrage")
+    public ResponseEntity<?> loeschanfrageSenden(@PathVariable Long id, Authentication authentication) {
+        try {
+            projektService.loeschanfrageSenden(id, authentication.getName());
+            return ResponseEntity.noContent().build();
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (NoSuchElementException e) {
             return ResponseEntity.status(404).body(e.getMessage());
         }
     }
@@ -215,7 +252,7 @@ public class ProjektController {
     record ProjektDetailansicht(Long id, String titel, String beschreibung, String semester,
                                 String fachbereich, String studiengang, String projektart, String status, Integer gruppenanzahl,
                                 String schlagwoerter, PersonAnsicht student, PersonAnsicht betreuer,
-                                List<TagAnsicht> tags, boolean istOwner, boolean istTeammitglied) {}
+                                List<TagAnsicht> tags, boolean istOwner, boolean istTeammitglied, boolean istBetreuer) {}
 
     record PersonAnsicht(Long id, String vorname, String name, String benutzername) {
         PersonAnsicht(User user) {

@@ -175,8 +175,15 @@ function CreateProject() {
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        if (!titel) {
-            setMessage("Bitte mindestens einen Projekttitel angeben.");
+        const fehlendePflichtfelder = [
+            ["Projekttitel", titel],
+            ["Fachbereich", fachbereich],
+            ["Studiengang", studiengang],
+            ["Projektart", projektart],
+        ].filter(([, wert]) => !String(wert || "").trim()).map(([feld]) => feld);
+
+        if (fehlendePflichtfelder.length > 0) {
+            setMessage(`Bitte füllen Sie alle Pflichtfelder aus: ${fehlendePflichtfelder.join(", ")}.`);
             setMessageType("error");
             return;
         }
@@ -301,6 +308,7 @@ function CreateProject() {
                                     placeholder="z. B. SmartCampus Parking"
                                     value={titel}
                                     onChange={(e) => setTitel(e.target.value)}
+                                    required
                                 />
                             </div>
 
@@ -318,32 +326,38 @@ function CreateProject() {
 
                             <div className="row g-3">
                                 <div className="col-md-6">
-                                    <label className="form-label">Fachbereich</label>
+                                    <label className="form-label" htmlFor="cp-fachbereich">Fachbereich *</label>
                                     <AuswahlFeld
+                                        id="cp-fachbereich"
                                         value={fachbereich}
                                         onChange={(wert) => uebernehmeStudienAuswahl(nachFachbereichWechsel(studienAuswahl, wert))}
                                         optionen={FACHBEREICHE}
                                         placeholder="Auswählen oder eintippen"
+                                        required
                                     />
                                 </div>
 
                                 <div className="col-md-6">
-                                    <label className="form-label">Studiengang</label>
+                                    <label className="form-label" htmlFor="cp-studiengang">Studiengang *</label>
                                     <AuswahlFeld
+                                        id="cp-studiengang"
                                         value={studiengang}
                                         onChange={(wert) => uebernehmeStudienAuswahl(nachStudiengangWechsel(studienAuswahl, wert))}
                                         optionen={studiengaengeFuer(fachbereich)}
                                         placeholder="Auswählen oder eintippen"
+                                        required
                                     />
                                 </div>
 
                                 <div className="col-md-6">
-                                    <label className="form-label">Projektart</label>
+                                    <label className="form-label" htmlFor="cp-projektart">Projektart *</label>
                                     <AuswahlFeld
+                                        id="cp-projektart"
                                         value={projektart}
                                         onChange={setProjektart}
                                         optionen={projektartenFuer(fachbereich, studiengang)}
                                         placeholder="Auswählen oder eintippen"
+                                        required
                                     />
                                 </div>
 

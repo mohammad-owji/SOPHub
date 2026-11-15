@@ -1,0 +1,4 @@
+{
+    "subject": "Betreuungsanfrage versendet: ${projektTitel}",
+    "body": "Hallo ${studentVorname},\n\nDeine Betreuungsanfrage für das Projekt „${projektTitel}“ wurde per E-Mail an ${betreuerVorname} ${betreuerName} versendet.\n\nDu erhältst eine weitere Nachricht, sobald der Betreuer die Anfrage annimmt oder ablehnt.\n\nProjekt öffnen:\n${link}\n\nViele Grüße\nDein SOPHub-Team"
+}

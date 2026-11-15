@@ -18,9 +18,6 @@ import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
-// @Async: Alle oeffentlichen Methoden dieser Klasse laufen im Hintergrund.
-// Die Webseite muss so nicht warten, bis der Mailserver (Gmail) geantwortet hat.
-@Async
 @Service
 public class EmailService {
 
@@ -30,8 +27,11 @@ public class EmailService {
     private static final String BETREUER_ZUWEISUNGS_TEMPLATE = "email-templates/betreuer-zuweisung.json";
     private static final String TEAM_HINZUGEFUEGT_TEMPLATE = "email-templates/team-hinzugefuegt.json";
     private static final String PROJEKT_ANFRAGE_TEMPLATE = "email-templates/projekt-anfrage.json";
+    private static final String PROJEKT_ANFRAGE_BESTAETIGUNG_TEMPLATE =
+            "email-templates/projekt-anfrage-bestaetigung.json";
     private static final String PROJEKT_ANGENOMMEN_TEMPLATE = "email-templates/projekt-angenommen.json";
     private static final String PROJEKT_ABGELEHNT_TEMPLATE = "email-templates/projekt-abgelehnt.json";
+    private static final String PROJEKT_LOESCHANFRAGE_TEMPLATE = "email-templates/projekt-loeschanfrage.json";
     private static final DateTimeFormatter DATUM_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final JavaMailSender mailSender;
@@ -55,6 +55,7 @@ public class EmailService {
         this.mailSender = mailSender;
     }
 
+    @Async
     public void sendeRegistrierungsEmail(User user) {
         Map<String, String> werte = Map.of(
                 "benutzername", user.getBenutzername(),
@@ -71,6 +72,7 @@ public class EmailService {
      * Der Token wird als Parameter uebergeben (nicht aus dem User gelesen),
      * weil diese Methode im Hintergrund (@Async) laeuft.
      */
+    @Async
     public void sendeBestaetigungsEmail(User user, String token) {
         String link = frontendUrl + "/email-bestaetigen?token=" + token;
 
@@ -83,6 +85,7 @@ public class EmailService {
         sende(BESTAETIGUNGS_TEMPLATE, user.getEmail(), werte);
     }
 
+    @Async
     public void sendeBetreuerZuweisungsEmail(User betreuer, User student, Projekt projekt) {
         Map<String, String> werte = Map.of(
                 "betreuerVorname", betreuer.getVorname(),
@@ -97,6 +100,7 @@ public class EmailService {
         sende(BETREUER_ZUWEISUNGS_TEMPLATE, betreuer.getEmail(), werte);
     }
 
+    @Async
     public void sendeTeamMitgliedEmail(User mitglied, User ersteller, Projekt projekt) {
         Map<String, String> werte = Map.of(
                 "mitgliedVorname", mitglied.getVorname(),
@@ -113,7 +117,17 @@ public class EmailService {
      * Schickt dem eingeladenen Betreuer eine Projektanfrage mit Link zur Einladungsseite.
      * Der Link fuehrt direkt auf die React-Route /project-invitation/{projektId}.
      */
+    @Async
     public void sendeProjektAnfrageEmail(User betreuer, User student, Projekt projekt) {
+        sendeProjektAnfrageEmailIntern(betreuer, student, projekt, false);
+    }
+
+    public void sendeProjektAnfrageEmailSofort(User betreuer, User student, Projekt projekt) {
+        sendeProjektAnfrageEmailIntern(betreuer, student, projekt, true);
+        sendeProjektAnfrageBestaetigungEmail(betreuer, student, projekt);
+    }
+
+    private void sendeProjektAnfrageEmailIntern(User betreuer, User student, Projekt projekt, boolean fehlerMelden) {
         String link = frontendUrl + "/project-invitation/" + projekt.getId();
 
         Map<String, String> werte = Map.of(
@@ -127,13 +141,34 @@ public class EmailService {
                 "semester", textOderStrich(projekt.getSemester()),
                 "link", link
         );
-        sende(PROJEKT_ANFRAGE_TEMPLATE, betreuer.getEmail(), werte);
+        sende(PROJEKT_ANFRAGE_TEMPLATE, betreuer.getEmail(), werte,
+                fehlerMelden ? "Die Betreuer-Einladung konnte nicht per E-Mail versendet werden. Bitte versuchen Sie es erneut."
+                        : null);
+    }
+
+    private void sendeProjektAnfrageBestaetigungEmail(User betreuer, User student, Projekt projekt) {
+        String link = frontendUrl + "/projectdetails/" + projekt.getId();
+        Map<String, String> werte = Map.of(
+                "studentVorname", textOderStrich(student.getVorname()),
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "link", link
+        );
+        sende(PROJEKT_ANFRAGE_BESTAETIGUNG_TEMPLATE, student.getEmail(), werte);
+    }
+
+    public static class EmailVersandException extends RuntimeException {
+        public EmailVersandException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     /**
      * Informiert den Studenten, ob der eingeladene Betreuer das Projekt angenommen oder abgelehnt hat.
      * Der Link fuehrt auf die Projektdetails: /projectdetails/{projektId}.
      */
+    @Async
     public void sendeProjektEntscheidungEmail(User student, User betreuer, Projekt projekt, boolean angenommen) {
         String link = frontendUrl + "/projectdetails/" + projekt.getId();
         String vorlage = angenommen ? PROJEKT_ANGENOMMEN_TEMPLATE : PROJEKT_ABGELEHNT_TEMPLATE;
@@ -152,13 +187,35 @@ public class EmailService {
         sende(vorlage, student.getEmail(), werte);
     }
 
+    @Async
+    public void sendeProjektLoeschanfrageEmail(User betreuer, User anfragender, Projekt projekt) {
+        String link = frontendUrl + "/projectdetails/" + projekt.getId();
+        Map<String, String> werte = Map.of(
+                "betreuerVorname", textOderStrich(betreuer.getVorname()),
+                "betreuerName", textOderStrich(betreuer.getName()),
+                "anfragenderVorname", textOderStrich(anfragender.getVorname()),
+                "anfragenderName", textOderStrich(anfragender.getName()),
+                "projektTitel", textOderStrich(projekt.getTitel()),
+                "link", link
+        );
+        sende(PROJEKT_LOESCHANFRAGE_TEMPLATE, betreuer.getEmail(), werte);
+    }
+
     // Map.of(...) erlaubt keine null-Werte. Leere Felder werden deshalb als "-" angezeigt.
     private String textOderStrich(String text) {
         return (text == null || text.isBlank()) ? "-" : text;
     }
 
     private void sende(String templatePfad, String empfaenger, Map<String, String> werte) {
+        sende(templatePfad, empfaenger, werte, null);
+    }
+
+    private void sende(String templatePfad, String empfaenger, Map<String, String> werte, String fehlermeldung) {
         try {
+            if (empfaenger == null || empfaenger.isBlank()) {
+                throw new IllegalArgumentException("Die Empfängeradresse ist leer.");
+            }
+
             EmailTemplate template = ladeTemplate(templatePfad);
 
             String betreff = fuelleTemplate(template.getSubject(), werte);
@@ -182,7 +239,10 @@ public class EmailService {
             log.info("E-Mail ({}) gesendet an {} (eigentlicher Empfaenger: {})",
                     templatePfad, tatsaechlicherEmpfaenger, empfaenger);
         } catch (Exception e) {
-            log.warn("E-Mail ({}) konnte nicht an {} gesendet werden: {}", templatePfad, empfaenger, e.getMessage());
+            log.error("E-Mail ({}) konnte nicht an {} gesendet werden.", templatePfad, empfaenger, e);
+            if (fehlermeldung != null) {
+                throw new EmailVersandException(fehlermeldung, e);
+            }
         }
     }
 
