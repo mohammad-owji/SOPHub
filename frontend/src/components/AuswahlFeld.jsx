@@ -15,7 +15,7 @@ import { useState } from "react";
  *   optionen     Liste der Vorschlaege (Array von Strings)
  *   placeholder  grauer Hinweistext im leeren Feld
  */
-function AuswahlFeld({ value, onChange, optionen, placeholder }) {
+function AuswahlFeld({ value, onChange, optionen, placeholder, id, required = false }) {
 
     const [offen, setOffen] = useState(false);
     const [filtern, setFiltern] = useState(false);
@@ -67,10 +67,12 @@ function AuswahlFeld({ value, onChange, optionen, placeholder }) {
     return (
         <div className="position-relative">
             <input
+                id={id}
                 type="text"
                 className="form-select"
                 placeholder={placeholder}
                 value={value}
+                required={required}
                 onChange={handleTippen}
                 onFocus={oeffnen}
                 onClick={oeffnen}

@@ -107,11 +107,6 @@
 
 /* Kleine Bildschirme: aufgeklapptes Menue */
 @media (max-width: 991.98px) {
-    .sop-navbar .container-fluid {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-
     .sop-nav-links {
         margin: 0.75rem 0;
     }

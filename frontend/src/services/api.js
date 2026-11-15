@@ -97,11 +97,20 @@ export async function getProjektDetails(id) {
     return parseOrThrow(response);
 }
 
-export async function aktualisiereProjekt(id, daten) {
-    const response = await fetch(`${API_BASE_URL}/projekte/${id}`, {
+export async function aktualisiereProjekt(id, daten, betreuerId = null) {
+    const query = betreuerId ? `?betreuerId=${encodeURIComponent(betreuerId)}` : "";
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}${query}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(daten),
+    });
+    return parseOrThrow(response);
+}
+
+export async function sendeProjektEinladungErneut(id) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}/einladung/erneut-senden`, {
+        method: "POST",
+        headers: authHeaders(),
     });
     return parseOrThrow(response);
 }
@@ -116,6 +125,14 @@ export async function loescheProjekt(id) {
         throw new Error((await response.text()) || "Projekt konnte nicht gelöscht werden.");
     }
     return true;
+}
+
+export async function sendeProjektLoeschanfrage(id) {
+    const response = await fetch(`${API_BASE_URL}/projekte/${id}/loeschanfrage`, {
+        method: "POST",
+        headers: authHeaders(),
+    });
+    return parseOrThrow(response);
 }
 
 export async function getDokumenteFuerProjekt(projektId) {

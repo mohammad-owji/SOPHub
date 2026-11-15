@@ -1,0 +1,4 @@
+{
+    "subject": "Löschanfrage für das Projekt ${projektTitel}",
+    "body": "Hallo ${betreuerVorname} ${betreuerName},\n\n${anfragenderVorname} ${anfragenderName} aus dem Projektteam bittet darum, folgendes Projekt zu löschen:\n\n${projektTitel}\n\nSie können das Projekt prüfen und bei Bedarf über diesen Link löschen:\n${link}\n\nViele Grüße\nIhr SOPHub-Team"
+}

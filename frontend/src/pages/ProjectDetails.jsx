@@ -11,12 +11,15 @@ import {
     getAuth,
     getProjektDetails,
     aktualisiereProjekt,
+    sendeProjektEinladungErneut,
     loescheProjekt,
+    sendeProjektLoeschanfrage,
     getDokumenteFuerProjekt,
     downloadDokument,
     uploadDokument,
     loescheDokument,
     getStudenten,
+    getProfessoren,
     getProjektMitglieder,
     mitgliedHinzufuegen,
     mitgliedEntfernen,
@@ -122,6 +125,12 @@ function ProjectDetails() {
     const [fehler, setFehler] = useState("");
     const [mitglieder, setMitglieder] = useState([]);
     const [alleStudenten, setAlleStudenten] = useState([]);
+    const [professoren, setProfessoren] = useState([]);
+    const [betreuerAuswahl, setBetreuerAuswahl] = useState("");
+    const [betreuerLadeFehler, setBetreuerLadeFehler] = useState("");
+    const [einladungLaedt, setEinladungLaedt] = useState(false);
+    const [einladungMeldung, setEinladungMeldung] = useState("");
+    const [einladungFehler, setEinladungFehler] = useState("");
     const [suche, setSuche] = useState("");
     const [mitgliedFehler, setMitgliedFehler] = useState("");
     const [kiLaedt, setKiLaedt] = useState(false);
@@ -138,6 +147,9 @@ function ProjectDetails() {
     const [ansichtDokument, setAnsichtDokument] = useState(null);
     const [wirdGeloescht, setWirdGeloescht] = useState(false);
     const [loeschFehler, setLoeschFehler] = useState("");
+    const [loeschanfrageLaedt, setLoeschanfrageLaedt] = useState(false);
+    const [loeschanfrageFehler, setLoeschanfrageFehler] = useState("");
+    const [loeschanfrageGesendet, setLoeschanfrageGesendet] = useState(false);
 
     // Reiter: "uebersicht", "abgaben" oder "mitteilungen"
     // (?reiter=abgaben bzw. ?reiter=mitteilungen oeffnet direkt den Reiter, z.B. aus einer E-Mail)
@@ -189,6 +201,18 @@ function ProjectDetails() {
                 } else {
                     setAlleStudenten([]);
                 }
+
+                if ((daten.istOwner || daten.istTeammitglied)
+                    && (!daten.betreuer || daten.status === "ABGELEHNT")) {
+                    getProfessoren()
+                        .then((liste) => {
+                            setProfessoren(liste || []);
+                            setBetreuerLadeFehler("");
+                        })
+                        .catch(() => setBetreuerLadeFehler("Betreuerliste konnte nicht geladen werden."));
+                } else {
+                    setProfessoren([]);
+                }
             })
             .catch(() => setFehler("Projekt konnte nicht geladen werden."));
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,6 +245,12 @@ function ProjectDetails() {
     const istErsteller = Boolean(projekt?.istOwner);
     const istTeammitglied = Boolean(projekt?.istTeammitglied);
     const darfBearbeiten = istErsteller || istTeammitglied;
+    const istBetreuer = Boolean(projekt?.istBetreuer);
+    const betreuerZugewiesen = Boolean(projekt?.betreuer);
+    const betreuerKannGeaendertWerden = projekt?.status === "ABGELEHNT";
+    const betreuerAnzeigen = betreuerZugewiesen && !betreuerKannGeaendertWerden;
+    const darfProjektLoeschen = istBetreuer || (!betreuerZugewiesen && darfBearbeiten);
+    const darfLoeschanfrageSenden = betreuerZugewiesen && darfBearbeiten;
     const aktuelleGroesse = 1 + mitglieder.length;
     const maxErreicht = projekt?.gruppenanzahl != null && aktuelleGroesse >= projekt.gruppenanzahl;
 
@@ -268,8 +298,13 @@ function ProjectDetails() {
             const aktualisiert = await aktualisiereProjekt(id, {
                 ...projektForm,
                 gruppenanzahl: projektForm.gruppenanzahl ? Number(projektForm.gruppenanzahl) : null,
-            });
+            }, betreuerAuswahl || null);
             setProjekt((vorher) => ({ ...vorher, ...aktualisiert }));
+            if (betreuerAuswahl) {
+                setEinladungFehler("");
+                setEinladungMeldung("Die Anfrage wurde an den Betreuer gesendet. Du erhältst eine Bestätigung per E-Mail.");
+            }
+            setBetreuerAuswahl("");
             setBearbeitung(false);
             if (dokumente.length > 0) {
                 setKiLaedt(true);
@@ -283,8 +318,39 @@ function ProjectDetails() {
             }
         } catch (error) {
             setProjektFehler(error.message || "Projekt konnte nicht gespeichert werden.");
+            if (betreuerAuswahl) {
+                try {
+                    const aktuellesProjekt = await getProjektDetails(id);
+                    setProjekt(aktuellesProjekt);
+                    setProjektForm(formularAusProjekt(aktuellesProjekt));
+                    if (aktuellesProjekt.betreuer) {
+                        setEinladungFehler(error.message || "Die Betreuer-Einladung konnte nicht versendet werden.");
+                        setBearbeitung(false);
+                        setBetreuerAuswahl("");
+                    }
+                } catch (ladeFehler) {
+                    setProjektFehler(
+                        `${error.message || "Projekt konnte nicht gespeichert werden."} `
+                        + `Der Projektstatus konnte nicht neu geladen werden: ${ladeFehler.message}`
+                    );
+                }
+            }
         } finally {
             setSpeichertProjekt(false);
+        }
+    };
+
+    const einladungErneutSenden = async () => {
+        setEinladungLaedt(true);
+        setEinladungFehler("");
+        setEinladungMeldung("");
+        try {
+            await sendeProjektEinladungErneut(id);
+            setEinladungMeldung("Die Einladung wurde erneut per E-Mail versendet.");
+        } catch (error) {
+            setEinladungFehler(error.message || "Einladung konnte nicht versendet werden.");
+        } finally {
+            setEinladungLaedt(false);
         }
     };
 
@@ -302,6 +368,19 @@ function ProjectDetails() {
         } catch (error) {
             setLoeschFehler(error.message || "Projekt konnte nicht gelöscht werden.");
             setWirdGeloescht(false);
+        }
+    };
+
+    const loeschanfrageSenden = async () => {
+        setLoeschanfrageFehler("");
+        setLoeschanfrageLaedt(true);
+        try {
+            await sendeProjektLoeschanfrage(id);
+            setLoeschanfrageGesendet(true);
+        } catch (error) {
+            setLoeschanfrageFehler(error.message || "Löschanfrage konnte nicht gesendet werden.");
+        } finally {
+            setLoeschanfrageLaedt(false);
         }
     };
 
@@ -474,6 +553,76 @@ function ProjectDetails() {
                     Die Komponente entscheidet selbst, was die angemeldete Person sehen darf. */}
                 <ProjektBetreuung projekt={projekt} projektId={id} istTeam={darfBearbeiten} />
 
+                {istErsteller && projekt.betreuer && projekt.status === "OFFEN" && (
+                    <section className="card mb-4">
+                        <div className="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                            <div>
+                                <h2 className="h5 mb-1">Betreuungsanfrage</h2>
+                                <p className="text-muted mb-0">
+                                    Einladung an {projekt.betreuer.vorname} {projekt.betreuer.name}.
+                                    Falls sie nicht angekommen ist, kannst du sie erneut senden.
+                                </p>
+                                {einladungMeldung && <div className="text-success mt-2">{einladungMeldung}</div>}
+                                {einladungFehler && <div className="text-danger mt-2">{einladungFehler}</div>}
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={einladungErneutSenden}
+                                disabled={einladungLaedt}
+                            >
+                                {einladungLaedt ? "Wird gesendet..." : "Einladung erneut senden"}
+                            </button>
+                        </div>
+                    </section>
+                )}
+
+                {(darfProjektLoeschen || darfLoeschanfrageSenden) && (
+                    <section className="card mb-4">
+                        <div className="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                            <div>
+                                <h2 className="h5 mb-1">Projekt löschen</h2>
+                                <p className="text-muted mb-0">
+                                    {betreuerZugewiesen
+                                        ? "Bei zugewiesenem Betreuer kann nur dieser das Projekt löschen."
+                                        : "Da kein Betreuer zugewiesen ist, kann das Team das Projekt selbst löschen."}
+                                </p>
+                                {loeschFehler && <div className="alert alert-danger py-2 mt-2 mb-0">{loeschFehler}</div>}
+                                {loeschanfrageFehler && (
+                                    <div className="alert alert-danger py-2 mt-2 mb-0">{loeschanfrageFehler}</div>
+                                )}
+                                {loeschanfrageGesendet && (
+                                    <div className="alert alert-success py-2 mt-2 mb-0">
+                                        Die Löschanfrage wurde an den Betreuer gesendet.
+                                    </div>
+                                )}
+                            </div>
+                            <div className="d-flex flex-column flex-sm-row gap-2">
+                                {darfLoeschanfrageSenden && !loeschanfrageGesendet && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-primary"
+                                        onClick={loeschanfrageSenden}
+                                        disabled={loeschanfrageLaedt}
+                                    >
+                                        {loeschanfrageLaedt ? "Wird gesendet..." : "Löschanfrage senden"}
+                                    </button>
+                                )}
+                                {darfProjektLoeschen && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-danger"
+                                        onClick={projektLoeschen}
+                                        disabled={wirdGeloescht}
+                                    >
+                                        {wirdGeloescht ? "Wird gelöscht..." : "Projekt löschen"}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
                 {/* Reiter nur fuer Personen mit Zugriff (Team und Betreuung) */}
                 {zeigeReiter && (
                     <div className="pd-reiter" role="tablist">
@@ -633,6 +782,44 @@ function ProjectDetails() {
                                                     Mindestens {aktuelleGroesse} (aktuelle Teamgröße).
                                                 </div>
                                             </div>
+                                            {darfBearbeiten && (!projekt.betreuer || betreuerKannGeaendertWerden) && (
+                                                <div className="col-md-6">
+                                                    <label className="form-label" htmlFor="pd-projekt-betreuer">
+                                                        {betreuerKannGeaendertWerden
+                                                            ? "Anderen Betreuer auswählen"
+                                                            : "Betreuer:in zuweisen (optional)"}
+                                                    </label>
+                                                    <select
+                                                        id="pd-projekt-betreuer"
+                                                        className="form-select"
+                                                        value={betreuerAuswahl}
+                                                        onChange={(event) => setBetreuerAuswahl(event.target.value)}
+                                                        disabled={professoren.filter(
+                                                            (professor) => professor.id !== projekt.betreuer?.id
+                                                        ).length === 0}
+                                                    >
+                                                        <option value="">
+                                                            {betreuerKannGeaendertWerden
+                                                                ? "Neuen Betreuer auswählen"
+                                                                : "Noch keinen Betreuer zuweisen"}
+                                                        </option>
+                                                        {professoren
+                                                            .filter((professor) => professor.id !== projekt.betreuer?.id)
+                                                            .map((professor) => (
+                                                                <option key={professor.id} value={professor.id}>
+                                                                    {professor.vorname} {professor.name}
+                                                                </option>
+                                                            ))}
+                                                    </select>
+                                                    {betreuerLadeFehler
+                                                        ? <div className="form-text text-danger">{betreuerLadeFehler}</div>
+                                                        : !betreuerKannGeaendertWerden && (
+                                                            <div className="form-text">
+                                                                Beim Speichern wird eine Betreuungsanfrage per E-Mail gesendet.
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="d-flex gap-2">
                                             <button className="btn btn-primary" type="submit" disabled={speichertProjekt}>
@@ -640,6 +827,7 @@ function ProjectDetails() {
                                             </button>
                                             <button className="btn btn-outline-secondary" type="button" onClick={() => {
                                                 setProjektForm(formularAusProjekt(projekt));
+                                                setBetreuerAuswahl("");
                                                 setBearbeitung(false);
                                                 setProjektFehler("");
                                             }}>
@@ -919,14 +1107,14 @@ function ProjectDetails() {
                                         </div>
 
                                         <div className="pd-person">
-                                            <span className={`pd-avatar ${projekt.betreuer ? "pd-avatar-betreuer" : "pd-avatar-leer"}`}>
-                                                {projekt.betreuer
+                                            <span className={`pd-avatar ${betreuerAnzeigen ? "pd-avatar-betreuer" : "pd-avatar-leer"}`}>
+                                                {betreuerAnzeigen
                                                     ? initialen(projekt.betreuer.vorname, projekt.betreuer.name)
                                                     : "?"}
                                             </span>
                                             <div>
                                                 <div className="pd-person-name">
-                                                    {projekt.betreuer
+                                                    {betreuerAnzeigen
                                                         ? `${projekt.betreuer.vorname} ${projekt.betreuer.name}`
                                                         : "Noch nicht zugewiesen"}
                                                 </div>
