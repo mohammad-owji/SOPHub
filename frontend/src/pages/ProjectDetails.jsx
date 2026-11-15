@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import AuswahlFeld from "../components/AuswahlFeld";
 import DokumentAnsicht from "../components/DokumentAnsicht";
 import ProjektMitteilungen from "../components/ProjektMitteilungen";
+import ProjektChat from "../components/ProjektChat";
 import ProjektAnforderungen from "../components/ProjektAnforderungen";
 import ProjektStatusBadge from "../components/ProjektStatus";
 import ProjektBetreuung from "../components/ProjektBetreuung";
@@ -151,13 +152,15 @@ function ProjectDetails() {
     const [loeschanfrageFehler, setLoeschanfrageFehler] = useState("");
     const [loeschanfrageGesendet, setLoeschanfrageGesendet] = useState(false);
 
-    // Reiter: "uebersicht", "abgaben" oder "mitteilungen"
+    // Reiter: "uebersicht", "abgaben", "mitteilungen" oder "chat"
     // (?reiter=abgaben bzw. ?reiter=mitteilungen oeffnet direkt den Reiter, z.B. aus einer E-Mail)
     const [reiter, setReiter] = useState(
-        ["abgaben", "mitteilungen"].includes(searchParams.get("reiter")) ? searchParams.get("reiter") : "uebersicht"
+        ["abgaben", "mitteilungen", "chat"].includes(searchParams.get("reiter"))
+            ? searchParams.get("reiter") : "uebersicht"
     );
     const [mitteilungZugriff, setMitteilungZugriff] = useState(false);
     const [mitteilungAnzahl, setMitteilungAnzahl] = useState(0);
+    const [chatZugriff, setChatZugriff] = useState(false);
     const [anforderungZugriff, setAnforderungZugriff] = useState(false);
     const [offeneAbgaben, setOffeneAbgaben] = useState(0);
 
@@ -492,9 +495,10 @@ function ProjectDetails() {
     const hatKiStichwoerter = kategorienEintraege.length > 0 || projekt.tags?.length > 0;
 
     // Welcher Reiter ist wirklich sichtbar? Ohne Zugriff auf einen Reiter bleibt es bei der Uebersicht.
-    const zeigeReiter = mitteilungZugriff || anforderungZugriff;
+    const zeigeReiter = mitteilungZugriff || anforderungZugriff || chatZugriff;
     const aktiverReiter =
         (reiter === "abgaben" && anforderungZugriff) || (reiter === "mitteilungen" && mitteilungZugriff)
+            || (reiter === "chat" && chatZugriff)
             ? reiter
             : "uebersicht";
 
@@ -635,6 +639,17 @@ function ProjectDetails() {
                         >
                             Übersicht
                         </button>
+                        {chatZugriff && (
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={aktiverReiter === "chat"}
+                                className={`pd-reiter-knopf ${aktiverReiter === "chat" ? "pd-reiter-aktiv" : ""}`}
+                                onClick={() => setReiter("chat")}
+                            >
+                                Chat
+                            </button>
+                        )}
                         {anforderungZugriff && (
                             <button
                                 type="button"
@@ -686,6 +701,15 @@ function ProjectDetails() {
                             setMitteilungAnzahl(anzahl);
                         }}
                         onKeinZugriff={() => setMitteilungZugriff(false)}
+                    />
+                </div>
+
+                {/* Projekt-Chat: ebenso immer geladen (fuer die Reiter-Erkennung und Live-Nachrichten) */}
+                <div className={aktiverReiter === "chat" ? "" : "d-none"}>
+                    <ProjektChat
+                        projektId={id}
+                        onZugriff={() => setChatZugriff(true)}
+                        onKeinZugriff={() => setChatZugriff(false)}
                     />
                 </div>
 
