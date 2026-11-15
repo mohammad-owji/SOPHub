@@ -83,8 +83,25 @@ public class ProjektService {
         return projektRepository.findById(id);
     }
 
+    /**
+     * "Meine Projekte": Projekte, bei denen die Person Ersteller:in ist, PLUS Projekte,
+     * bei denen sie als Teammitglied hinzugefügt wurde. Ohne die Mitgliedschaften würden
+     * eingeladene Teammitglieder ihr Projekt nicht sehen. Dubletten werden entfernt.
+     */
     public List<Projekt> projektByStudent(Long studentId) {
-        return projektRepository.findByStudentId(studentId);
+        java.util.Map<Long, Projekt> nachId = new java.util.LinkedHashMap<>();
+        for (Projekt p : projektRepository.findByStudentId(studentId)) {
+            nachId.put(p.getId(), p);
+        }
+        for (ProjektMitglied m : projektMitgliedRepository.findByStudentId(studentId)) {
+            Projekt p = m.getProjekt();
+            if (p != null) {
+                nachId.putIfAbsent(p.getId(), p);
+            }
+        }
+        List<Projekt> ergebnis = new java.util.ArrayList<>(nachId.values());
+        ergebnis.sort((a, b) -> Long.compare(b.getId(), a.getId()));
+        return ergebnis;
     }
 
     /**
